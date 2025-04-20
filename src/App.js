@@ -29,13 +29,13 @@ function Home() {
           className="search-tournaments"
           placeholder="By name, city, country or dojo"/>
         </div>
-        <div className="live-results">
+        {/* <div className="live-results">
           <h2>Watch Live Results</h2>
             <ul className="live-list">
             <li><a href="#">Rijeka Spring Cup 2025</a></li>
-            {/* More live tournaments can be listed here dynamically */}
+            {/* More live tournaments can be listed here dynamically 
             </ul>
-        </div>
+        </div>*/}
       </div>
       <h1>WORKING HARD TO BRING YOU TAIKAI APP</h1>
       <p className="powered">Powered by ChatGPT</p>
