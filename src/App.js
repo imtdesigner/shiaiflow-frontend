@@ -2,6 +2,7 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import contactIcon from './assets/icons/contact.png';
 import bracketIcon from './assets/icons/bracket_editor.png';
 import drawingsIcon from './assets/icons/drawings.png';
 import registrationIcon from './assets/icons/registration.png';
@@ -14,8 +15,9 @@ import profileIcon from './assets/icons/my_profile.png';
 import tournamentIcon from './assets/icons/select_tournament.png';
 import React, { useState } from 'react';
 
-function Home() {
-  return (
+function Home () {
+return (
+  <>
     <div className="app-container">
       <h1 className="home-logo">
         <span className="shiai">Shiai</span><span className="flow">Flow</span>
@@ -24,23 +26,24 @@ function Home() {
       <div className="home-actions">
         <div className="search-wrapper">
           <FontAwesomeIcon icon={faMagnifyingGlass} className="search-icon" />
-        <input
-          type="text"
-          className="search-tournaments"
-          placeholder="By name, city, country or dojo"/>
+          <input
+            type="text"
+            className="search-tournaments"
+            placeholder="By name, city, country or dojo"
+          />
         </div>
         {/* <div className="live-results">
           <h2>Watch Live Results</h2>
-            <ul className="live-list">
+          <ul className="live-list">
             <li><a href="#">Rijeka Spring Cup 2025</a></li>
-            {/* More live tournaments can be listed here dynamically 
-            </ul>
-        </div>*/}
+          </ul>
+        </div> */}
       </div>
       <h1>WORKING HARD TO BRING YOU TAIKAI APP</h1>
       <p className="powered">Powered by ChatGPT</p>
     </div>
-  );
+  </>
+);
 }
 
 function Login() {
@@ -149,6 +152,11 @@ function App() {
     <Link to="/signup">Sign Up</Link>
     <Link to="/explore">Explore</Link>
     <Link to="/attend">Attend a Tournament</Link>
+    <div className="nav-icon-wrapper">
+      <a href="mailto:IMTdesigner@shiaiflow.com">
+      <img src={contactIcon} alt="Contact Developer" className="contact-icon" />
+    </a>
+  </div>
   </div>
 </nav>
       <Routes>

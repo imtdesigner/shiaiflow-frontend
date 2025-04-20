@@ -25,6 +25,25 @@ html, body {
   font-family: 'Quicksand', sans-serif !important;
 }
 
+.nav-icon img {
+  height: 24px;
+  margin-left: 12px;
+  vertical-align: middle;
+  transition: transform 0.2s ease;
+}
+
+.nav-icon img:hover {
+  transform: scale(1.1);
+}
+
+.powered {
+  font-size: 0.8rem;
+  margin-top: 3rem;
+  opacity: 0.6;
+  color: white;
+  font-style: italic;
+}
+
 .home-logo,
 .home-logo .shiai,
 .home-logo .flow,
@@ -94,19 +113,13 @@ html, body {
   margin-right: auto;
 }
 
-.nav-logo-img {
-  height: 40px;
-  object-fit: contain;
-  padding-right: 1rem;
-}
-
 .nav-links {
   display: flex;
   align-items: center;
   gap: 2.5rem;
 }
 
-..nav-logo-text {
+.nav-logo-text {
   font-size: 1.8rem;
   font-weight: bold;
   text-decoration: none;
@@ -130,6 +143,39 @@ html, body {
   color: #711921; /* Burgundy for 'Shiai' */
 }
 
+.contact-icon {
+  height: 28px;
+  cursor: pointer;
+}
+
+.nav-icon-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-icon-wrapper::after {
+  content: "Contact Developer";
+  position: absolute;
+  top: 50%;
+  right: 110%; /* Push it to the left of the icon */
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 99;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.nav-icon-wrapper:hover::after {
+  opacity: 1;
+  transform: translateY(-50%);
+}
 .home-logo {
   font-size: 3.5rem;
   font-weight: bold;
@@ -242,9 +288,6 @@ html, body {
   margin-top: 20vh;
   color: white;
   font-size: 1.2rem;
-}
-
-.dashboard {
   padding: 2rem;
   text-align: center;
 }
@@ -388,13 +431,6 @@ html, body {
 
 .dropdown-list li:hover {
   background-color: #f0f0f0;
-}
-
-.icon-row {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
 }
 
 .icon-row img {
