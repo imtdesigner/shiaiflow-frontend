@@ -14,6 +14,7 @@ import createIcon from './assets/icons/create_tournament.png';
 import profileIcon from './assets/icons/my_profile.png';
 import tournamentIcon from './assets/icons/select_tournament.png';
 import React, { useState } from 'react';
+import packageJson from '../package.json';
 
 function Home () {
 return (
@@ -41,6 +42,7 @@ return (
       </div>
       <h1>WORKING HARD TO BRING YOU TAIKAI APP</h1>
       <p className="powered">Powered by ChatGPT</p>
+      <p className="app-version">Version {packageJson.version}</p>
     </div>
   </>
 );
@@ -168,6 +170,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
+    
   );
 }
 
