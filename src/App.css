@@ -283,6 +283,7 @@ html, body {
   max-width: 700px;
   box-sizing: border-box;
 }
+
 .app-version {
   position: fixed;
   bottom: 5px;
@@ -293,6 +294,7 @@ html, body {
   font-family: 'Segoe UI', sans-serif;
   z-index: 999;
 }
+
 .dashboard {
   text-align: center;
   margin-top: 20vh;

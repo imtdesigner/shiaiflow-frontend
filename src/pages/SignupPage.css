@@ -1,0 +1,125 @@
+.shinpan-page {
+    padding: 2rem;
+    color: white;
+  }
+  
+  .back-to-dashboard-icon {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    height: 40px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    z-index: 20;
+  }
+  
+  .back-to-dashboard-icon:hover {
+    transform: scale(1.1);
+  }
+
+  .signup-page {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: sans-serif;
+    color: #222;
+  }
+  
+  .signup-page h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #711921; /* burgundy */
+  }
+  
+  .signup-page form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  /* Input fields and select */
+  .signup-page input,
+  .signup-page select {
+    border: none;
+    border-bottom: 3px solid #711921; /* burgundy */
+    background: transparent;
+    padding: 0.5rem 0;
+    font-size: 1rem;
+    outline: none;
+    color: #000;
+  }
+  
+  .signup-page input:focus,
+  .signup-page select:focus {
+    border-color: #711921;
+  }
+  
+  /* Blue signup button with thick black border */
+  .signup-page button {
+    background-color: #00bfff; /* light sky blue / cyan tone */
+    color: #000;
+    border: 2px solid #000;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  
+  .signup-page button:hover {
+    background-color: #00a3cc;
+  }
+  
+  /* Email note text */
+  .email-note {
+    font-size: 0.85rem;
+    color: #444;
+    margin-top: -1rem;
+    margin-bottom: -0.5rem;
+    padding-left: 0.25rem;
+  }
+  .popup-message {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 2px solid;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .popup-message {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 3px solid #00bcd4; /* blue border */
+    border-radius: 6px;
+    background-color: #711921; /* burgundy background */
+    color: gold;               /* gold text */
+    font-weight: bold;
+    text-align: center;
+    font-size: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+  .signup-page label {
+    font-weight: bold;
+    color: #711921; /* same burgundy as inputs */
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  .signup-page input[type="file"] {
+    margin-top: 0.5rem;
+    background: none;
+    color: #000;
+    font-size: 0.9rem;
+  }
+
+  .signup-page input:-webkit-autofill,
+  .signup-page input:-webkit-autofill:hover,
+  .signup-page input:-webkit-autofill:focus,
+  .signup-page input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  -webkit-text-fill-color: #000 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
