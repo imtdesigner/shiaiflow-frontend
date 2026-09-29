@@ -70,7 +70,7 @@ const ProfilePage = () => {
 
     const filePath = `${profile.id}/${Date.now()}-${file.name}`;
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .storage
       .from('avatars') // Make sure you created a 'avatars' bucket!
       .upload(filePath, file);

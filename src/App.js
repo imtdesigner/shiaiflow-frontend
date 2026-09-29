@@ -11,7 +11,6 @@ import manageIcon from './assets/icons/manage_tournament.png';
 import shinpanIcon from './assets/icons/shinpan_allocation.png';
 import scoreIcon from './assets/icons/score_input.png';
 import createIcon from './assets/icons/create_tournament.png';
-import profileIcon from './assets/icons/my_profile.png';
 import tournamentIcon from './assets/icons/select_tournament.png';
 import React, { useState } from 'react';
 import packageJson from '../package.json';
@@ -28,6 +27,7 @@ import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 
 
@@ -272,7 +272,16 @@ function App() {
     </ProtectedRoute>
   } 
 />
-<Route path="/profile" element={<ProfilePage />} />
+<Route
+  path="/profile"
+  element={
+    <ProtectedRoute>
+      <ProfilePage />
+    </ProtectedRoute>
+  }
+/>
+<Route path="/reset-password" element={<ResetPasswordPage />} />
+
       </Routes>
     </Router>
     

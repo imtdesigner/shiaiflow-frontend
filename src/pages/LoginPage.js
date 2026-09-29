@@ -23,7 +23,7 @@ const LoginPage = () => {
     setMessage('');
     setMessageType('');
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
     });
@@ -43,6 +43,26 @@ const LoginPage = () => {
     }, 1500);
   };
 
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setMessage('Please enter your email to reset your password.');
+      setMessageType('error');
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      setMessage('Reset failed: ' + error.message);
+      setMessageType('error');
+    } else {
+      setMessage('Password reset email sent!');
+      setMessageType('success');
+    }
+  };
+
   return (
     <div className="signup-page">
       <h2>Login</h2>
@@ -54,22 +74,30 @@ const LoginPage = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <input 
-          type="email" 
-          name="email" 
-          placeholder="Email" 
-          required 
-          onChange={handleChange} 
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          required
+          onChange={handleChange}
         />
-        <input 
-          type="password" 
-          name="password" 
-          placeholder="Password" 
-          required 
-          onChange={handleChange} 
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          required
+          onChange={handleChange}
         />
         <button type="submit">Log In</button>
+
+        <p className="forgot-link" onClick={handleForgotPassword} style={{ cursor: 'pointer', color: '#711921' }}>
+          Forgot password?
+        </p>
+        <p className="forgot-link" style={{ fontSize: '0.9em', color: '#711921' }}>
+          Forgot email? Contact the tournament organizer.
+        </p>
       </form>
+
     </div>
   );
 };

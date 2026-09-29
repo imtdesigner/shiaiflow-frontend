@@ -34,11 +34,18 @@ const SignupPage = () => {
         return;
       }
       
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-      }, {
-        emailRedirectTo: null   // <-- disables built-in browser redirects/popups
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+          data: {
+            name: formData.name,
+            role: formData.role,
+            country: formData.country,
+            dojo_name: formData.dojo_name,
+          },
+        },
       });
       
       if (error) {
@@ -50,7 +57,6 @@ const SignupPage = () => {
       setMessage("Signup successful! Please check your email to confirm.");
       setMessageType("success");
 
-    alert('Signup successful! Please check your email to confirm your address.');
   };
 
   return (
