@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import contactIcon from './assets/icons/contact.png';
@@ -12,7 +12,7 @@ import shinpanIcon from './assets/icons/shinpan_allocation.png';
 import scoreIcon from './assets/icons/score_input.png';
 import createIcon from './assets/icons/create_tournament.png';
 import tournamentIcon from './assets/icons/select_tournament.png';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import packageJson from '../package.json';
 import CreateTournament from './pages/CreateTournament';
 import EditTournament from './pages/EditTournament';
@@ -22,12 +22,12 @@ import Registration from './pages/Registration';
 import Manage from './pages/Manage';
 import Shinpan from './pages/Shinpan';
 import ScoreInput from './pages/ScoreInput';
-import { useNavigate } from 'react-router-dom';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import { supabase } from './supabaseClient';
 
 
 
@@ -169,18 +169,78 @@ function Dashboard() {
   );
 }
 
-function App() {
+function AppContent() {
+  const [session, setSession] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (isMounted) {
+        setSession(currentSession);
+        setIsAuthLoading(false);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (isMounted) {
+        setSession(currentSession);
+        setIsAuthLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Logout failed:', error.message);
+      return;
+    }
+
+    navigate('/', { replace: true });
+  };
+
+  const publicOnly = (page) => {
+    if (isAuthLoading) {
+      return <div className="page">Loading...</div>;
+    }
+
+    return session ? <Navigate to="/dashboard" replace /> : page;
+  };
+
   return (
-    <Router>
+    <>
   <nav className="navbar">
   <div className="nav-logo">
-    <Link to="/" className="nav-logo-text">
+    <Link to={session ? '/dashboard' : '/'} className="nav-logo-text">
       Shiai<span className="flow">Flow</span>
     </Link>
   </div>
   <div className="nav-links">
-    <Link to="/login">Log In</Link>
-    <Link to="/signup">Sign Up</Link>
+    {!isAuthLoading && (session ? (
+      <>
+        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/profile">Profile</Link>
+        <button type="button" className="nav-link-button" onClick={handleLogout}>
+          Log Out
+        </button>
+      </>
+    ) : (
+      <>
+        <Link to="/login">Log In</Link>
+        <Link to="/signup">Sign Up</Link>
+      </>
+    ))}
     <Link to="/explore">Explore</Link>
     <Link to="/attend">Attend a Tournament</Link>
     <div className="nav-icon-wrapper">
@@ -191,9 +251,9 @@ function App() {
   </div>
 </nav>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/" element={publicOnly(<Home />)} />
+        <Route path="/login" element={publicOnly(<LoginPage />)} />
+        <Route path="/signup" element={publicOnly(<SignupPage />)} />
         
         {/* Wrap dashboard in protected route */}
         <Route 
@@ -283,8 +343,15 @@ function App() {
 <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
-    
   );
 }
 

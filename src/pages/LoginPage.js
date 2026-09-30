@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 import './SignupPage.css'; // You can reuse SignupPage.css if you want
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -36,11 +38,7 @@ const LoginPage = () => {
 
     setMessage('Login successful! Redirecting...');
     setMessageType('success');
-
-    // (Optional) Redirect after login
-    setTimeout(() => {
-      window.location.href = '/profile'; // or wherever you want to send them
-    }, 1500);
+    navigate('/dashboard', { replace: true });
   };
 
   const handleForgotPassword = async () => {
