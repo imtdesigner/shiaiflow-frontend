@@ -627,3 +627,17 @@ test('eligibility: grades, gender, age by birth year', () => {
   assert.equal(ineligibleReason({}, {}, 2026), null);
   assert.equal(rulesText({ gender: 'M', min_age: 18, min_grade: 1 }), 'Men · 18+ y · 1 dan and up');
 });
+
+test('templates from the DP HKS 2026 bracket sheets: K132, K142, K161', () => {
+  for (const [code, pools, adv, fights] of [['K132', 13, 2, 25], ['K142', 14, 2, 27], ['K161', 16, 1, 15]]) {
+    const t = tpl(code);
+    assert.equal(t.length, fights, code);
+    assert.deepEqual(validateTemplate(t, pools, adv), [], code);
+  }
+  const d = buildDraw(Array.from({ length: 39 }, (_, i) => `e${i}`), { poolSize: 3, advancing: 2 }, 4);
+  assert.equal(d.koCode, 'K132');
+  assert.deepEqual(d.problems, []);
+  const k16 = buildDraw(Array.from({ length: 16 }, (_, i) => `t${i}`), { poolSize: 1, advancing: 1 }, 4);
+  assert.equal(k16.koCode, 'K161');
+  assert.deepEqual(k16.problems, []);
+});

@@ -46,7 +46,7 @@ Talk to the owner in Croatian; code, commits, code comments and all UI text in E
 - KO templates must be editable per category (organizers adjust pairings for a specific draw).
 
 ## Open questions (ask the owner, don't guess)
-- Canonical K052/K091 pairing, head-to-head in ranking, shared 3rd place.
+- Canonical K052/K091 pairing, head-to-head in ranking, shared 3rd place. Missing KO templates: K031, K151, K152, K162 (K132, K142, K161 rebuilt from the DP26 bracket sheets).
 - Full background: ShiaiFlow claude.ai project docs `excel-analiza-i-specifikacija.md`.
 
 ## Next planned work
