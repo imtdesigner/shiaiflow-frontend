@@ -109,6 +109,7 @@ function Registration() {
           categories={categories}
           selectedId={selectedId}
           onSelect={(id) => { setSelectedId(id); setMsg({ type: '', text: '' }); }}
+          renderExtra={(c) => (c.status === 'cancelled' ? ' ✕' : '')}
         />
       )}
 
@@ -118,7 +119,9 @@ function Registration() {
         <>
           {locked && (
             <Message type="info">
-              Ždrijeb za ovu kategoriju je već napravljen — prijave su zaključane.
+              {category.status === 'cancelled'
+                ? 'Ova kategorija je poništena — prijave su zaključane.'
+                : 'Ždrijeb za ovu kategoriju je već napravljen — prijave su zaključane.'}
               {' '}<Link to={`/tournament/${tournamentId}/drawings`}>Otvori ždrijeb</Link>
             </Message>
           )}

@@ -50,6 +50,21 @@ export async function updateCategory(id, fields) {
   return unwrap(await supabase.from('categories').update(fields).eq('id', id).select().single());
 }
 
+/** Cancel a category that will not be held (e.g. 3 entries and no merge). */
+export async function cancelCategory(id) {
+  return updateCategory(id, { status: 'cancelled' });
+}
+
+/** Re-open a cancelled category for registration. */
+export async function restoreCategory(id) {
+  return updateCategory(id, { status: 'registration' });
+}
+
+/** Move every entry to another category and cancel the source; returns moved count. */
+export async function moveCategoryEntries(sourceId, targetId) {
+  return unwrap(await supabase.rpc('move_category_entries', { src: sourceId, dst: targetId }));
+}
+
 // --- competitors, teams, entries -------------------------------------------------
 
 export async function listEntries(categoryId) {

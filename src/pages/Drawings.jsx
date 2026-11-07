@@ -4,7 +4,8 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  clearDraw, getSavedDraw, listEntries, saveDraw, updateCategory,
+  cancelCategory, clearDraw, getSavedDraw, listEntries, moveCategoryEntries, restoreCategory,
+  saveDraw, updateCategory,
 } from '../lib/api';
 import { buildDraw, newSeed, smallCategoryFormats } from '../lib/tournament/draw.js';
 import { matchRounds, roundName, parsePoolCode, isWinnerRef } from '../lib/tournament/ko.js';
@@ -51,7 +52,9 @@ function KoView({ template, nameOf, resolved = {} }) {
 }
 
 function Drawings() {
-  const { tournamentId, tournament, categories, setCategories, error: loadError, loading } = useTournament();
+  const {
+    tournamentId, tournament, categories, setCategories, reload: reloadTournament, error: loadError, loading,
+  } = useTournament();
   const [selectedId, setSelectedId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [saved, setSaved] = useState(null);
@@ -59,9 +62,13 @@ function Drawings() {
   const [shiaijo, setShiaijo] = useState(1);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [moveTarget, setMoveTarget] = useState('');
 
   const category = useMemo(() => categories.find((c) => c.id === selectedId), [categories, selectedId]);
-  const isDrawn = category && category.status !== 'registration';
+  const isOpen = category?.status === 'registration';
+  const isCancelled = category?.status === 'cancelled';
+  const isDrawn = category && !isOpen && !isCancelled;
+  const moveTargets = categories.filter((c) => c.id !== category?.id && c.kind === category?.kind && c.status === 'registration');
   const checkedIn = entries.filter((e) => e.checked_in);
   const smallFormats = smallCategoryFormats(checkedIn.length);
   const nameOf = useCallback((id) => entryName(entries.find((e) => e.id === id)), [entries]);
@@ -81,7 +88,7 @@ function Drawings() {
     }
   }, [selectedId]);
 
-  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); reload(); }, [reload]);
+  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); setMoveTarget(''); reload(); }, [reload]);
 
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
@@ -126,6 +133,40 @@ function Drawings() {
     finally { setBusy(false); }
   };
 
+  const runCategoryAction = async (question, action, ok) => {
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    try {
+      const text = ok(await action());
+      setPreview(null);
+      await Promise.all([reloadTournament(), reload()]);
+      setMsg({ type: 'success', text });
+    } catch (e) { setMsg({ type: 'error', text: e.message }); }
+    finally { setBusy(false); }
+  };
+
+  const moveAll = () => {
+    const target = categories.find((c) => c.id === moveTarget);
+    if (!target) return;
+    runCategoryAction(
+      `Prebaciti sve prijave iz ${category.name} u ${target.name}? Kategorija ${category.name} bit će poništena.`,
+      () => moveCategoryEntries(category.id, target.id),
+      (moved) => `Prebačeno ${moved} prijava u ${target.name}. Kategorija ${category.name} je poništena.`,
+    );
+  };
+
+  const cancel = () => runCategoryAction(
+    `Poništiti kategoriju ${category.name}? Neće se održati; prijave ostaju spremljene.`,
+    () => cancelCategory(category.id),
+    () => `Kategorija ${category.name} je poništena.`,
+  );
+
+  const restore = () => runCategoryAction(
+    `Vratiti kategoriju ${category.name} u prijave?`,
+    () => restoreCategory(category.id),
+    () => `Kategorija ${category.name} je ponovno otvorena za prijave.`,
+  );
+
   // Saved draw → same shapes as a preview.
   const savedPools = saved?.pools.map((p) => [...p.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id));
   const savedPoolMatches = saved?.matches.filter((m) => m.phase === 'pool') ?? [];
@@ -146,11 +187,23 @@ function Drawings() {
         categories={categories}
         selectedId={selectedId}
         onSelect={(id) => { setSelectedId(id); setMsg({ type: '', text: '' }); }}
-        renderExtra={(c) => (c.status !== 'registration' ? ' ✓' : '')}
+        renderExtra={(c) => ({ registration: '', cancelled: ' ✕' }[c.status] ?? ' ✓')}
       />
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
-      {category && !isDrawn && (
+      {category && isCancelled && (
+        <div className="tp-card">
+          <h3>Kategorija je poništena</h3>
+          <p className="tp-muted">
+            Ova kategorija se ne održava{entries.length ? ` (preostalo prijava: ${entries.length})` : ''}.
+          </p>
+          <div className="tp-actions">
+            <button type="button" className="tp-btn secondary" onClick={restore} disabled={busy}>Vrati u prijave</button>
+          </div>
+        </div>
+      )}
+
+      {category && isOpen && (
         <div className="tp-card">
           <h3>Postavke</h3>
           <div className="tp-grid">
@@ -204,6 +257,20 @@ function Drawings() {
                   );
                 })}
               </div>
+              {checkedIn.length === 3 && (
+                <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
+                  <select value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} disabled={busy || !moveTargets.length}>
+                    <option value="">{moveTargets.length ? 'Jača kategorija…' : 'Nema druge kategorije u prijavama'}</option>
+                    {moveTargets.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button type="button" className="tp-btn secondary small" onClick={moveAll} disabled={busy || !moveTarget}>
+                    Prebaci sve
+                  </button>
+                  <button type="button" className="tp-btn danger small" onClick={cancel} disabled={busy}>
+                    Poništi kategoriju
+                  </button>
+                </div>
+              )}
             </Message>
           )}
           <div className="tp-actions">
