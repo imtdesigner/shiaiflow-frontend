@@ -89,7 +89,7 @@ export async function addCompetitorEntry(tournamentId, categoryId, person) {
     .select().single());
 }
 
-export async function addTeamEntry(tournamentId, categoryId, { name, club, members = [] }) {
+export async function addTeamEntry(tournamentId, categoryId, { name, club, members = [], checked_in = true }) {
   const team = unwrap(await supabase.from('teams')
     .insert({ tournament_id: tournamentId, name: name.trim().toUpperCase(), club: club?.trim() || null })
     .select('id').single());
@@ -104,7 +104,7 @@ export async function addTeamEntry(tournamentId, categoryId, { name, club, membe
     unwrap(await supabase.from('team_members').insert({ team_id: team.id, competitor_id: c.id, sort_order: i }));
   }
   return unwrap(await supabase.from('entries')
-    .insert({ category_id: categoryId, team_id: team.id }).select().single());
+    .insert({ category_id: categoryId, team_id: team.id, checked_in: !!checked_in }).select().single());
 }
 
 export async function setCheckedIn(entryId, checkedIn) {

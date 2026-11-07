@@ -112,7 +112,9 @@ function Drawings() {
     setBusy(true);
     try {
       await clearDraw(category.id);
-      replaceCategory(await updateCategory(category.id, { status: 'registration', draw_seed: null }));
+      replaceCategory(await updateCategory(category.id, {
+        status: 'registration', draw_seed: null, ko_template_code: null, ko_template: null,
+      }));
       setSaved(null);
       setMsg({ type: 'info', text: 'Ždrijeb poništen. Prijave su ponovno otvorene.' });
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
