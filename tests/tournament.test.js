@@ -221,7 +221,7 @@ test('draw: missing template is reported', () => {
 test('draw: 3 entries cannot go to KO (direct KO or pool + advancing)', () => {
   for (const settings of [{ poolSize: 1, advancing: 1 }, { poolSize: 3, advancing: 2 }, { poolSize: 2, advancing: 1 }]) {
     const d = buildDraw(['a', 'b', 'c'], settings, 1);
-    assert.ok(d.problems.some((p) => p.includes('3 sudionika')), JSON.stringify(settings));
+    assert.ok(d.problems.some((p) => p.includes('3 entries')), JSON.stringify(settings));
   }
   const rr = buildDraw(['a', 'b', 'c'], { poolSize: 3, advancing: 0 }, 1);
   assert.deepEqual(rr.problems, []);
@@ -280,7 +280,7 @@ test('manual edit: swap and move keep entries, drawFromPools recomputes matches'
   assert.deepEqual(moved, [['b', 'c'], ['d', 'e', 'f', 'a']]);
   assert.deepEqual(drawFromPools(moved, settings).problems, []);
   const emptied = moveEntry(moveEntry(pools, 'a', 1), 'b', 1);
-  assert.ok(drawFromPools(moveEntry(emptied, 'c', 1), settings).problems.some((p) => p.includes('prazan')));
+  assert.ok(drawFromPools(moveEntry(emptied, 'c', 1), settings).problems.some((p) => p.includes('empty')));
   assert.equal(moveEntry(pools, 'zz', 0), pools);
 });
 
@@ -326,7 +326,7 @@ test('tiers 1-3: K052 (15) separates 3; a 4th cannot be kept apart and is report
   // Excel K052: winners of pools 1/2 meet in the quarterfinal, 4/5 in round one.
   const d = buildDraw(people(15, () => '', (i) => TOP4[i] ?? null), { poolSize: 3, advancing: 2 }, 1);
   assert.equal(new Set([0, 1, 2, 3].map((i) => poolOf(d, `p${i}`))).size, 4);
-  assert.ok(d.warnings.some((w) => w.includes('prerano')));
+  assert.ok(d.warnings.some((w) => w.includes('too early')));
 });
 
 test('tiers 1-3: direct KO with 8 (K081) puts champion and runner-up in opposite halves', () => {
@@ -410,6 +410,6 @@ test('manual edit keeps warnings up to date', () => {
   assert.deepEqual(d.warnings, []);
   const mate = d.pools[poolOf(d, 'p0')].find((id) => id !== 'p0');
   const together = drawFromPools(swapEntries(d.pools, 'p1', mate), { poolSize: 3, advancing: 2 }, null, d.meta);
-  assert.ok(together.warnings.some((w) => w.includes('1 (prvak) i 2 (finalist)')));
+  assert.ok(together.warnings.some((w) => w.includes('1 (champion) and 2 (runner-up)')));
   assert.equal(analyzePlacement(d.pools, d.meta, d.koTemplate, false).length, 0);
 });

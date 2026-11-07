@@ -39,22 +39,22 @@ export function drawFromPools(pools, { poolSize, advancing }, seed = null, meta 
   const directKo = poolSize === 1;
   const count = pools.reduce((n, p) => n + p.length, 0);
 
-  if (count < 2) problems.push('Za ždrijeb trebaju barem 2 prijave.');
+  if (count < 2) problems.push('A draw needs at least 2 entries.');
   pools.forEach((p, i) => {
-    if (p.length === 0) problems.push(`Pool ${i + 1} je prazan.`);
+    if (p.length === 0) problems.push(`Pool ${i + 1} is empty.`);
     else if (!directKo && p.length === 1 && pools.length > 1) {
-      problems.push(`Pool ${i + 1} ima samo jednog natjecatelja — promijeni veličinu poola.`);
+      problems.push(`Pool ${i + 1} has only one competitor — change the pool size.`);
     } else if (!directKo && p.length > MAX_POOL) {
-      problems.push(`Pool ${i + 1} ima više od ${MAX_POOL} natjecatelja.`);
+      problems.push(`Pool ${i + 1} has more than ${MAX_POOL} competitors.`);
     }
   });
   if (!directKo && advancing > 0 && pools.some((p) => p.length > 0 && p.length < advancing)) {
-    problems.push(`Neki pool ima manje od ${advancing} natjecatelja za prolaz.`);
+    problems.push(`A pool has fewer than ${advancing} competitors to advance.`);
   }
 
   const koNotPossible = count === SMALL_NO_KO && !(pools.length === 1 && advancing === 0);
   if (koNotPossible) {
-    problems.push('S 3 sudionika nema KO-a: svatko sa svakim, prebaci ih u jaču kategoriju ili poništi kategoriju.');
+    problems.push('No KO with 3 entries: round robin, move them to a stronger category, or cancel the category.');
   }
 
   const matches = directKo ? [] : pools.flatMap((members, i) => (
@@ -68,7 +68,7 @@ export function drawFromPools(pools, { poolSize, advancing }, seed = null, meta 
     koCode = systemCode(pools.length, adv);
     koTemplate = getTemplate(koCode);
     if (!koTemplate) {
-      problems.push(`KO sustav ${koCode} ne postoji u biblioteci — treba ga dodati ili promijeniti veličinu poola.`);
+      problems.push(`KO system ${koCode} is not in the library — add it or change the pool size.`);
     } else {
       problems.push(...validateTemplate(koTemplate, pools.length, adv).map((p) => `${koCode}: ${p}`));
     }

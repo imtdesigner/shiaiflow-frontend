@@ -1,7 +1,7 @@
 # ShiaiFlow — context for Claude Code
 
 Kendo tournament web app (試合フロー). Owner: Ivan Marko Tomljenović (GitHub `imtdesigner`).
-Talk to the owner in Croatian; code, commits and code comments in English.
+Talk to the owner in Croatian; code, commits, code comments and all UI text in English.
 
 ## Stack and infrastructure
 - React 19 + Vite 7 (migrated from CRA on 2026-11-07), react-router 7, plain CSS.
@@ -14,7 +14,7 @@ Talk to the owner in Croatian; code, commits and code comments in English.
 - `src/lib/tournament/` — pure tournament logic, fully tested: pools + fight order, bout scoring (events, auto ippon on 2nd hansoku), pool ranking with ipponshobu / replay, KO templates (`koTemplates.data.js`, standard set from the Excel) with validation and bracket resolution, team matches with daihyosen, `buildDraw()`.
 - `src/lib/api.js` — Supabase data layer used by pages.
 - `src/pages/` — CreateTournament, Registration, Drawings are real; Brackets, Manage, Shinpan, ScoreInput, EditTournament are still placeholders.
-- `supabase/migrations/` — schema; 202611070001 (tournament core + RLS + realtime) and 202611070002 (RLS helpers moved to `private` schema), 202611070003 (category `cancelled` status + `move_category_entries`), 202611070004/0005 (`entries.tier`) are applied to ShiaiFlow-db-v2.
+- `supabase/migrations/` — schema; 202611070001 (tournament core + RLS + realtime) and 202611070002 (RLS helpers moved to `private` schema), 202611070003 (category `cancelled` status + `move_category_entries`), 202611070004/0005 (`entries.tier`), 202611070006 (English RPC messages) are applied to ShiaiFlow-db-v2.
 - `tests/` — logic tests built from real DP HKS 2026 results.
 
 ## Domain rules (ported from the DP HKS 2026 Excel system — do not change silently)

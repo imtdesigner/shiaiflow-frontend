@@ -18,7 +18,7 @@ import { isWinnerRef, leaves, matchRounds, poolCode } from './ko.js';
 const ATTEMPTS = 40;
 
 export const TIER_LABELS = {
-  1: 'prvak', 2: 'finalist', 3: 'treće mjesto', 4: 'jak', 5: 'srednji', 6: 'slabiji',
+  1: 'champion', 2: 'runner-up', 3: 'third place', 4: 'strong', 5: 'medium', 6: 'weaker',
 };
 export const isTopTier = (tier) => tier >= 1 && tier <= 3;
 
@@ -60,7 +60,7 @@ function firstRoundPairs(template) {
     .map((m) => [idx(m.red), idx(m.white)]);
 }
 
-const roundLabel = (r) => ({ 1: 'finale', 2: 'polufinale', 3: 'četvrtfinale', 4: 'osmina finala' }[r] ?? `kolo ${r}`);
+const roundLabel = (r) => ({ 1: 'final', 2: 'semifinal', 3: 'quarterfinal', 4: 'round of 16' }[r] ?? `round ${r}`);
 
 /** Top-tier entries with their pool, strongest first. */
 function topEntries(pools, byId) {
@@ -95,8 +95,8 @@ export function analyzePlacement(pools, meta, template, directKo) {
     for (let j = i + 1; j < top.length; j += 1) {
       const [a, b] = [top[i], top[j]];
       const r = meetRound(a.pool, b.pool);
-      if (a.pool === b.pool) warnings.push(`Nositelji ${label(a)} i ${label(b)} su u istom poolu.`);
-      else if (r > ideal) warnings.push(`Nositelji ${label(a)} i ${label(b)} mogu se sresti prerano (${roundLabel(r)}).`);
+      if (a.pool === b.pool) warnings.push(`Seeds ${label(a)} and ${label(b)} are in the same pool.`);
+      else if (r > ideal) warnings.push(`Seeds ${label(a)} and ${label(b)} can meet too early (${roundLabel(r)}).`);
     }
   }
 
@@ -107,7 +107,7 @@ export function analyzePlacement(pools, meta, template, directKo) {
       if (club) byClub.set(club, (byClub.get(club) ?? 0) + 1);
     }
     for (const [club, n] of byClub) {
-      if (n > 1) warnings.push(directKo ? `Isti klub (${club}) u prvoj KO borbi.` : `Pool ${i + 1}: ${n} iz kluba ${club}.`);
+      if (n > 1) warnings.push(directKo ? `Same club (${club}) in a first KO match.` : `Pool ${i + 1}: ${n} from club ${club}.`);
     }
   });
   return warnings;

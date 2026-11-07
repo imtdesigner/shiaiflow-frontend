@@ -8,12 +8,12 @@ import './TournamentPages.css';
 const PRESETS = [
   { name: 'Junior A', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
   { name: 'Junior B', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Kyu Ž', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
+  { name: 'Kyu W', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
   { name: 'Kyu M', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Dan Ž', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
+  { name: 'Dan W', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
   { name: 'Dan M', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
-  { name: 'Ekipno juniori', kind: 'team', team_size: 3, pool_size: 3, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
-  { name: 'Ekipno odrasli', kind: 'team', team_size: 3, pool_size: 1, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
+  { name: 'Team juniors', kind: 'team', team_size: 3, pool_size: 3, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
+  { name: 'Team adults', kind: 'team', team_size: 3, pool_size: 1, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
 ];
 
 const EMPTY_CATEGORY = {
@@ -27,7 +27,7 @@ const toSec = (m) => Math.max(30, Math.round(Number(m) * 60) || 0);
 function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Hrvatska',
+    name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Croatia',
     shiaijo_count: 2, is_public: true,
   });
   const [categories, setCategories] = useState([]);
@@ -51,8 +51,8 @@ function CreateTournament() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.name.trim()) { setError('Upiši naziv turnira.'); return; }
-    if (categories.some((c) => !c.name.trim())) { setError('Svaka kategorija mora imati naziv.'); return; }
+    if (!form.name.trim()) { setError('Enter the tournament name.'); return; }
+    if (categories.some((c) => !c.name.trim())) { setError('Every category needs a name.'); return; }
     setSaving(true);
     try {
       const t = await createTournament({
@@ -85,36 +85,36 @@ function CreateTournament() {
   return (
     <div className="tp-page">
       <BackToDashboard />
-      <h2>Novi turnir</h2>
-      <p className="tp-subtitle">Osnovni podaci i kategorije. Sve se može promijeniti i kasnije.</p>
+      <h2>New tournament</h2>
+      <p className="tp-subtitle">Basic details and categories. Everything can be changed later.</p>
       <Message type="error">{error}</Message>
 
       <form onSubmit={handleSubmit}>
         <div className="tp-card">
-          <h3>Turnir</h3>
+          <h3>Tournament</h3>
           <div className="tp-grid">
             <label className="tp-field" style={{ gridColumn: '1 / -1' }}>
-              Naziv
-              <input value={form.name} onChange={set('name')} placeholder="npr. Državno prvenstvo HKS 2027" required />
+              Name
+              <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
             </label>
-            <label className="tp-field">Datum od<input type="date" value={form.start_date} onChange={set('start_date')} /></label>
-            <label className="tp-field">Datum do<input type="date" value={form.end_date} onChange={set('end_date')} /></label>
-            <label className="tp-field">Dvorana<input value={form.venue} onChange={set('venue')} /></label>
-            <label className="tp-field">Grad<input value={form.city} onChange={set('city')} /></label>
-            <label className="tp-field">Država<input value={form.country} onChange={set('country')} /></label>
+            <label className="tp-field">Start date<input type="date" value={form.start_date} onChange={set('start_date')} /></label>
+            <label className="tp-field">End date<input type="date" value={form.end_date} onChange={set('end_date')} /></label>
+            <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
+            <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
+            <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
             <label className="tp-field">
-              Broj terena (shiaijo)
+              Number of courts (shiaijo)
               <input type="number" min="1" max="12" value={form.shiaijo_count} onChange={set('shiaijo_count')} />
             </label>
             <label className="tp-field tp-check">
               <input type="checkbox" checked={form.is_public} onChange={set('is_public')} />
-              Javni rezultati (vidljivi bez prijave)
+              Public results (visible without login)
             </label>
           </div>
         </div>
 
         <div className="tp-card">
-          <h3>Kategorije</h3>
+          <h3>Categories</h3>
           <div className="tp-actions" style={{ marginTop: 0, marginBottom: '1rem' }}>
             {PRESETS.map((p) => (
               <button
@@ -127,17 +127,17 @@ function CreateTournament() {
                 + {p.name}
               </button>
             ))}
-            <button type="button" className="tp-btn small" onClick={() => addCategory()}>+ Prazna kategorija</button>
+            <button type="button" className="tp-btn small" onClick={() => addCategory()}>+ Empty category</button>
           </div>
 
           {categories.length === 0 ? (
-            <p className="tp-muted">Dodaj kategorije gumbima iznad (postavke su s DP 2026).</p>
+            <p className="tp-muted">Add categories with the buttons above (settings from DP HKS 2026).</p>
           ) : (
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Naziv</th><th>Vrsta</th><th>Ekipa</th><th>Po poolu</th><th>Prolazi</th>
-                  <th>Pool (min)</th><th>KO (min)</th><th>Finale (min)</th><th />
+                  <th>Name</th><th>Type</th><th>Team</th><th>Per pool</th><th>Advancing</th>
+                  <th>Pool (min)</th><th>KO (min)</th><th>Final (min)</th><th />
                 </tr>
               </thead>
               <tbody>
@@ -147,8 +147,8 @@ function CreateTournament() {
                     <td><input value={c.name} onChange={(e) => updateCategory(i, 'name', e.target.value)} /></td>
                     <td>
                       <select value={c.kind} onChange={(e) => updateCategory(i, 'kind', e.target.value)}>
-                        <option value="individual">Pojedinačno</option>
-                        <option value="team">Ekipno</option>
+                        <option value="individual">Individual</option>
+                        <option value="team">Team</option>
                       </select>
                     </td>
                     <td>
@@ -161,13 +161,13 @@ function CreateTournament() {
                     </td>
                     <td>
                       <select value={c.pool_size} onChange={(e) => updateCategory(i, 'pool_size', Number(e.target.value))}>
-                        <option value={1}>izravni KO</option>
+                        <option value={1}>direct KO</option>
                         {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
                     </td>
                     <td>
                       <select value={c.advancing} onChange={(e) => updateCategory(i, 'advancing', Number(e.target.value))} disabled={c.pool_size === 1}>
-                        <option value={0}>samo pool</option>
+                        <option value={0}>pools only</option>
                         <option value={1}>1</option>
                         <option value={2}>2</option>
                       </select>
@@ -185,7 +185,7 @@ function CreateTournament() {
 
         <div className="tp-actions">
           <button type="submit" className="tp-btn" disabled={saving}>
-            {saving ? 'Spremam…' : 'Kreiraj turnir i idi na prijave'}
+            {saving ? 'Saving…' : 'Create tournament and go to registration'}
           </button>
         </div>
       </form>

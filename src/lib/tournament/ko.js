@@ -95,7 +95,7 @@ export function matchRounds(matches) {
 }
 
 export function roundName(round) {
-  return { 1: 'Finale', 2: 'Polufinale', 3: 'Četvrtfinale', 4: 'Osmina finala' }[round] ?? `Kolo ${round}`;
+  return { 1: 'Final', 2: 'Semifinal', 3: 'Quarterfinal', 4: 'Round of 16' }[round] ?? `Round ${round}`;
 }
 
 /**

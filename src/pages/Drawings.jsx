@@ -14,17 +14,17 @@ import { matchRounds, roundName, parsePoolCode, isWinnerRef } from '../lib/tourn
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import './TournamentPages.css';
 
-const FORMAT_LABEL = { roundRobin: 'Svatko sa svakim', directKo: 'Izravni KO' };
+const FORMAT_LABEL = { roundRobin: 'Round robin', directKo: 'Direct KO' };
 
 function codeLabel(code) {
-  if (isWinnerRef(code)) return `pobjednik ${code.slice(1)}`;
+  if (isWinnerRef(code)) return `winner of ${code.slice(1)}`;
   const { pool, place } = parsePoolCode(code);
-  return `${place}. iz poola ${pool}`;
+  return `${place === 1 ? '1st' : '2nd'} of pool ${pool}`;
 }
 
 /**
  * Pools; with onSwap/onMove the organizer can edit them: click a name to pick
- * it, click another name to swap the two, or "Premjesti ovdje" to move it.
+ * it, click another name to swap the two, or "Move here" to move it.
  */
 function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) {
   const [picked, setPicked] = useState(null);
@@ -40,8 +40,8 @@ function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) 
       {editable && (
         <p className="tp-muted" style={{ marginTop: 0 }}>
           {picked
-            ? `Odabran: ${nameOf(picked)} — klikni drugo ime za zamjenu${directKo ? '' : ' ili „Premjesti ovdje“ na poolu'}.`
-            : 'Ručno uređivanje: klikni ime pa drugo ime za zamjenu.'}
+            ? `Selected: ${nameOf(picked)} — click another name to swap${directKo ? '' : ' or “Move here” on a pool'}.`
+            : 'Manual editing: click a name, then another name to swap them.'}
         </p>
       )}
       <div className="tp-pools">
@@ -53,7 +53,7 @@ function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) 
               {editable && !directKo && picked && !members.includes(picked) && (
                 <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.5rem' }}
                   onClick={() => { onMove(picked, i); setPicked(null); }}>
-                  Premjesti ovdje
+                  Move here
                 </button>
               )}
             </h4>
@@ -169,13 +169,13 @@ function Drawings() {
       replaceCategory(await saveDraw(category, preview, { shiaijo }));
       setPreview(null);
       await reload();
-      setMsg({ type: 'success', text: 'Ždrijeb je spremljen. Borbe su kreirane.' });
+      setMsg({ type: 'success', text: 'Draw saved. Matches have been created.' });
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
     finally { setBusy(false); }
   };
 
   const undo = async () => {
-    if (!window.confirm('Poništiti ždrijeb? Poolovi i borbe ove kategorije bit će obrisani.')) return;
+    if (!window.confirm('Undo the draw? Pools and matches of this category will be deleted.')) return;
     setBusy(true);
     try {
       await clearDraw(category.id);
@@ -183,7 +183,7 @@ function Drawings() {
         status: 'registration', draw_seed: null, ko_template_code: null, ko_template: null,
       }));
       setSaved(null);
-      setMsg({ type: 'info', text: 'Ždrijeb poništen. Prijave su ponovno otvorene.' });
+      setMsg({ type: 'info', text: 'Draw undone. Registration is open again.' });
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
     finally { setBusy(false); }
   };
@@ -204,22 +204,22 @@ function Drawings() {
     const target = categories.find((c) => c.id === moveTarget);
     if (!target) return;
     runCategoryAction(
-      `Prebaciti sve prijave iz ${category.name} u ${target.name}? Kategorija ${category.name} bit će poništena.`,
+      `Move all entries from ${category.name} to ${target.name}? ${category.name} will be cancelled.`,
       () => moveCategoryEntries(category.id, target.id),
-      (moved) => `Prebačeno ${moved} prijava u ${target.name}. Kategorija ${category.name} je poništena.`,
+      (moved) => `Moved ${moved} entries to ${target.name}. ${category.name} is cancelled.`,
     );
   };
 
   const cancel = () => runCategoryAction(
-    `Poništiti kategoriju ${category.name}? Neće se održati; prijave ostaju spremljene.`,
+    `Cancel ${category.name}? It will not be held; entries are kept.`,
     () => cancelCategory(category.id),
-    () => `Kategorija ${category.name} je poništena.`,
+    () => `${category.name} is cancelled.`,
   );
 
   const restore = () => runCategoryAction(
-    `Vratiti kategoriju ${category.name} u prijave?`,
+    `Reopen ${category.name} for registration?`,
     () => restoreCategory(category.id),
-    () => `Kategorija ${category.name} je ponovno otvorena za prijave.`,
+    () => `${category.name} is open for registration again.`,
   );
 
   // Saved draw → same shapes as a preview.
@@ -229,13 +229,13 @@ function Drawings() {
     [m.red_code, m.red_entry_id], [m.white_code, m.white_entry_id],
   ]).filter(([, id]) => id));
 
-  if (loading) return <div className="tp-page">Učitavam…</div>;
+  if (loading) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
   return (
     <div className="tp-page">
       <BackToDashboard />
-      <h2>Ždrijeb</h2>
+      <h2>Draw</h2>
       <p className="tp-subtitle">{tournament?.name}</p>
 
       <CategoryTabs
@@ -248,42 +248,42 @@ function Drawings() {
 
       {category && isCancelled && (
         <div className="tp-card">
-          <h3>Kategorija je poništena</h3>
+          <h3>Category cancelled</h3>
           <p className="tp-muted">
-            Ova kategorija se ne održava{entries.length ? ` (preostalo prijava: ${entries.length})` : ''}.
+            This category will not be held{entries.length ? ` (entries left: ${entries.length})` : ''}.
           </p>
           <div className="tp-actions">
-            <button type="button" className="tp-btn secondary" onClick={restore} disabled={busy}>Vrati u prijave</button>
+            <button type="button" className="tp-btn secondary" onClick={restore} disabled={busy}>Reopen registration</button>
           </div>
         </div>
       )}
 
       {category && isOpen && (
         <div className="tp-card">
-          <h3>Postavke</h3>
+          <h3>Settings</h3>
           <div className="tp-grid">
             <div className="tp-field">
-              Prisutni natjecatelji
+              Checked-in competitors
               <strong style={{ fontSize: '1.4rem' }}>{checkedIn.length}</strong>
-              <span className="tp-muted">od {entries.length} prijavljenih</span>
+              <span className="tp-muted">of {entries.length} registered</span>
             </div>
             <label className="tp-field">
-              Po poolu
+              Per pool
               <select value={category.pool_size} onChange={(e) => changeSetting('pool_size', Number(e.target.value))}>
-                <option value={1}>izravni KO</option>
+                <option value={1}>direct KO</option>
                 {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
             <label className="tp-field">
-              Prolazi iz poola
+              Advancing per pool
               <select value={category.advancing} disabled={category.pool_size === 1} onChange={(e) => changeSetting('advancing', Number(e.target.value))}>
-                <option value={0}>samo pool</option>
+                <option value={0}>pools only</option>
                 <option value={1}>1</option>
                 <option value={2}>2</option>
               </select>
             </label>
             <label className="tp-field">
-              Teren
+              Court
               <select value={shiaijo} onChange={(e) => setShiaijo(Number(e.target.value))}>
                 {Array.from({ length: tournament?.shiaijo_count ?? 1 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>Shiaijo {i + 1}</option>
@@ -294,8 +294,8 @@ function Drawings() {
           {smallFormats && (
             <Message type="info">
               {checkedIn.length === 3
-                ? 'S 3 sudionika KO nije moguć. Opcije: svatko sa svakim, prebaciti sve u jaču kategoriju ili poništiti kategoriju.'
-                : 'S 4 sudionika: svatko sa svakim ili izravni KO.'}
+                ? 'No KO is possible with 3 entries. Options: round robin, move everyone to a stronger category, or cancel the category.'
+                : 'With 4 entries: round robin or direct KO.'}
               <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
                 {smallFormats.map((f) => {
                   const active = category.pool_size === f.poolSize && category.advancing === f.advancing;
@@ -315,14 +315,14 @@ function Drawings() {
               {checkedIn.length === 3 && (
                 <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
                   <select value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} disabled={busy || !moveTargets.length}>
-                    <option value="">{moveTargets.length ? 'Jača kategorija…' : 'Nema druge kategorije u prijavama'}</option>
+                    <option value="">{moveTargets.length ? 'Stronger category…' : 'No other category in registration'}</option>
                     {moveTargets.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <button type="button" className="tp-btn secondary small" onClick={moveAll} disabled={busy || !moveTarget}>
-                    Prebaci sve
+                    Move all
                   </button>
                   <button type="button" className="tp-btn danger small" onClick={cancel} disabled={busy}>
-                    Poništi kategoriju
+                    Cancel category
                   </button>
                 </div>
               )}
@@ -330,11 +330,11 @@ function Drawings() {
           )}
           <div className="tp-actions">
             <button type="button" className="tp-btn" onClick={makePreview} disabled={checkedIn.length < 2 || busy}>
-              {preview ? 'Novi ždrijeb' : 'Napravi ždrijeb'}
+              {preview ? 'New draw' : 'Make draw'}
             </button>
             {checkedIn.length < 2 && (
               <span className="tp-muted">
-                Treba barem 2 prisutna. <Link to={`/tournament/${tournamentId}/registration`}>Prijave</Link>
+                At least 2 must be checked in. <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>
               </span>
             )}
           </div>
@@ -344,16 +344,16 @@ function Drawings() {
       {preview && (
         <div className="tp-card">
           <h3>
-            Prijedlog ždrijeba
-            {preview.koCode && <> · sustav <span className="tp-badge">{preview.koCode}</span></>}
-            {' '}<span className="tp-muted">{preview.seed === null ? '(ručno uređeno)' : `(seed ${preview.seed})`}</span>
+            Draw preview
+            {preview.koCode && <> · system <span className="tp-badge">{preview.koCode}</span></>}
+            {' '}<span className="tp-muted">{preview.seed === null ? '(edited by hand)' : `(seed ${preview.seed})`}</span>
           </h3>
           {preview.problems.length > 0 && (
             <Message type="error">{preview.problems.map((p) => <div key={p}>{p}</div>)}</Message>
           )}
           {preview.warnings.length > 0 && (
             <Message type="info">
-              <strong>Za ručnu provjeru:</strong>
+              <strong>Check by hand:</strong>
               {preview.warnings.map((w) => <div key={w}>{w}</div>)}
             </Message>
           )}
@@ -367,19 +367,19 @@ function Drawings() {
             onMove={(id, to) => editPools(moveEntry(preview.pools, id, to))}
           />
           {preview.poolMatches.length > 0 && (
-            <p className="tp-muted" style={{ marginTop: '1rem' }}>{preview.poolMatches.length} borbi u poolovima.</p>
+            <p className="tp-muted" style={{ marginTop: '1rem' }}>{preview.poolMatches.length} pool matches.</p>
           )}
           {preview.koTemplate && (
             <>
-              <h3 style={{ marginTop: '1rem' }}>KO dio</h3>
+              <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
               <KoView template={preview.koTemplate} nameOf={nameOf} />
             </>
           )}
           <div className="tp-actions">
             <button type="button" className="tp-btn" onClick={save} disabled={busy || preview.problems.length > 0}>
-              {busy ? 'Spremam…' : 'Spremi ždrijeb'}
+              {busy ? 'Saving…' : 'Save draw'}
             </button>
-            <button type="button" className="tp-btn secondary" onClick={makePreview} disabled={busy}>Promiješaj ponovno</button>
+            <button type="button" className="tp-btn secondary" onClick={makePreview} disabled={busy}>Shuffle again</button>
           </div>
         </div>
       )}
@@ -387,15 +387,15 @@ function Drawings() {
       {category && isDrawn && saved && (
         <div className="tp-card">
           <h3>
-            Spremljeni ždrijeb
-            {category.ko_template_code && <> · sustav <span className="tp-badge">{category.ko_template_code}</span></>}
+            Saved draw
+            {category.ko_template_code && <> · system <span className="tp-badge">{category.ko_template_code}</span></>}
           </h3>
           <PoolsView pools={savedPools} nameOf={nameOf} clubOf={clubOf} tierOf={tierOf} directKo={category.pool_size === 1} />
           {savedPoolMatches.length > 0 && (
             <>
-              <h3 style={{ marginTop: '1rem' }}>Borbe u poolovima</h3>
+              <h3 style={{ marginTop: '1rem' }}>Pool matches</h3>
               <table className="tp-table">
-                <thead><tr><th>#</th><th>Crveni (aka)</th><th>Bijeli (shiro)</th><th>Teren</th></tr></thead>
+                <thead><tr><th>#</th><th>Red (aka)</th><th>White (shiro)</th><th>Court</th></tr></thead>
                 <tbody>
                   {savedPoolMatches.map((m) => (
                     <tr key={m.id}>
@@ -411,12 +411,12 @@ function Drawings() {
           )}
           {category.ko_template && (
             <>
-              <h3 style={{ marginTop: '1rem' }}>KO dio</h3>
+              <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
               <KoView template={category.ko_template} nameOf={nameOf} resolved={savedResolved} />
             </>
           )}
           <div className="tp-actions">
-            <button type="button" className="tp-btn danger" onClick={undo} disabled={busy}>Poništi ždrijeb</button>
+            <button type="button" className="tp-btn danger" onClick={undo} disabled={busy}>Undo draw</button>
           </div>
         </div>
       )}

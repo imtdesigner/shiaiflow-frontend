@@ -134,7 +134,7 @@ function Dashboard() {
           {showDropdown && (
             <ul className="dropdown-list">
               {tournaments.length === 0 && (
-                <li onClick={() => navigate('/create-tournament')}>Još nemaš turnira — kreiraj prvi</li>
+                <li onClick={() => navigate('/create-tournament')}>No tournaments yet — create your first one</li>
               )}
               {tournaments.map((t) => (
                 <li key={t.id} onClick={() => handleTournamentSelect(t)}>

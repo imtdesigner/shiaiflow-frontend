@@ -130,7 +130,7 @@ export async function setCheckedIn(entryId, checkedIn) {
 export async function setTier(entryId, tier) {
   const { error } = await supabase.from('entries').update({ tier }).eq('id', entryId);
   if (error?.code === '23505') {
-    throw new Error(tier === 1 ? 'Prvak je već označen u ovoj kategoriji.' : 'Finalist je već označen u ovoj kategoriji.');
+    throw new Error(tier === 1 ? 'This category already has a champion.' : 'This category already has a runner-up.');
   }
   if (error) throw new Error(error.message);
 }
@@ -159,7 +159,7 @@ export async function getSavedDraw(categoryId) {
 export async function clearDraw(categoryId) {
   const started = unwrap(await supabase.from('matches').select('id')
     .eq('category_id', categoryId).neq('status', 'scheduled').limit(1));
-  if (started.length) throw new Error('Borbe su već počele — ždrijeb se više ne može mijenjati.');
+  if (started.length) throw new Error('Matches have already started — the draw can no longer be changed.');
   unwrap(await supabase.from('matches').delete().eq('category_id', categoryId));
   unwrap(await supabase.from('pools').delete().eq('category_id', categoryId));
 }
