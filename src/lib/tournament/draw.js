@@ -27,12 +27,17 @@ export function buildDraw(entryIds, { poolSize, advancing }, seed) {
     problems.push(`Neki pool ima manje od ${advancing} natjecatelja za prolaz.`);
   }
 
+  const koNotPossible = entryIds.length === SMALL_NO_KO && !(pools.length === 1 && advancing === 0);
+  if (koNotPossible) {
+    problems.push('S 3 sudionika nema KO-a: svatko sa svakim, prebaci ih u jaču kategoriju ili poništi kategoriju.');
+  }
+
   const matches = directKo ? [] : pools.flatMap((members, i) => poolMatches(members, i + 1));
 
   let koCode = null;
   let koTemplate = null;
   const adv = directKo ? 1 : advancing;
-  if (adv > 0 && pools.length * adv >= 2) {
+  if (!koNotPossible && adv > 0 && pools.length * adv >= 2) {
     koCode = systemCode(pools.length, adv);
     koTemplate = getTemplate(koCode);
     if (!koTemplate) {
@@ -43,6 +48,24 @@ export function buildDraw(entryIds, { poolSize, advancing }, seed) {
   }
 
   return { seed, pools, poolMatches: matches, koCode, koTemplate, problems, directKo };
+}
+
+// Small categories (owner's rule, 2026-11-07):
+//   3 entries → no KO possible: round robin, move everyone to a stronger
+//               category, or cancel the category;
+//   4 entries → round robin or direct KO.
+const SMALL_NO_KO = 3;
+
+/**
+ * Draw formats allowed for a small category, as category settings,
+ * or null when the normal pool/KO settings apply.
+ * @returns {null | Array<{ key: 'roundRobin'|'directKo', poolSize: number, advancing: number }>}
+ */
+export function smallCategoryFormats(count) {
+  const roundRobin = { key: 'roundRobin', poolSize: count, advancing: 0 };
+  if (count === 3) return [roundRobin];
+  if (count === 4) return [roundRobin, { key: 'directKo', poolSize: 1, advancing: 1 }];
+  return null;
 }
 
 /**

@@ -6,9 +6,11 @@ import {
 import {
   clearDraw, getSavedDraw, listEntries, saveDraw, updateCategory,
 } from '../lib/api';
-import { buildDraw, newSeed } from '../lib/tournament/draw.js';
+import { buildDraw, newSeed, smallCategoryFormats } from '../lib/tournament/draw.js';
 import { matchRounds, roundName, parsePoolCode, isWinnerRef } from '../lib/tournament/ko.js';
 import './TournamentPages.css';
+
+const FORMAT_LABEL = { roundRobin: 'Svatko sa svakim', directKo: 'Izravni KO' };
 
 function codeLabel(code) {
   if (isWinnerRef(code)) return `pobjednik ${code.slice(1)}`;
@@ -61,6 +63,7 @@ function Drawings() {
   const category = useMemo(() => categories.find((c) => c.id === selectedId), [categories, selectedId]);
   const isDrawn = category && category.status !== 'registration';
   const checkedIn = entries.filter((e) => e.checked_in);
+  const smallFormats = smallCategoryFormats(checkedIn.length);
   const nameOf = useCallback((id) => entryName(entries.find((e) => e.id === id)), [entries]);
 
   useEffect(() => {
@@ -82,9 +85,11 @@ function Drawings() {
 
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
-  const changeSetting = async (field, value) => {
+  const changeSetting = (field, value) => changeSettings({ [field]: value });
+
+  const changeSettings = async (fields) => {
     try {
-      replaceCategory(await updateCategory(category.id, { [field]: value }));
+      replaceCategory(await updateCategory(category.id, fields));
       setPreview(null);
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
   };
@@ -178,6 +183,29 @@ function Drawings() {
               </select>
             </label>
           </div>
+          {smallFormats && (
+            <Message type="info">
+              {checkedIn.length === 3
+                ? 'S 3 sudionika KO nije moguć. Opcije: svatko sa svakim, prebaciti sve u jaču kategoriju ili poništiti kategoriju.'
+                : 'S 4 sudionika: svatko sa svakim ili izravni KO.'}
+              <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
+                {smallFormats.map((f) => {
+                  const active = category.pool_size === f.poolSize && category.advancing === f.advancing;
+                  return (
+                    <button
+                      key={f.key}
+                      type="button"
+                      className={`tp-btn small ${active ? '' : 'secondary'}`}
+                      disabled={busy || active}
+                      onClick={() => changeSettings({ pool_size: f.poolSize, advancing: f.advancing })}
+                    >
+                      {FORMAT_LABEL[f.key]}{active ? ' ✓' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            </Message>
+          )}
           <div className="tp-actions">
             <button type="button" className="tp-btn" onClick={makePreview} disabled={checkedIn.length < 2 || busy}>
               {preview ? 'Novi ždrijeb' : 'Napravi ždrijeb'}

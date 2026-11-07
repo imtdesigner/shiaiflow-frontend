@@ -23,6 +23,7 @@ Talk to the owner in Croatian; code, commits and code comments in English.
 - Pool ranking (Excel order): wins ↓, losses ↑, draws ↓, ippons scored ↓, ippons conceded ↑. Head-to-head NOT used by default.
 - Tie on all criteria for a place that matters → ipponshobu; two ties at once → replay the pool.
 - Team: more bout wins → more ippons → daihyosen.
+- Small categories (owner, 2026-11-07): 3 entries → no KO; options are round robin, move all to a stronger category, or cancel the category. 4 entries → round robin or direct KO. Implemented as `smallCategoryFormats()` in `draw.js`; "move" and "cancel" are not in the app yet.
 - KO templates must be editable per category (organizers adjust pairings for a specific draw).
 
 ## Open questions (ask the owner, don't guess)

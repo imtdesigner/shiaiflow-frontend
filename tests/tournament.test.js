@@ -175,7 +175,7 @@ test('team tie on wins and ippons needs daihyōsen', () => {
 });
 
 // --- draw ------------------------------------------------------------------
-import { buildDraw, directKoQualifiers } from '../src/lib/tournament/index.js';
+import { buildDraw, directKoQualifiers, smallCategoryFormats } from '../src/lib/tournament/index.js';
 
 test('draw: 15 entries, pools of 3, 2 advancing → K052 with 15 pool matches', () => {
   const ids = Array.from({ length: 15 }, (_, i) => `e${i}`);
@@ -216,4 +216,30 @@ test('draw: missing template is reported', () => {
   const ids = Array.from({ length: 45 }, (_, i) => `e${i}`);
   const d = buildDraw(ids, { poolSize: 3, advancing: 2 }, 1); // K152
   assert.ok(d.problems.some((p) => p.includes('K152')));
+});
+
+test('draw: 3 entries cannot go to KO (direct KO or pool + advancing)', () => {
+  for (const settings of [{ poolSize: 1, advancing: 1 }, { poolSize: 3, advancing: 2 }, { poolSize: 2, advancing: 1 }]) {
+    const d = buildDraw(['a', 'b', 'c'], settings, 1);
+    assert.ok(d.problems.some((p) => p.includes('3 sudionika')), JSON.stringify(settings));
+  }
+  const rr = buildDraw(['a', 'b', 'c'], { poolSize: 3, advancing: 0 }, 1);
+  assert.deepEqual(rr.problems, []);
+});
+
+test('draw: small category formats (3 → round robin, 4 → round robin or direct KO)', () => {
+  assert.deepEqual(smallCategoryFormats(3).map((f) => f.key), ['roundRobin']);
+  assert.deepEqual(smallCategoryFormats(4).map((f) => f.key), ['roundRobin', 'directKo']);
+  assert.equal(smallCategoryFormats(5), null);
+  for (const n of [3, 4]) {
+    for (const f of smallCategoryFormats(n)) {
+      const d = buildDraw(Array.from({ length: n }, (_, i) => `e${i}`), f, 9);
+      assert.deepEqual(d.problems, [], `${n} ${f.key}`);
+    }
+  }
+  const ko4 = buildDraw(['a', 'b', 'c', 'd'], smallCategoryFormats(4)[1], 9);
+  assert.equal(ko4.koCode, 'K041');
+  const rr4 = buildDraw(['a', 'b', 'c', 'd'], smallCategoryFormats(4)[0], 9);
+  assert.equal(rr4.poolMatches.length, 6);
+  assert.equal(rr4.koCode, null);
 });
