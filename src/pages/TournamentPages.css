@@ -241,3 +241,23 @@
 .back-to-dashboard-icon:hover {
   transform: scale(1.1);
 }
+
+.tp-pick {
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  padding: 0 0.25rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tp-pick:hover {
+  border-color: #711921;
+}
+
+.tp-pick.picked {
+  background: #711921;
+  color: #fff;
+}

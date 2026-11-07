@@ -51,6 +51,24 @@ export function splitIntoPools(entries, poolSize) {
   return pools;
 }
 
+/**
+ * Same pool count as splitIntoPools (ceil(n / poolSize)), but sizes differ by
+ * at most one, bigger pools first: 7 entries with pool size 3 -> 3+2+2
+ * instead of 3+3+1. Keeps the KO system code unchanged.
+ */
+export function splitEvenly(entries, poolSize) {
+  if (!Number.isInteger(poolSize) || poolSize < 1) throw new Error('poolSize must be a positive integer');
+  const count = Math.ceil(entries.length / poolSize);
+  const pools = [];
+  let start = 0;
+  for (let i = 0; i < count; i += 1) {
+    const size = Math.floor(entries.length / count) + (i < entries.length % count ? 1 : 0);
+    pools.push(entries.slice(start, start + size));
+    start += size;
+  }
+  return pools;
+}
+
 /** KO system code: K + pool count (2 digits) + advancing per pool, e.g. K052. */
 export function systemCode(poolCount, advancing) {
   return `K${String(poolCount).padStart(2, '0')}${advancing}`;

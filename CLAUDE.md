@@ -21,6 +21,7 @@ Talk to the owner in Croatian; code, commits and code comments in English.
 - Pool size 1 = direct KO; advancing 0 = pools only. KO code = `K` + pools (2 digits) + advancing, e.g. K052.
 - KO slots: `0P1`/`0P2` = winner/runner-up of pool P, `Wnn` = winner of KO match nn. First of a pair is AKA (red).
 - Pool ranking (Excel order): wins ↓, losses ↑, draws ↓, ippons scored ↓, ippons conceded ↑. Head-to-head NOT used by default.
+- Pools: pool count = ceil(entries / pool size) as in the Excel, but sizes are even (7 by 3 → 3+2+2, `splitEvenly`). Organizer can swap/move entries in the draw preview before saving (`drawFromPools` recomputes matches/KO; seed is then null).
 - Tie on all criteria for a place that matters → ipponshobu; two ties at once → replay the pool.
 - Team: more bout wins → more ippons → daihyosen.
 - Small categories (owner, 2026-11-07): 3 entries → no KO; options are round robin, move all to a stronger category, or cancel the category. 4 entries → round robin or direct KO. Implemented as `smallCategoryFormats()` in `draw.js`; Drawings page offers round robin, "move all" (RPC `move_category_entries`, cancels the source) and cancel/restore (category status `cancelled`).

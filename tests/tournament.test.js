@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  POOL_ORDER, isRoundRobin, splitIntoPools, poolMatches, systemCode, shuffle, seededRandom,
+  POOL_ORDER, isRoundRobin, splitIntoPools, splitEvenly, poolMatches, systemCode, shuffle, seededRandom,
   boutResult, rankPool, KO_TEMPLATES, KO_VARIANTS, parseTemplate, getTemplate,
   validateTemplate, resolveBracket, matchRounds, teamMatchResult,
 } from '../src/lib/tournament/index.js';
@@ -175,7 +175,7 @@ test('team tie on wins and ippons needs daihyōsen', () => {
 });
 
 // --- draw ------------------------------------------------------------------
-import { buildDraw, directKoQualifiers, smallCategoryFormats } from '../src/lib/tournament/index.js';
+import { buildDraw, directKoQualifiers, smallCategoryFormats, drawFromPools, swapEntries, moveEntry } from '../src/lib/tournament/index.js';
 
 test('draw: 15 entries, pools of 3, 2 advancing → K052 with 15 pool matches', () => {
   const ids = Array.from({ length: 15 }, (_, i) => `e${i}`);
@@ -242,4 +242,44 @@ test('draw: small category formats (3 → round robin, 4 → round robin or dire
   const rr4 = buildDraw(['a', 'b', 'c', 'd'], smallCategoryFormats(4)[0], 9);
   assert.equal(rr4.poolMatches.length, 6);
   assert.equal(rr4.koCode, null);
+});
+
+test('splitEvenly: same pool count as SplitIntoPools, sizes differ by at most one', () => {
+  const ids = (n) => Array.from({ length: n }, (_, i) => i);
+  assert.deepEqual(splitEvenly(ids(7), 3).map((p) => p.length), [3, 2, 2]);
+  assert.deepEqual(splitEvenly(ids(5), 3).map((p) => p.length), [3, 2]);
+  assert.deepEqual(splitEvenly(ids(10), 4).map((p) => p.length), [4, 3, 3]);
+  assert.deepEqual(splitEvenly(ids(15), 3).map((p) => p.length), [3, 3, 3, 3, 3]);
+  assert.deepEqual(splitEvenly(ids(11), 1).map((p) => p.length), Array(11).fill(1));
+  for (let n = 2; n <= 60; n += 1) {
+    for (const size of [2, 3, 4, 5]) {
+      const pools = splitEvenly(ids(n), size);
+      assert.equal(pools.length, splitIntoPools(ids(n), size).length);
+      assert.deepEqual(pools.flat(), ids(n));
+    }
+  }
+});
+
+test('draw: 7 entries, pools of 3 → 3+2+2 (no single-person pool), K032', () => {
+  const d = buildDraw(['a', 'b', 'c', 'd', 'e', 'f', 'g'], { poolSize: 3, advancing: 2 }, 3);
+  assert.deepEqual(d.pools.map((p) => p.length), [3, 2, 2]);
+  assert.equal(d.koCode, 'K032');
+  assert.deepEqual(d.problems, []);
+});
+
+test('manual edit: swap and move keep entries, drawFromPools recomputes matches', () => {
+  const settings = { poolSize: 3, advancing: 2 };
+  const pools = [['a', 'b', 'c'], ['d', 'e', 'f']];
+  const swapped = swapEntries(pools, 'a', 'f');
+  assert.deepEqual(swapped, [['f', 'b', 'c'], ['d', 'e', 'a']]);
+  assert.deepEqual(pools, [['a', 'b', 'c'], ['d', 'e', 'f']]); // not mutated
+  const d = drawFromPools(swapped, settings);
+  assert.equal(d.seed, null);
+  assert.equal(d.poolMatches[0].red, 'f');
+  const moved = moveEntry(pools, 'a', 1);
+  assert.deepEqual(moved, [['b', 'c'], ['d', 'e', 'f', 'a']]);
+  assert.deepEqual(drawFromPools(moved, settings).problems, []);
+  const emptied = moveEntry(moveEntry(pools, 'a', 1), 'b', 1);
+  assert.ok(drawFromPools(moveEntry(emptied, 'c', 1), settings).problems.some((p) => p.includes('prazan')));
+  assert.equal(moveEntry(pools, 'zz', 0), pools);
 });

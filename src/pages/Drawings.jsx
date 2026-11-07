@@ -7,7 +7,9 @@ import {
   cancelCategory, clearDraw, getSavedDraw, listEntries, moveCategoryEntries, restoreCategory,
   saveDraw, updateCategory,
 } from '../lib/api';
-import { buildDraw, newSeed, smallCategoryFormats } from '../lib/tournament/draw.js';
+import {
+  buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
+} from '../lib/tournament/draw.js';
 import { matchRounds, roundName, parsePoolCode, isWinnerRef } from '../lib/tournament/ko.js';
 import './TournamentPages.css';
 
@@ -19,17 +21,57 @@ function codeLabel(code) {
   return `${place}. iz poola ${pool}`;
 }
 
-function PoolsView({ pools, nameOf }) {
+/**
+ * Pools; with onSwap/onMove the organizer can edit them: click a name to pick
+ * it, click another name to swap the two, or "Premjesti ovdje" to move it.
+ */
+function PoolsView({ pools, nameOf, clubOf, onSwap, onMove, directKo }) {
+  const [picked, setPicked] = useState(null);
+  const editable = !!onSwap;
+  const pick = (id) => {
+    if (!editable) return;
+    if (!picked) setPicked(id);
+    else if (picked === id) setPicked(null);
+    else { onSwap(picked, id); setPicked(null); }
+  };
   return (
-    <div className="tp-pools">
-      {pools.map((members, i) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <div className="tp-pool" key={i}>
-          <h4>{members.length === 1 ? `#${i + 1}` : `Pool ${i + 1}`}</h4>
-          <ol>{members.map((id) => <li key={id}>{nameOf(id)}</li>)}</ol>
-        </div>
-      ))}
-    </div>
+    <>
+      {editable && (
+        <p className="tp-muted" style={{ marginTop: 0 }}>
+          {picked
+            ? `Odabran: ${nameOf(picked)} — klikni drugo ime za zamjenu${directKo ? '' : ' ili „Premjesti ovdje“ na poolu'}.`
+            : 'Ručno uređivanje: klikni ime pa drugo ime za zamjenu.'}
+        </p>
+      )}
+      <div className="tp-pools">
+        {pools.map((members, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <div className="tp-pool" key={i}>
+            <h4>
+              {directKo ? `#${i + 1}` : `Pool ${i + 1}`}
+              {editable && !directKo && picked && !members.includes(picked) && (
+                <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.5rem' }}
+                  onClick={() => { onMove(picked, i); setPicked(null); }}>
+                  Premjesti ovdje
+                </button>
+              )}
+            </h4>
+            <ol>
+              {members.map((id) => (
+                <li key={id}>
+                  {editable ? (
+                    <button type="button" className={`tp-pick ${picked === id ? 'picked' : ''}`} onClick={() => pick(id)}>
+                      {nameOf(id)}
+                    </button>
+                  ) : nameOf(id)}
+                  {clubOf?.(id) && <span className="tp-muted"> · {clubOf(id)}</span>}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -72,6 +114,10 @@ function Drawings() {
   const checkedIn = entries.filter((e) => e.checked_in);
   const smallFormats = smallCategoryFormats(checkedIn.length);
   const nameOf = useCallback((id) => entryName(entries.find((e) => e.id === id)), [entries]);
+  const clubOf = useCallback((id) => {
+    const e = entries.find((x) => x.id === id);
+    return e?.team?.club ?? e?.competitor?.club ?? '';
+  }, [entries]);
 
   useEffect(() => {
     if (!selectedId && categories.length) setSelectedId(categories[0].id);
@@ -107,6 +153,10 @@ function Drawings() {
       poolSize: category.pool_size, advancing: category.advancing,
     }, newSeed()));
   };
+
+  const editPools = (pools) => setPreview(drawFromPools(pools, {
+    poolSize: category.pool_size, advancing: category.advancing,
+  }));
 
   const save = async () => {
     setBusy(true);
@@ -291,12 +341,19 @@ function Drawings() {
           <h3>
             Prijedlog ždrijeba
             {preview.koCode && <> · sustav <span className="tp-badge">{preview.koCode}</span></>}
-            {' '}<span className="tp-muted">(seed {preview.seed})</span>
+            {' '}<span className="tp-muted">{preview.seed === null ? '(ručno uređeno)' : `(seed ${preview.seed})`}</span>
           </h3>
           {preview.problems.length > 0 && (
             <Message type="error">{preview.problems.map((p) => <div key={p}>{p}</div>)}</Message>
           )}
-          <PoolsView pools={preview.pools} nameOf={nameOf} />
+          <PoolsView
+            pools={preview.pools}
+            nameOf={nameOf}
+            clubOf={clubOf}
+            directKo={preview.directKo}
+            onSwap={(a, b) => editPools(swapEntries(preview.pools, a, b))}
+            onMove={(id, to) => editPools(moveEntry(preview.pools, id, to))}
+          />
           {preview.poolMatches.length > 0 && (
             <p className="tp-muted" style={{ marginTop: '1rem' }}>{preview.poolMatches.length} borbi u poolovima.</p>
           )}
@@ -321,7 +378,7 @@ function Drawings() {
             Spremljeni ždrijeb
             {category.ko_template_code && <> · sustav <span className="tp-badge">{category.ko_template_code}</span></>}
           </h3>
-          <PoolsView pools={savedPools} nameOf={nameOf} />
+          <PoolsView pools={savedPools} nameOf={nameOf} clubOf={clubOf} directKo={category.pool_size === 1} />
           {savedPoolMatches.length > 0 && (
             <>
               <h3 style={{ marginTop: '1rem' }}>Borbe u poolovima</h3>
