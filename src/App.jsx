@@ -101,7 +101,7 @@ function Home () {
           );
         })}
       </div>
-      <p className="powered">Powered by ChatGPT</p>
+      <p className="powered">Powered by Claude</p>
       <p className="app-version">Version {packageJson.version}</p>
     </div>
   );
