@@ -10,17 +10,11 @@ import {
 import {
   buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
-import { matchRounds, roundName, parsePoolCode, isWinnerRef } from '../lib/tournament/ko.js';
+import KoBracket from '../components/KoBracket';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import './TournamentPages.css';
 
 const FORMAT_LABEL = { roundRobin: 'Round robin', directKo: 'Direct KO' };
-
-function codeLabel(code) {
-  if (isWinnerRef(code)) return `winner of ${code.slice(1)}`;
-  const { pool, place } = parsePoolCode(code);
-  return `${place === 1 ? '1st' : '2nd'} of pool ${pool}`;
-}
 
 /**
  * Pools; with onSwap/onMove the organizer can edit them: click a name to pick
@@ -74,24 +68,6 @@ function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) 
         ))}
       </div>
     </>
-  );
-}
-
-function KoView({ template, nameOf, resolved = {} }) {
-  if (!template?.length) return null;
-  const rounds = matchRounds(template);
-  return (
-    <ul className="tp-ko-list">
-      {template.map((m) => (
-        <li key={m.no}>
-          <strong>{String(m.no).padStart(2, '0')}</strong>{' '}
-          <span className="tp-muted">{roundName(rounds.get(m.no))}</span>:{' '}
-          <span className="aka">{resolved[m.red] ? nameOf(resolved[m.red]) : codeLabel(m.red)}</span>
-          {' – '}
-          <span className="shiro">{resolved[m.white] ? nameOf(resolved[m.white]) : codeLabel(m.white)}</span>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -372,7 +348,7 @@ function Drawings() {
           {preview.koTemplate && (
             <>
               <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
-              <KoView template={preview.koTemplate} nameOf={nameOf} />
+              <KoBracket template={preview.koTemplate} nameOf={nameOf} directKo={preview.directKo} />
             </>
           )}
           <div className="tp-actions">
@@ -412,7 +388,7 @@ function Drawings() {
           {category.ko_template && (
             <>
               <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
-              <KoView template={category.ko_template} nameOf={nameOf} resolved={savedResolved} />
+              <KoBracket template={category.ko_template} nameOf={nameOf} resolved={savedResolved} directKo={category.pool_size === 1} />
             </>
           )}
           <div className="tp-actions">

@@ -94,6 +94,26 @@ export function matchRounds(matches) {
   return round;
 }
 
+const ROUND_SHORT = { 1: 'Final', 2: '1/2 final', 3: '1/4 final', 4: '1/8 final', 5: '1/16 final' };
+/** Short round label for the bracket: 1/4 final etc. */
+export const roundShort = (r) => ROUND_SHORT[r] ?? `Round ${r}`;
+
+export const isLoserRef = (code) => /^L\d+$/.test(code);
+
+/**
+ * Bracket slot code as shown to organizers:
+ *   011 → P1.1 (pool 1, 1st place), 042 → P4.2, W5 → W05 (winner of match 5),
+ *   L4 → L04 (loser of match 4, for a future second-chance bracket);
+ *   in a direct KO a "pool" is one entry: 051 → #5.
+ */
+export function slotLabel(code, directKo = false) {
+  const pad = (n) => String(n).padStart(2, '0');
+  if (isWinnerRef(code)) return `W${pad(winnerRefNo(code))}`;
+  if (isLoserRef(code)) return `L${pad(Number(code.slice(1)))}`;
+  const { pool, place } = parsePoolCode(code);
+  return directKo ? `#${pool}` : `P${pool}.${place}`;
+}
+
 export function roundName(round) {
   return { 1: 'Final', 2: 'Semifinal', 3: 'Quarterfinal', 4: 'Round of 16' }[round] ?? `Round ${round}`;
 }

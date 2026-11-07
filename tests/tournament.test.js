@@ -413,3 +413,15 @@ test('manual edit keeps warnings up to date', () => {
   assert.ok(together.warnings.some((w) => w.includes('1 (champion) and 2 (runner-up)')));
   assert.equal(analyzePlacement(d.pools, d.meta, d.koTemplate, false).length, 0);
 });
+
+test('bracket labels: P pool.place, W/L match refs, # in a direct KO, short round names', async () => {
+  const { slotLabel, roundShort } = await import('../src/lib/tournament/ko.js');
+  assert.equal(slotLabel('011'), 'P1.1');
+  assert.equal(slotLabel('042'), 'P4.2');
+  assert.equal(slotLabel('122'), 'P12.2');
+  assert.equal(slotLabel('W5'), 'W05');
+  assert.equal(slotLabel('W12'), 'W12');
+  assert.equal(slotLabel('L4'), 'L04');
+  assert.equal(slotLabel('051', true), '#5');
+  assert.deepEqual([1, 2, 3, 4].map(roundShort), ['Final', '1/2 final', '1/4 final', '1/8 final']);
+});

@@ -1,0 +1,84 @@
+.ko-bracket-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.ko-bracket {
+  position: relative;
+  min-width: 100%;
+}
+
+.ko-round-title {
+  position: absolute;
+  top: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #711921;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ko-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ko-lines path {
+  fill: none;
+  stroke: #711921;
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+.ko-match {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #711921;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.8rem;
+  overflow: hidden;
+}
+
+.ko-match-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0.4rem;
+  height: 16px;
+  line-height: 16px;
+  font-size: 0.7rem;
+  background: #711921;
+  color: #fff;
+}
+
+.ko-slot {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  height: 19px;
+  padding: 0 0.4rem;
+  border-left: 4px solid transparent;
+}
+
+.ko-slot.aka {
+  border-left-color: #c62828;
+  border-bottom: 1px solid #eee;
+}
+
+.ko-slot.shiro {
+  border-left-color: #bbb;
+}
+
+.ko-code {
+  font-weight: 700;
+  min-width: 2.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ko-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
