@@ -4,8 +4,9 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setSeed,
+  addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setTier,
 } from '../lib/api';
+import { TIER_LABELS } from '../lib/tournament/placement.js';
 import './TournamentPages.css';
 
 const EMPTY_PERSON = { last_name: '', first_name: '', club: '', grade: '', checked_in: true };
@@ -201,7 +202,7 @@ function Registration() {
                   <thead>
                     <tr>
                       <th>#</th><th>{isTeam ? 'Ekipa' : 'Natjecatelj'}</th><th>Klub</th>
-                      {!isTeam && <th>Zvanje</th>}<th title="Nositelj (1 = prvi)">Nositelj</th><th>Check-in</th><th />
+                      {!isTeam && <th>Zvanje</th>}<th title="1 prvak, 2 finalist, 3 treće mjesto, 4 jak, 5 srednji, 6 slabiji">Jakost</th><th>Check-in</th><th />
                     </tr>
                   </thead>
                   <tbody>
@@ -213,12 +214,12 @@ function Registration() {
                         {!isTeam && <td>{en.competitor?.grade ?? ''}</td>}
                         <td>
                           <select
-                            value={en.seed ?? ''}
+                            value={en.tier ?? ''}
                             disabled={busy || locked}
-                            onChange={(e) => run(() => setSeed(en.id, e.target.value ? Number(e.target.value) : null))}
+                            onChange={(e) => run(() => setTier(en.id, e.target.value ? Number(e.target.value) : null))}
                           >
                             <option value="">—</option>
-                            {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                            {Object.entries(TIER_LABELS).map(([n, label]) => <option key={n} value={n}>{n} · {label}</option>)}
                           </select>
                         </td>
                         <td>

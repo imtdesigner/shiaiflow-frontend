@@ -6,9 +6,9 @@ import { getTemplate, validateTemplate, poolCode } from './ko.js';
 import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 
 /**
- * Draw: even pools; with clubs/seeds known, seeds are kept apart along the KO
+ * Draw: even pools; with clubs/tiers known, tiers 1–3 are kept apart along the KO
  * bracket and same-club entries are spread (placement.js), otherwise random.
- * @param {Array<string | { id, club?, seed? }>} entries checked-in entries
+ * @param {Array<string | { id, club?, tier? }>} entries checked-in entries
  * @param {{ poolSize: number, advancing: number }} settings
  * @param {number} seed reproducible random seed
  * @returns {{
@@ -23,7 +23,7 @@ export function buildDraw(entries, settings, seed) {
   const directKo = settings.poolSize === 1;
   const adv = directKo ? 1 : settings.advancing;
   const template = adv > 0 && sizes.length * adv >= 2 ? getTemplate(systemCode(sizes.length, adv)) : null;
-  const pools = meta.some((m) => m.club || m.seed)
+  const pools = meta.some((m) => m.club || m.tier)
     ? placeEntries(meta, sizes, template, directKo, seed)
     : splitEvenly(shuffle(ids, seededRandom(seed)), settings.poolSize);
   return drawFromPools(pools, settings, seed, meta);

@@ -70,7 +70,7 @@ export async function moveCategoryEntries(sourceId, targetId) {
 export async function listEntries(categoryId) {
   return unwrap(await supabase
     .from('entries')
-    .select('id, checked_in, seed, competitor:competitors(id, last_name, first_name, display_name, club, grade), team:teams(id, name, club)')
+    .select('id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade), team:teams(id, name, club)')
     .eq('category_id', categoryId)
     .order('created_at'));
 }
@@ -126,10 +126,12 @@ export async function setCheckedIn(entryId, checkedIn) {
   return unwrap(await supabase.from('entries').update({ checked_in: checkedIn }).eq('id', entryId));
 }
 
-/** Set or clear (null) the seed number of an entry within its category. */
-export async function setSeed(entryId, seed) {
-  const { error } = await supabase.from('entries').update({ seed }).eq('id', entryId);
-  if (error?.code === '23505') throw new Error(`Nositelj ${seed} je već dodijeljen u ovoj kategoriji.`);
+/** Set or clear (null) the strength tier (1–6) of an entry. */
+export async function setTier(entryId, tier) {
+  const { error } = await supabase.from('entries').update({ tier }).eq('id', entryId);
+  if (error?.code === '23505') {
+    throw new Error(tier === 1 ? 'Prvak je već označen u ovoj kategoriji.' : 'Finalist je već označen u ovoj kategoriji.');
+  }
   if (error) throw new Error(error.message);
 }
 

@@ -284,62 +284,110 @@ test('manual edit: swap and move keep entries, drawFromPools recomputes matches'
   assert.equal(moveEntry(pools, 'zz', 0), pools);
 });
 
-// --- placement: seeds and clubs -------------------------------------------
+// --- placement: tiers and clubs ---------------------------------------------
 import { poolMeetingRound, analyzePlacement } from '../src/lib/tournament/placement.js';
 import { getTemplate as tpl } from '../src/lib/tournament/ko.js';
 
-const people = (n, clubOf = () => '', seedOf = () => null) => Array.from({ length: n }, (_, i) => ({
-  id: `p${i}`, club: clubOf(i), seed: seedOf(i),
+const people = (n, clubOf = () => '', tierOf = () => null) => Array.from({ length: n }, (_, i) => ({
+  id: `p${i}`, club: clubOf(i), tier: tierOf(i),
 }));
 const poolOf = (d, id) => d.pools.findIndex((p) => p.includes(id));
+const TOP4 = [1, 2, 3, 3];
 
 test('meeting round: K022 pool winners meet only in the final', () => {
-  const meet = poolMeetingRound(tpl('K022'));
-  assert.equal(meet(0, 1), 1);
+  assert.equal(poolMeetingRound(tpl('K022'))(0, 1), 1);
   const k041 = poolMeetingRound(tpl('K041'));
   assert.equal(k041(0, 1), 2); // 011 vs 021 = semifinal
   assert.equal(k041(0, 2), 1);
 });
 
-function checkSeeds(n, seedCount, seeds = [1, 2, 3, 42, 99]) {
+function checkTop(n, topCount, seeds = [1, 2, 3, 42, 99]) {
   for (const s of seeds) {
-    const d = buildDraw(people(n, () => '', (i) => (i < seedCount ? i + 1 : null)), { poolSize: 3, advancing: 2 }, s);
+    const d = buildDraw(people(n, () => '', (i) => TOP4[i] ?? null), { poolSize: 3, advancing: 2 }, s);
     const meet = poolMeetingRound(d.koTemplate);
-    const pools = Array.from({ length: seedCount }, (_, i) => poolOf(d, `p${i}`));
-    assert.equal(new Set(pools).size, seedCount, `seed ${s}`);
-    assert.equal(meet(pools[0], pools[1]), 1, `seed ${s}`);
-    for (let a = 0; a < seedCount; a += 1) {
-      for (let b = a + 1; b < seedCount; b += 1) assert.ok(meet(pools[a], pools[b]) <= 2, `seed ${s}`);
+    const pools = Array.from({ length: topCount }, (_, i) => poolOf(d, `p${i}`));
+    assert.equal(new Set(pools).size, topCount, `seed ${s}`);
+    assert.equal(meet(pools[0], pools[1]), 1, `champion and runner-up only in the final (seed ${s})`);
+    for (let a = 0; a < topCount; a += 1) {
+      for (let b = a + 1; b < topCount; b += 1) assert.ok(meet(pools[a], pools[b]) <= 2, `seed ${s}`);
     }
     assert.deepEqual(d.warnings, []);
     assert.deepEqual(d.problems, []);
   }
 }
 
-test('seeds: 4 seeds in 24 (K082) never meet before the semifinal, 1 and 2 only in the final', () => {
-  checkSeeds(24, 4);
+test('tiers 1-3: champion, runner-up and two thirds in 24 (K082) never meet before the semifinal', () => {
+  checkTop(24, 4);
 });
 
-test('seeds: K052 (15) separates 3 seeds; a 4th cannot be kept apart and is reported', () => {
-  checkSeeds(15, 3);
+test('tiers 1-3: K052 (15) separates 3; a 4th cannot be kept apart and is reported', () => {
+  const d3 = buildDraw(people(15, () => '', (i) => [1, 2, 3][i] ?? null), { poolSize: 3, advancing: 2 }, 1);
+  assert.deepEqual(d3.warnings, []);
   // Excel K052: winners of pools 1/2 meet in the quarterfinal, 4/5 in round one.
-  const d = buildDraw(people(15, () => '', (i) => (i < 4 ? i + 1 : null)), { poolSize: 3, advancing: 2 }, 1);
+  const d = buildDraw(people(15, () => '', (i) => TOP4[i] ?? null), { poolSize: 3, advancing: 2 }, 1);
   assert.equal(new Set([0, 1, 2, 3].map((i) => poolOf(d, `p${i}`))).size, 4);
   assert.ok(d.warnings.some((w) => w.includes('prerano')));
 });
 
-test('seeds: direct KO with 8 (K081) puts seeds 1 and 2 in opposite halves', () => {
-  const d = buildDraw(people(8, () => '', (i) => (i < 2 ? i + 1 : null)), { poolSize: 1, advancing: 1 }, 5);
-  const meet = poolMeetingRound(d.koTemplate);
-  assert.equal(meet(poolOf(d, 'p0'), poolOf(d, 'p1')), 1);
+test('tiers 1-3: direct KO with 8 (K081) puts champion and runner-up in opposite halves', () => {
+  const d = buildDraw(people(8, () => '', (i) => [1, 2][i] ?? null), { poolSize: 1, advancing: 1 }, 5);
+  assert.equal(poolMeetingRound(d.koTemplate)(poolOf(d, 'p0'), poolOf(d, 'p1')), 1);
+});
+
+test('tiers 4-6: spread evenly — 4 pools, 4 strong → one strong per pool', () => {
+  for (const s of [1, 2, 3]) {
+    const d = buildDraw(people(12, () => '', (i) => (i < 4 ? 4 : i < 8 ? 5 : 6)), { poolSize: 3, advancing: 2 }, s);
+    for (const p of d.pools) {
+      assert.deepEqual(p.map((id) => Math.floor(Number(id.slice(1)) / 4)).sort(), [0, 1, 2], `seed ${s}`);
+    }
+  }
+});
+
+test('tiers 4-6: pools with a top seed get the fewest strong players', () => {
+  // 4 pools: 2 top seeds, 2 strong → strong ones go to the two pools without a top seed
+  const d = buildDraw(people(12, () => '', (i) => [1, 2, 4, 4][i] ?? 6), { poolSize: 3, advancing: 2 }, 9);
+  const topPools = new Set([poolOf(d, 'p0'), poolOf(d, 'p1')]);
+  assert.ok(!topPools.has(poolOf(d, 'p2')) && !topPools.has(poolOf(d, 'p3')));
 });
 
 test('clubs: 9 people from 3 clubs in pools of 3 → no pool shares a club', () => {
+  const club = (i) => ['RIJEKA', 'ZAGREB', 'SPLIT'][i % 3];
   for (const s of [1, 7, 123]) {
-    const d = buildDraw(people(9, (i) => ['RIJEKA', 'ZAGREB', 'SPLIT'][i % 3]), { poolSize: 3, advancing: 2 }, s);
-    for (const p of d.pools) assert.equal(new Set(p.map((id) => ['RIJEKA', 'ZAGREB', 'SPLIT'][Number(id.slice(1)) % 3])).size, 3);
+    const d = buildDraw(people(9, club), { poolSize: 3, advancing: 2 }, s);
+    for (const p of d.pools) assert.equal(new Set(p.map((id) => club(Number(id.slice(1))))).size, 3);
     assert.deepEqual(d.warnings, []);
   }
+});
+
+test('clubs: fixed by swapping within the same tier, balance kept', () => {
+  // two strong from RIJEKA, two strong from ZAGREB, rest medium from other clubs
+  const club = (i) => ['RIJEKA', 'RIJEKA', 'ZAGREB', 'ZAGREB'][i] ?? `K${i}`;
+  for (const s of [1, 2, 3, 4]) {
+    const d = buildDraw(people(12, club, (i) => (i < 4 ? 4 : 5)), { poolSize: 3, advancing: 2 }, s);
+    assert.deepEqual(d.warnings, [], `seed ${s}`);
+    for (const p of d.pools) assert.equal(p.filter((id) => Number(id.slice(1)) < 4).length, 1, `seed ${s}`);
+  }
+});
+
+test('clubs: if same-tier swaps are not enough, the 4/5/6 balance is dropped', () => {
+  // 2 pools of 3; RIJEKA has both strong players → only a cross-tier swap separates them
+  const club = (i) => ['RIJEKA', 'RIJEKA', 'RIJEKA', 'A', 'B', 'C'][i];
+  const tier = (i) => [4, 4, 5, 5, 6, 6][i];
+  // the fourth entry (A, tier 5) cannot help alone; check the result has at most one RIJEKA pair
+  const d = buildDraw(people(6, club, tier), { poolSize: 3, advancing: 2 }, 3);
+  const rijekaPerPool = d.pools.map((p) => p.filter((id) => club(Number(id.slice(1))) === 'RIJEKA').length);
+  assert.deepEqual(rijekaPerPool.sort(), [1, 2]);
+  // strong RIJEKA pair split even though that puts tiers unevenly
+  const strongPools = new Set([poolOf(d, 'p0'), poolOf(d, 'p1')]);
+  assert.equal(strongPools.size, 2);
+});
+
+test('clubs: tiers 1-3 never swap with lower tiers to fix clubs', () => {
+  // champion and a strong player from the same club; both pools must hold one top tier
+  const club = (i) => (i === 0 || i === 2 ? 'RIJEKA' : `K${i}`);
+  const d = buildDraw(people(6, club, (i) => [1, 2, 4, 5, 6, 6][i]), { poolSize: 3, advancing: 2 }, 2);
+  assert.notEqual(poolOf(d, 'p0'), poolOf(d, 'p1'));
+  assert.deepEqual(d.warnings, []);
 });
 
 test('clubs: direct KO avoids same-club first matches', () => {
@@ -347,7 +395,7 @@ test('clubs: direct KO avoids same-club first matches', () => {
   assert.deepEqual(d.warnings, []);
 });
 
-test('clubs + seeds: impossible separation is reported, draw is still valid and reproducible', () => {
+test('impossible separation is reported, draw is still valid and reproducible', () => {
   const entries = people(6, (i) => (i < 5 ? 'RIJEKA' : 'ZAGREB'));
   const d = buildDraw(entries, { poolSize: 3, advancing: 2 }, 3);
   assert.deepEqual(d.problems, []);
@@ -357,10 +405,11 @@ test('clubs + seeds: impossible separation is reported, draw is still valid and 
 });
 
 test('manual edit keeps warnings up to date', () => {
-  const entries = people(6, (i) => ['A', 'B', 'C'][i % 3], (i) => (i < 2 ? i + 1 : null));
+  const entries = people(6, (i) => ['A', 'B', 'C'][i % 3], (i) => [1, 2][i] ?? null);
   const d = buildDraw(entries, { poolSize: 3, advancing: 2 }, 1);
   assert.deepEqual(d.warnings, []);
-  const together = drawFromPools(swapEntries(d.pools, 'p1', d.pools[poolOf(d, 'p0')].find((id) => id !== 'p0')), { poolSize: 3, advancing: 2 }, null, d.meta);
-  assert.ok(together.warnings.some((w) => w.includes('Nositelji 1 i 2')));
-  assert.ok(analyzePlacement(d.pools, d.meta, d.koTemplate, false).length === 0);
+  const mate = d.pools[poolOf(d, 'p0')].find((id) => id !== 'p0');
+  const together = drawFromPools(swapEntries(d.pools, 'p1', mate), { poolSize: 3, advancing: 2 }, null, d.meta);
+  assert.ok(together.warnings.some((w) => w.includes('1 (prvak) i 2 (finalist)')));
+  assert.equal(analyzePlacement(d.pools, d.meta, d.koTemplate, false).length, 0);
 });
