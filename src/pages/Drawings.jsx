@@ -4,13 +4,15 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  cancelCategory, clearDraw, getSavedDraw, listEntries, moveCategoryEntries, restoreCategory,
-  saveDraw, updateCategory,
+  addToPool, cancelCategory, clearDraw, getSavedDraw, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
+  saveDraw, setDrawsConfirmed, updateCategory, withdrawFromPool,
 } from '../lib/api';
+import { afterFight, myRole } from '../lib/runApi';
 import {
   buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
 import KoBracket from '../components/KoBracket';
+import { GRADES, rulesText } from '../lib/tournament/eligibility.js';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import './TournamentPages.css';
 
@@ -71,6 +73,84 @@ function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) 
   );
 }
 
+/**
+ * After the draw, change as little as possible: a competitor who did not come
+ * is replaced by a new one in the same place, a short pool gets a late entry
+ * (its fights are rebuilt), or someone is withdrawn (before the pool started:
+ * out of the pool; after: the opponents win the remaining fights by fusen).
+ */
+function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run }) {
+  const [replace, setReplace] = useState({});
+  const placed = new Set((savedPools ?? []).flat());
+  const unplaced = entries.filter((e) => e.checked_in && !placed.has(e.id));
+  const direct = category.pool_size === 1;
+  if (!saved) return null;
+  return (
+    <details style={{ marginTop: '1rem' }} open={unplaced.length > 0}>
+      <summary className="tp-muted">
+        Adjust the draw{unplaced.length ? ` — ${unplaced.length} checked-in not in the draw: ${unplaced.map((e) => nameOf(e.id)).join(', ')}` : ''}
+      </summary>
+      <table className="tp-table" style={{ marginTop: '0.5rem' }}>
+        <thead><tr><th>{direct ? '#' : 'Pool'}</th><th>Competitor</th><th>Replace with</th><th /></tr></thead>
+        <tbody>
+          {saved.pools.map((p, pi) => {
+            const members = savedPools[pi] ?? [];
+            const short = !direct && members.length < category.pool_size;
+            return [
+              ...members.map((id) => (
+                <tr key={id}>
+                  <td>{direct ? `#${pi + 1}` : p.number}</td>
+                  <td>{nameOf(id)}</td>
+                  <td>
+                    <select value={replace[id] ?? ''} disabled={busy || unplaced.length === 0} onChange={(e) => setReplace({ ...replace, [id]: e.target.value })}>
+                      <option value="">{unplaced.length ? '—' : 'nobody waiting'}</option>
+                      {unplaced.map((e) => <option key={e.id} value={e.id}>{nameOf(e.id)}</option>)}
+                    </select>
+                    {replace[id] && (
+                      <button type="button" className="tp-btn small" style={{ marginLeft: '0.4rem' }} disabled={busy}
+                        onClick={() => run(() => replaceInDraw(category.id, id, replace[id]), `${nameOf(replace[id])} takes the place of ${nameOf(id)}.`)}>
+                        Replace
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    {!direct && (
+                      <button type="button" className="tp-btn danger small" disabled={busy}
+                        onClick={() => {
+                          if (!window.confirm(`Withdraw ${nameOf(id)} from pool ${p.number}?`)) return;
+                          run(async () => {
+                            const r = await withdrawFromPool(p.id, id);
+                            if (r.fusen) await afterFight({ phase: 'pool', pool_id: p.id }, category);
+                          }, `${nameOf(id)} withdrawn from pool ${p.number}.`);
+                        }}>
+                        Withdraw
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )),
+              short && unplaced.length > 0 && (
+                <tr key={`add-${p.id}`}>
+                  <td>{p.number}</td>
+                  <td className="tp-muted">pool is short of {category.pool_size - members.length}</td>
+                  <td colSpan={2}>
+                    {unplaced.map((e) => (
+                      <button key={e.id} type="button" className="tp-btn secondary small" style={{ marginRight: '0.3rem' }} disabled={busy}
+                        onClick={() => run(() => addToPool(p.id, e.id), `${nameOf(e.id)} added to pool ${p.number}; its fights were rebuilt.`)}>
+                        + {nameOf(e.id)}
+                      </button>
+                    ))}
+                  </td>
+                </tr>
+              ),
+            ];
+          })}
+        </tbody>
+      </table>
+    </details>
+  );
+}
+
 function Drawings() {
   const {
     tournamentId, tournament, categories, setCategories, reload: reloadTournament, error: loadError, loading,
@@ -82,6 +162,12 @@ function Drawings() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [moveTarget, setMoveTarget] = useState('');
+  const [role, setRole] = useState(null);
+  useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
+  const isOwner = role === 'owner';
+  const confirmed = !!tournament?.draws_confirmed;
+  const locked = confirmed && !isOwner; // setup is fixed for editors after the draws are confirmed
+  const allDrawn = categories.length > 0 && categories.every((c) => c.status !== 'registration');
 
   const category = useMemo(() => categories.find((c) => c.id === selectedId), [categories, selectedId]);
   const isOpen = category?.status === 'registration';
@@ -225,6 +311,37 @@ function Drawings() {
       />
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
+      {allDrawn && (
+        <div className="tp-card">
+          {confirmed ? (
+            <p style={{ margin: 0 }}>
+              <span className="tp-badge ok">draws confirmed</span>{' '}
+              <span className="tp-muted">
+                The setup is fixed{isOwner ? '' : ' for editors'}; late or missing competitors are handled below each draw
+                (replace, add to a short pool, withdraw).
+              </span>
+              {isOwner && (
+                <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.5rem' }} disabled={busy}
+                  onClick={async () => { await setDrawsConfirmed(tournamentId, false); await reloadTournament(); }}>
+                  Reopen draws
+                </button>
+              )}
+            </p>
+          ) : (
+            <div className="tp-actions" style={{ marginTop: 0 }}>
+              <span>Every category is drawn.</span>
+              <button type="button" className="tp-btn" disabled={busy}
+                onClick={async () => {
+                  if (!window.confirm('Confirm all draws? Editors can no longer change the setup; entries can still be adjusted.')) return;
+                  await setDrawsConfirmed(tournamentId, true); await reloadTournament();
+                }}>
+                Confirm draws
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {category && isCancelled && (
         <div className="tp-card">
           <h3>Category cancelled</h3>
@@ -270,6 +387,41 @@ function Drawings() {
               <Link className="tp-muted" to={`/tournament/${tournamentId}/shiaijo`}>Change in Shiaijo plan</Link>
             </div>
           </div>
+          <details style={{ marginTop: '0.75rem' }}>
+            <summary className="tp-muted">Who can enter — {rulesText(category)}</summary>
+            <div className="tp-grid" style={{ marginTop: '0.75rem' }}>
+              <label className="tp-field">
+                Gender
+                <select value={category.gender ?? ''} onChange={(e) => changeSetting('gender', e.target.value || null)}>
+                  <option value="">any</option><option value="M">men</option><option value="F">women</option>
+                </select>
+              </label>
+              <label className="tp-field">
+                Age from (in the tournament year)
+                <input type="number" min="0" max="120" defaultValue={category.min_age ?? ''}
+                  onBlur={(e) => changeSetting('min_age', e.target.value === '' ? null : Number(e.target.value))} />
+              </label>
+              <label className="tp-field">
+                Age up to
+                <input type="number" min="0" max="120" defaultValue={category.max_age ?? ''}
+                  onBlur={(e) => changeSetting('max_age', e.target.value === '' ? null : Number(e.target.value))} />
+              </label>
+              <label className="tp-field">
+                Grade from
+                <select value={category.min_grade ?? ''} onChange={(e) => changeSetting('min_grade', e.target.value === '' ? null : Number(e.target.value))}>
+                  <option value="">any</option>
+                  {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
+                </select>
+              </label>
+              <label className="tp-field">
+                Grade up to
+                <select value={category.max_grade ?? ''} onChange={(e) => changeSetting('max_grade', e.target.value === '' ? null : Number(e.target.value))}>
+                  <option value="">any</option>
+                  {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
+                </select>
+              </label>
+            </div>
+          </details>
           <details style={{ marginTop: '0.75rem' }}>
             <summary className="tp-muted">
               Fight rules — pools: {category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
@@ -408,6 +560,20 @@ function Drawings() {
             {category.ko_template_code && <> · system <span className="tp-badge">{category.ko_template_code}</span></>}
           </h3>
           <PoolsView pools={savedPools} nameOf={nameOf} clubOf={clubOf} tierOf={tierOf} directKo={category.pool_size === 1} />
+          <DrawAdjust
+            category={category}
+            saved={saved}
+            savedPools={savedPools}
+            entries={entries}
+            nameOf={nameOf}
+            busy={busy}
+            run={async (fn, ok) => {
+              setBusy(true); setMsg({ type: '', text: '' });
+              try { await fn(); await reload(); setMsg({ type: 'success', text: ok }); }
+              catch (e) { setMsg({ type: 'error', text: e.message }); }
+              finally { setBusy(false); }
+            }}
+          />
           {savedPoolMatches.length > 0 && (
             <>
               <h3 style={{ marginTop: '1rem' }}>Pool matches</h3>
@@ -434,8 +600,8 @@ function Drawings() {
           )}
           <div className="tp-actions">
             <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
-            <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/brackets`}>Edit bracket</Link>
-            <button type="button" className="tp-btn danger" onClick={undo} disabled={busy}>Undo draw</button>
+            {!locked && <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/brackets`}>Edit bracket</Link>}
+            {!locked && <button type="button" className="tp-btn danger" onClick={undo} disabled={busy}>Undo draw</button>}
           </div>
         </div>
       )}

@@ -51,6 +51,10 @@ export async function publicRegister(categoryId, person) {
     grade: person.grade || null,
     team_id: person.team_id || null,
     team_name: person.team_name || null,
+    gender: person.gender || null,
+    birth_year: person.birth_year ? Number(person.birth_year) : null,
+    grade_rank: person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank),
+    email: person.email || null,
   }));
 }
 
@@ -123,7 +127,7 @@ export async function moveCategoryEntries(sourceId, targetId) {
 export async function listEntries(categoryId) {
   return unwrap(await supabase
     .from('entries')
-    .select('id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade), team:teams(id, name, club)')
+    .select('id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade, gender, birth_year, grade_rank), team:teams(id, name, club)')
     .eq('category_id', categoryId)
     .order('created_at'));
 }
@@ -151,6 +155,9 @@ export async function addCompetitorEntry(tournamentId, categoryId, person) {
     first_name: firstName,
     club,
     grade: (person.grade ?? '').trim() || null,
+    gender: person.gender || null,
+    birth_year: person.birth_year ? Number(person.birth_year) : null,
+    grade_rank: person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank),
   }).select('id').single());
   return unwrap(await supabase.from('entries')
     .insert({ category_id: categoryId, competitor_id: competitor.id, checked_in: !!person.checked_in })
@@ -357,7 +364,7 @@ export async function listEntriesFor(categoryIds) {
   if (!categoryIds.length) return [];
   return unwrap(await supabase
     .from('entries')
-    .select('id, category_id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade), team:teams(id, name, club)')
+    .select('id, category_id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade, gender, birth_year, grade_rank), team:teams(id, name, club)')
     .in('category_id', categoryIds));
 }
 
@@ -402,4 +409,100 @@ export async function setTournamentCourts(tournament, fields, categories) {
   const updated = await updateTournament(tournament.id, fields);
   for (const c of categories) await applyCourts(c, updated);
   return updated;
+}
+
+// --- draw adjustments after the draw (as little change as possible) ------------------
+
+async function poolWithFights(poolId) {
+  const pool = unwrap(await supabase.from('pools').select('id, number, category_id, pool_entries(entry_id, position)').eq('id', poolId).single());
+  const fights = unwrap(await supabase.from('matches').select('id, status, shiaijo, court_seq, queue_order, phase').eq('pool_id', poolId));
+  return { pool, fights };
+}
+
+/** Rebuild the fights of one pool for its current members (only when none started). */
+async function rebuildPoolFights(pool, fights, members) {
+  const { poolMatches } = await import('./tournament/pools.js');
+  if (fights.some((f) => f.status !== 'scheduled')) throw new Error('Fights of this pool already started.');
+  const poolFights = fights.filter((f) => f.phase === 'pool');
+  const shiaijo = poolFights[0]?.shiaijo ?? 1;
+  const queue = Math.min(...poolFights.map((f) => f.queue_order ?? 0), Number.MAX_SAFE_INTEGER);
+  const seq = poolFights.some((f) => f.court_seq != null) ? Math.min(...poolFights.map((f) => f.court_seq ?? 0)) : null;
+  if (fights.length) unwrap(await supabase.from('matches').delete().in('id', fights.map((f) => f.id)));
+  const rows = poolMatches(members, pool.number).map((m, i) => ({
+    category_id: pool.category_id,
+    phase: 'pool',
+    label: m.label,
+    pool_id: pool.id,
+    red_entry_id: m.red,
+    white_entry_id: m.white,
+    shiaijo,
+    end_block: false,
+    queue_order: (queue === Number.MAX_SAFE_INTEGER ? 0 : queue) + i,
+    court_seq: seq == null ? null : seq + i,
+  }));
+  if (rows.length) unwrap(await supabase.from('matches').insert(rows, { defaultToNull: false }));
+}
+
+/**
+ * Someone did not come: a new entry takes the same place in the draw (same
+ * pool position, same fights). Only for fights that have not started.
+ */
+export async function replaceInDraw(categoryId, oldEntryId, newEntryId) {
+  const fights = unwrap(await supabase.from('matches').select('id, status, red_entry_id, white_entry_id')
+    .eq('category_id', categoryId).or(`red_entry_id.eq.${oldEntryId},white_entry_id.eq.${oldEntryId}`));
+  if (fights.some((f) => f.status !== 'scheduled')) throw new Error('This competitor has already fought — withdraw instead.');
+  const pools = unwrap(await supabase.from('pools').select('id').eq('category_id', categoryId));
+  unwrap(await supabase.from('pool_entries').update({ entry_id: newEntryId })
+    .in('pool_id', pools.map((p) => p.id)).eq('entry_id', oldEntryId));
+  for (const f of fights) {
+    unwrap(await supabase.from('matches').update({
+      red_entry_id: f.red_entry_id === oldEntryId ? newEntryId : f.red_entry_id,
+      white_entry_id: f.white_entry_id === oldEntryId ? newEntryId : f.white_entry_id,
+    }).eq('id', f.id));
+  }
+}
+
+/** A late entry fills a pool that is short of a player; that pool's fights are rebuilt. */
+export async function addToPool(poolId, entryId) {
+  const { pool, fights } = await poolWithFights(poolId);
+  const members = [...pool.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id);
+  if (fights.some((f) => f.status !== 'scheduled')) throw new Error('Fights of this pool already started.');
+  unwrap(await supabase.from('pool_entries').insert({ pool_id: pool.id, entry_id: entryId, position: members.length + 1 }));
+  await rebuildPoolFights(pool, fights, [...members, entryId]);
+}
+
+/**
+ * Withdraw an entry from its pool. Before the pool started: out of the pool,
+ * its fights are rebuilt. Once started: the remaining fights are won by the
+ * opponents (fusen-gachi, OO).
+ */
+export async function withdrawFromPool(poolId, entryId) {
+  const { pool, fights } = await poolWithFights(poolId);
+  if (fights.every((f) => f.status === 'scheduled')) {
+    const members = [...pool.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id).filter((id) => id !== entryId);
+    unwrap(await supabase.from('pool_entries').delete().eq('pool_id', pool.id).eq('entry_id', entryId));
+    for (const [i, id] of members.entries()) {
+      unwrap(await supabase.from('pool_entries').update({ position: 100 + i }).eq('pool_id', pool.id).eq('entry_id', id));
+    }
+    for (const [i, id] of members.entries()) {
+      unwrap(await supabase.from('pool_entries').update({ position: i + 1 }).eq('pool_id', pool.id).eq('entry_id', id));
+    }
+    await rebuildPoolFights(pool, fights, members);
+    return { fusen: 0 };
+  }
+  const open = unwrap(await supabase.from('matches').select('id, red_entry_id, white_entry_id')
+    .eq('pool_id', pool.id).eq('status', 'scheduled').or(`red_entry_id.eq.${entryId},white_entry_id.eq.${entryId}`));
+  for (const f of open) {
+    const side = f.red_entry_id === entryId ? 'white' : 'red';
+    unwrap(await supabase.from('matches').update({
+      fusen: side, status: 'finished', winner_entry_id: side === 'red' ? f.red_entry_id : f.white_entry_id,
+      finished_at: new Date().toISOString(),
+    }).eq('id', f.id));
+  }
+  return { fusen: open.length };
+}
+
+/** Confirm (or reopen) the draws of the tournament. */
+export async function setDrawsConfirmed(tournamentId, confirmed) {
+  return updateTournament(tournamentId, { draws_confirmed: confirmed });
 }

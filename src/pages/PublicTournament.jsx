@@ -11,6 +11,7 @@ import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, fightSeconds } from '../lib/tournament/run.js';
 import { boutResult } from '../lib/tournament/scoring.js';
+import { GRADES, ineligibleReason, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
 const fmtHm = (seconds) => {
@@ -189,11 +190,12 @@ function PublicTournament() {
             {tournament.registration_deadline && ` (deadline ${new Date(tournament.registration_deadline).toLocaleString()})`}
           </p>
           <table className="tp-table">
-            <thead><tr><th>Category</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
+            <thead><tr><th>Category</th><th>Who</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
             <tbody>
               {categories.map((c) => (
                 <tr key={c.id}>
                   <td>{c.name}</td>
+                  <td className="tp-muted">{rulesText(c)}</td>
                   <td>{c.kind === 'team' ? `Team of ${c.team_size}` : 'Individual'}</td>
                   <td>{c.pool_size === 1 ? 'Direct KO' : `Pools of ${c.pool_size}, ${c.advancing ? `${c.advancing} advance` : 'pools only'}`}</td>
                   <td>{c.pool_fight_seconds / 60} / {c.ko_fight_seconds / 60} / {c.final_fight_seconds / 60} min</td>
@@ -339,30 +341,59 @@ function PublicTournament() {
   );
 }
 
-/** Registration form: individual, or team per the tournament's team setup. */
+/**
+ * Registration form: the person first (gender, birth year, grade), then every
+ * category the rules allow is ticked — untick what you don't want; forbidden
+ * ones are greyed out with the reason. Team categories ask for the team.
+ */
 function RegisterForm({ tournament, categories, teams, competitors, onDone }) {
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
-  const [p, setP] = useState({ last_name: '', first_name: '', club: '', grade: '', team_id: '', team_name: '' });
-  const [team, setTeam] = useState({ name: '', club: '', members: [] });
+  const year = Number((tournament.start_date ?? new Date().toISOString()).slice(0, 4));
+  const [p, setP] = useState({ last_name: '', first_name: '', club: '', gender: '', birth_year: '', grade_rank: '', email: '' });
+  const [picked, setPicked] = useState(new Set());
+  const [teamFor, setTeamFor] = useState({}); // categoryId -> { team_id, team_name }
+  const [teamReg, setTeamReg] = useState({ category: '', name: '', club: '', members: [] });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
-  const category = categories.find((c) => c.id === categoryId);
-  const teamFirst = category?.kind === 'team' && tournament.team_signup === 'team_first';
   const set = (k) => (e) => setP({ ...p, [k]: e.target.value });
+
+  const teamFirst = tournament.team_signup === 'team_first';
+  const personCats = categories.filter((c) => c.kind === 'individual' || !teamFirst);
+  const teamCats = categories.filter((c) => c.kind === 'team' && teamFirst);
+  const person = { gender: p.gender || null, birth_year: p.birth_year ? Number(p.birth_year) : null, grade_rank: p.grade_rank === '' ? null : Number(p.grade_rank) };
+  const checks = personCats.map((c) => ({ c, reason: ineligibleReason(c, person, year) }));
+  const allowedKey = checks.filter((x) => !x.reason).map((x) => x.c.id).join(',');
+
+  // every allowed category is ticked when the person's data changes
+  useEffect(() => { setPicked(new Set(allowedKey ? allowedKey.split(',') : [])); }, [allowedKey]);
 
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true); setMsg({ type: '', text: '' });
+    const done = [];
+    const failed = [];
+    for (const c of personCats.filter((x) => picked.has(x.id))) {
+      try {
+        await publicRegister(c.id, { ...p, ...(c.kind === 'team' ? teamFor[c.id] ?? {} : {}) });
+        done.push(c.name);
+      } catch (err) { failed.push(`${c.name}: ${err.message}`); }
+    }
+    setBusy(false);
+    if (done.length) {
+      setMsg({ type: failed.length ? 'error' : 'success', text: `${p.last_name.toUpperCase()} ${p.first_name} registered for ${done.join(', ')}.${failed.length ? ` Not registered — ${failed.join('; ')}` : ''}` });
+      setP({ ...p, last_name: '', first_name: '', birth_year: '', grade_rank: '', email: '' });
+      await onDone();
+    } else {
+      setMsg({ type: 'error', text: failed.length ? failed.join('; ') : 'Tick at least one category.' });
+    }
+  };
+
+  const submitTeam = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg({ type: '', text: '' });
     try {
-      if (teamFirst) {
-        await publicRegisterTeam(categoryId, team);
-        setMsg({ type: 'success', text: `Team ${team.name.toUpperCase()} is registered for ${category.name}.` });
-        setTeam({ name: '', club: '', members: [] });
-      } else {
-        await publicRegister(categoryId, p);
-        setMsg({ type: 'success', text: `${p.last_name.toUpperCase()} ${p.first_name} is registered for ${category.name}.` });
-        setP({ ...p, last_name: '', first_name: '', grade: '', team_id: '', team_name: '' });
-      }
+      await publicRegisterTeam(teamReg.category, teamReg);
+      setMsg({ type: 'success', text: `Team ${teamReg.name.toUpperCase()} is registered.` });
+      setTeamReg({ ...teamReg, name: '', club: '', members: [] });
       await onDone();
     } catch (err) { setMsg({ type: 'error', text: err.message }); }
     finally { setBusy(false); }
@@ -371,62 +402,99 @@ function RegisterForm({ tournament, categories, teams, competitors, onDone }) {
   if (!categories.length) return <div className="tp-card"><p className="tp-muted">No category is open for registration.</p></div>;
 
   return (
-    <form className="tp-card" onSubmit={submit}>
-      <h3>Register</h3>
+    <>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
-      <label className="tp-field" style={{ maxWidth: 360 }}>
-        Category
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.kind === 'team' ? ' (team)' : ''}</option>)}
-        </select>
-      </label>
-
-      {teamFirst ? (
-        <>
-          <div className="tp-grid">
-            <label className="tp-field">Team name<input value={team.name} onChange={(e) => setTeam({ ...team, name: e.target.value })} required /></label>
-            <label className="tp-field">Club<input value={team.club} onChange={(e) => setTeam({ ...team, club: e.target.value })} /></label>
-          </div>
-          <p className="tp-muted">Members (from registered competitors, in fighting order):</p>
-          <div className="tp-grid">
-            {competitors.map((c) => (
-              <label key={c.id} className="tp-field tp-check">
-                <input type="checkbox" checked={team.members.includes(c.id)}
-                  onChange={(e) => setTeam({ ...team, members: e.target.checked ? [...team.members, c.id] : team.members.filter((x) => x !== c.id) })} />
-                {c.last_name} {c.first_name}{c.club ? ` · ${c.club}` : ''}
-              </label>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
+      {personCats.length > 0 && (
+        <form className="tp-card" onSubmit={submit}>
+          <h3>Register a competitor</h3>
           <div className="tp-grid">
             <label className="tp-field">Last name<input value={p.last_name} onChange={set('last_name')} required /></label>
             <label className="tp-field">First name<input value={p.first_name} onChange={set('first_name')} /></label>
             <label className="tp-field">Club<input value={p.club} onChange={set('club')} /></label>
-            <label className="tp-field">Grade<input value={p.grade} onChange={set('grade')} placeholder="e.g. 2 dan" /></label>
+            <label className="tp-field">
+              Gender
+              <select value={p.gender} onChange={set('gender')}>
+                <option value="">—</option><option value="M">Male</option><option value="F">Female</option>
+              </select>
+            </label>
+            <label className="tp-field">Birth year<input type="number" min="1920" max={year} value={p.birth_year} onChange={set('birth_year')} placeholder="e.g. 2008" /></label>
+            <label className="tp-field">
+              Grade
+              <select value={p.grade_rank} onChange={set('grade_rank')}>
+                <option value="">—</option>
+                {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
+              </select>
+            </label>
+            <label className="tp-field">Email <span className="tp-muted">(optional, for changes)</span><input type="email" value={p.email} onChange={set('email')} /></label>
           </div>
-          {category?.kind === 'team' && (
-            <div className="tp-grid">
-              <label className="tp-field">
-                Team
-                <select value={p.team_id} onChange={(e) => setP({ ...p, team_id: e.target.value, team_name: '' })}>
-                  <option value="">— new team —</option>
-                  {teams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.club ? ` · ${t.club}` : ''}</option>)}
-                </select>
-              </label>
-              {!p.team_id && (
-                <label className="tp-field">New team name<input value={p.team_name} onChange={set('team_name')} placeholder="e.g. RIJEKA 1" required /></label>
-              )}
-            </div>
-          )}
-        </>
+
+          <h3 style={{ marginTop: '1rem' }}>Categories</h3>
+          <p className="tp-muted" style={{ marginTop: 0 }}>Every category you may enter is ticked — untick what you don't want.</p>
+          <table className="tp-table">
+            <tbody>
+              {checks.map(({ c, reason }) => (
+                <tr key={c.id} style={reason ? { opacity: 0.5 } : undefined}>
+                  <td style={{ width: '2rem' }}>
+                    <input type="checkbox" disabled={!!reason} checked={!reason && picked.has(c.id)}
+                      onChange={(e) => { const n = new Set(picked); if (e.target.checked) n.add(c.id); else n.delete(c.id); setPicked(n); }} />
+                  </td>
+                  <td>
+                    <strong>{c.name}</strong>{c.kind === 'team' ? ' (team)' : ''}
+                    <div className="tp-muted">{rulesText(c)}{reason ? ` — not for you: ${reason}` : ''}</div>
+                    {c.kind === 'team' && !reason && picked.has(c.id) && (
+                      <div className="tp-grid" style={{ marginTop: '0.4rem' }}>
+                        <select value={teamFor[c.id]?.team_id ?? ''} onChange={(e) => setTeamFor({ ...teamFor, [c.id]: { team_id: e.target.value, team_name: '' } })}>
+                          <option value="">— new team —</option>
+                          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.club ? ` · ${t.club}` : ''}</option>)}
+                        </select>
+                        {!teamFor[c.id]?.team_id && (
+                          <input placeholder="New team name, e.g. RIJEKA 1" value={teamFor[c.id]?.team_name ?? ''}
+                            onChange={(e) => setTeamFor({ ...teamFor, [c.id]: { team_id: '', team_name: e.target.value } })} />
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="tp-actions">
+            <button type="submit" className="tp-btn" disabled={busy || picked.size === 0}>{busy ? 'Registering…' : `Register for ${picked.size} categor${picked.size === 1 ? 'y' : 'ies'}`}</button>
+          </div>
+          <p className="tp-muted">Registrations appear in the entry list straight away; the organizer can change or remove them.</p>
+        </form>
       )}
-      <div className="tp-actions">
-        <button type="submit" className="tp-btn" disabled={busy}>{busy ? 'Registering…' : 'Register'}</button>
-      </div>
-      <p className="tp-muted">Registrations appear in the entry list straight away; the organizer can change or remove them.</p>
-    </form>
+
+      {teamCats.length > 0 && (
+        <form className="tp-card" onSubmit={submitTeam}>
+          <h3>Register a team</h3>
+          <div className="tp-grid">
+            <label className="tp-field">
+              Category
+              <select value={teamReg.category} onChange={(e) => setTeamReg({ ...teamReg, category: e.target.value })} required>
+                <option value="">—</option>
+                {teamCats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label className="tp-field">Team name<input value={teamReg.name} onChange={(e) => setTeamReg({ ...teamReg, name: e.target.value })} required /></label>
+            <label className="tp-field">Club<input value={teamReg.club} onChange={(e) => setTeamReg({ ...teamReg, club: e.target.value })} /></label>
+          </div>
+          <p className="tp-muted">Members (registered competitors, in fighting order):</p>
+          <div className="tp-grid">
+            {competitors.map((c) => (
+              <label key={c.id} className="tp-field tp-check">
+                <input type="checkbox" checked={teamReg.members.includes(c.id)}
+                  onChange={(e) => setTeamReg({ ...teamReg, members: e.target.checked ? [...teamReg.members, c.id] : teamReg.members.filter((x) => x !== c.id) })} />
+                {c.last_name} {c.first_name}{c.club ? ` · ${c.club}` : ''}
+              </label>
+            ))}
+          </div>
+          <div className="tp-actions">
+            <button type="submit" className="tp-btn" disabled={busy}>{busy ? 'Registering…' : 'Register team'}</button>
+          </div>
+        </form>
+      )}
+    </>
   );
 }
 

@@ -8,10 +8,10 @@ import './TournamentPages.css';
 const PRESETS = [
   { name: 'Junior A', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
   { name: 'Junior B', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Kyu W', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Kyu M', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Dan W', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
-  { name: 'Dan M', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
+  { name: 'Kyu W', kind: 'individual', gender: 'F', max_grade: -1, pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
+  { name: 'Kyu M', kind: 'individual', gender: 'M', max_grade: -1, pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
+  { name: 'Dan W', kind: 'individual', gender: 'F', min_grade: 1, pool_size: 3, advancing: 2, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
+  { name: 'Dan M', kind: 'individual', gender: 'M', min_grade: 1, pool_size: 3, advancing: 2, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
   { name: 'Team juniors', kind: 'team', team_size: 3, pool_size: 3, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
   { name: 'Team adults', kind: 'team', team_size: 3, pool_size: 1, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
 ];
@@ -74,6 +74,11 @@ function CreateTournament() {
         pool_fight_seconds: Number(c.pool_fight_seconds),
         ko_fight_seconds: Number(c.ko_fight_seconds),
         final_fight_seconds: Number(c.final_fight_seconds),
+        gender: c.gender ?? null,
+        min_age: c.min_age ?? null,
+        max_age: c.max_age ?? null,
+        min_grade: c.min_grade ?? null,
+        max_grade: c.max_grade ?? null,
       })));
       navigate(`/tournament/${t.id}/registration`);
     } catch (err) {

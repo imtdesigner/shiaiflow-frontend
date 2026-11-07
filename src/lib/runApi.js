@@ -102,7 +102,7 @@ export async function finishFight(fight, result, category) {
   return afterFight({ ...fight, status: 'finished', winner_entry_id: winnerId }, category);
 }
 
-async function afterFight(fight, category) {
+export async function afterFight(fight, category) {
   if (fight.phase === 'ko') {
     await fillKo(category, null);
     return { message: null };

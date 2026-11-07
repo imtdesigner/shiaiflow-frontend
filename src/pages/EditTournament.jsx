@@ -148,6 +148,8 @@ function EditTournament() {
 
       <form className="tp-card" onSubmit={save}>
         <h3>Tournament</h3>
+        {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
+        <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
         <div className="tp-grid">
           <label className="tp-field" style={{ gridColumn: '1 / -1' }}>Name<input value={form.name} onChange={set('name')} required /></label>
           <label className="tp-field">Start date<input type="date" value={form.start_date} onChange={set('start_date')} /></label>
@@ -160,6 +162,7 @@ function EditTournament() {
           <button type="submit" className="tp-btn" disabled={busy}>Save</button>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
         </div>
+        </fieldset>
       </form>
     </div>
   );

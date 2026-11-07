@@ -609,3 +609,21 @@ test('KO entries: pool places and winners fill the bracket', () => {
     { id: 'k3', red_entry_id: 'A', white_entry_id: null },
   ]);
 });
+
+// --- eligibility ----------------------------------------------------------------
+import { gradeRank, ineligibleReason, rulesText } from '../src/lib/tournament/eligibility.js';
+
+test('eligibility: grades, gender, age by birth year', () => {
+  assert.deepEqual(['3 kyu', '1 KYU', '2 dan', 'Mudan', '', 'x'].map(gradeRank), [-3, -1, 2, -7, null, null]);
+  const danM = { gender: 'M', min_grade: 1 };
+  const kyuW = { gender: 'F', max_grade: -1 };
+  const juniorB = { max_age: 14 };
+  const p = { gender: 'M', birth_year: 2013, grade_rank: -2 }; // 13 in 2026
+  assert.equal(ineligibleReason(danM, p, 2026), 'from 1 dan');
+  assert.equal(ineligibleReason(kyuW, p, 2026), 'women only');
+  assert.equal(ineligibleReason(juniorB, p, 2026), null);
+  assert.equal(ineligibleReason(juniorB, { ...p, birth_year: 2010 }, 2026), 'up to 14 years');
+  assert.equal(ineligibleReason(juniorB, { ...p, birth_year: null }, 2026), 'birth year needed');
+  assert.equal(ineligibleReason({}, {}, 2026), null);
+  assert.equal(rulesText({ gender: 'M', min_age: 18, min_grade: 1 }), 'Men · 18+ y · 1 dan and up');
+});

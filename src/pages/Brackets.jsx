@@ -5,6 +5,7 @@ import {
 } from '../components/TournamentShell';
 import KoBracket from '../components/KoBracket';
 import { getSavedDraw, listEntries, saveKoTemplate } from '../lib/api';
+import { myRole } from '../lib/runApi';
 import {
   checkTemplate, normalizeTemplate, parseSlotInput, sameTemplate, setSlot, swapSlots,
 } from '../lib/tournament/bracketEdit.js';
@@ -30,6 +31,9 @@ function Brackets() {
   const [draft, setDraft] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [role, setRole] = useState(null);
+  useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
+  const locked = !!tournament?.draws_confirmed && role !== 'owner';
 
   const category = useMemo(() => categories.find((c) => c.id === selectedId), [categories, selectedId]);
   const drawn = category && !['registration', 'cancelled'].includes(category.status);
@@ -149,6 +153,7 @@ function Brackets() {
             Drag a slot onto another to swap them, or click a slot and type a code: P2.1 = pool 2, 1st place;
             W03 = winner of F-3{system.directKo ? '; #5 = entry 5' : ''}. Moving a W slot moves that fight.
           </p>
+          {locked && <Message type="info">The draws are confirmed — only the owner can change brackets now.</Message>}
           {check.errors.length > 0 && <Message type="error">{check.errors.map((e) => <div key={e}>{e}</div>)}</Message>}
           {check.warnings.length > 0 && (
             <Message type="info"><strong>Check:</strong>{check.warnings.map((w) => <div key={w}>{w}</div>)}</Message>
@@ -158,11 +163,11 @@ function Brackets() {
             nameOf={nameOf}
             resolved={resolved}
             directKo={system.directKo}
-            onSwap={(a, b) => apply(swapSlots(draft, a, b))}
+            onSwap={locked ? undefined : (a, b) => apply(swapSlots(draft, a, b))}
             onSet={onSet}
           />
           <div className="tp-actions">
-            <button type="button" className="tp-btn" onClick={save} disabled={busy || !dirty || check.errors.length > 0}>
+            <button type="button" className="tp-btn" onClick={save} disabled={locked || busy || !dirty || check.errors.length > 0}>
               {busy ? 'Saving…' : 'Save bracket'}
             </button>
             <button type="button" className="tp-btn secondary" onClick={() => apply(current)} disabled={busy || !dirty}>Undo changes</button>

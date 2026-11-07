@@ -7,9 +7,12 @@ import {
   addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
+import { GRADES, gradeLabel, ineligibleReason, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
-const EMPTY_PERSON = { last_name: '', first_name: '', club: '', grade: '', checked_in: true };
+const EMPTY_PERSON = {
+  last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', grade_rank: '', checked_in: true,
+};
 
 /** "Last name; First name; Club; Grade" per line (also tab- or comma-separated). */
 function parseBulk(text) {
@@ -60,6 +63,13 @@ function Registration() {
   const addPerson = (e) => {
     e.preventDefault();
     if (!person.last_name.trim()) return;
+    const year = Number((tournament?.start_date ?? new Date().toISOString()).slice(0, 4));
+    const reason = ineligibleReason(category, {
+      gender: person.gender || null,
+      birth_year: person.birth_year ? Number(person.birth_year) : null,
+      grade_rank: person.grade_rank === '' ? null : Number(person.grade_rank),
+    }, year);
+    if (reason && !window.confirm(`${category.name} rules: ${reason}. Add anyway?`)) return;
     run(async () => {
       await addCompetitorEntry(tournamentId, selectedId, person);
       setPerson({ ...EMPTY_PERSON, club: person.club });
@@ -129,13 +139,26 @@ function Registration() {
 
           {!locked && !isTeam && (
             <div className="tp-card">
-              <h3>Add competitor</h3>
+              <h3>Add competitor <span className="tp-muted">· {rulesText(category)}</span></h3>
               <form onSubmit={addPerson}>
                 <div className="tp-grid">
                   <label className="tp-field">Last name<input value={person.last_name} onChange={(e) => setPerson({ ...person, last_name: e.target.value })} required /></label>
                   <label className="tp-field">First name<input value={person.first_name} onChange={(e) => setPerson({ ...person, first_name: e.target.value })} /></label>
                   <label className="tp-field">Club<input value={person.club} onChange={(e) => setPerson({ ...person, club: e.target.value })} /></label>
-                  <label className="tp-field">Grade<input value={person.grade} onChange={(e) => setPerson({ ...person, grade: e.target.value })} placeholder="e.g. 2 dan" /></label>
+                  <label className="tp-field">
+                    Gender
+                    <select value={person.gender} onChange={(e) => setPerson({ ...person, gender: e.target.value })}>
+                      <option value="">—</option><option value="M">Male</option><option value="F">Female</option>
+                    </select>
+                  </label>
+                  <label className="tp-field">Birth year<input type="number" value={person.birth_year} onChange={(e) => setPerson({ ...person, birth_year: e.target.value })} /></label>
+                  <label className="tp-field">
+                    Grade
+                    <select value={person.grade_rank} onChange={(e) => setPerson({ ...person, grade_rank: e.target.value, grade: e.target.value === '' ? '' : gradeLabel(Number(e.target.value)) })}>
+                      <option value="">—</option>
+                      {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
+                    </select>
+                  </label>
                   <label className="tp-field tp-check">
                     <input type="checkbox" checked={person.checked_in} onChange={(e) => setPerson({ ...person, checked_in: e.target.checked })} />
                     Present (check-in)
