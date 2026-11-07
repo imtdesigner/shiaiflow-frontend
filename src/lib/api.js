@@ -28,6 +28,52 @@ export async function updateTournament(id, fields) {
   return unwrap(await supabase.from('tournaments').update(fields).eq('id', id).select().single());
 }
 
+/** Published tournaments for the home page, upcoming first. */
+export async function listPublicTournaments() {
+  const rows = unwrap(await supabase.from('tournaments')
+    .select('id, name, start_date, end_date, venue, city, country, status, registration_open, registration_deadline')
+    .eq('is_public', true)
+    .order('start_date', { ascending: true, nullsFirst: false })
+    .limit(50));
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = rows.filter((t) => !t.end_date || t.end_date >= today || t.status === 'running');
+  const past = rows.filter((t) => !upcoming.includes(t)).reverse();
+  return [...upcoming, ...past];
+}
+
+/** Public registration (no account) — individual, or joining / naming a team. */
+export async function publicRegister(categoryId, person) {
+  return unwrap(await supabase.rpc('public_register', {
+    c_id: categoryId,
+    last_name: person.last_name,
+    first_name: person.first_name ?? '',
+    club: person.club || null,
+    grade: person.grade || null,
+    team_id: person.team_id || null,
+    team_name: person.team_name || null,
+  }));
+}
+
+/** Public team registration when teams register first and pick members. */
+export async function publicRegisterTeam(categoryId, team) {
+  return unwrap(await supabase.rpc('public_register_team', {
+    c_id: categoryId, team_name: team.name, club: team.club || null, member_ids: team.members,
+  }));
+}
+
+/** Score events of several fights (live results). */
+export async function listEventsFor(matchIds) {
+  if (!matchIds.length) return [];
+  return unwrap(await supabase.from('score_events').select('match_id, side, type').in('match_id', matchIds).order('id'));
+}
+
+/** Teams of a tournament with members (public registration, team lists). */
+export async function listTeams(tournamentId) {
+  return unwrap(await supabase.from('teams')
+    .select('id, name, club, team_members(competitor_id, sort_order, competitor:competitors(last_name, first_name))')
+    .eq('tournament_id', tournamentId).order('name'));
+}
+
 export async function getTournament(id) {
   return unwrap(await supabase.from('tournaments').select('*').eq('id', id).single());
 }

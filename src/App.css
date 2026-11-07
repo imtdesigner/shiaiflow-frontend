@@ -508,3 +508,44 @@ html, body {
 .icon-label img:hover {
   transform: scale(1.05);
 }
+
+/* Home: published tournaments */
+.home-tournaments {
+  width: min(900px, 94vw);
+  margin: 1.5rem auto;
+  display: grid;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.home-tournament {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #fffdf6;
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.home-tournament h3 {
+  margin: 0 0 0.2rem;
+}
+
+.home-tournament h3 a {
+  color: #711921;
+  text-decoration: none;
+}
+
+.home-tournament p {
+  margin: 0 0 0.3rem;
+  color: #444;
+}
+
+.home-tournament-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

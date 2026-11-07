@@ -5,7 +5,7 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
-  addEvent, boutOf, deleteEvent, finishFight, listEvents, listRunFights, myCourt, myRole, reopenFight,
+  addEvent, boutOf, deleteEvent, finishFight, listEvents, listRunFights, myRole, reopenFight,
   setFightFields, startEncho, startFight, subscribeFights, timerStart, timerStop,
 } from '../lib/runApi';
 import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
@@ -32,7 +32,6 @@ function ScoreInput() {
   const { tournamentId, tournament, categories, error: loadError, loading } = useTournament();
   const [params, setParams] = useSearchParams();
   const [role, setRole] = useState(null);
-  const [scorerCourt, setScorerCourt] = useState(null);
   const [fights, setFights] = useState([]);
   const [entries, setEntries] = useState([]);
   const [events, setEvents] = useState([]);
@@ -44,13 +43,12 @@ function ScoreInput() {
   const stopping = useRef(null);
 
   const manager = role === 'owner' || role === 'organizer';
-  const court = scorerCourt ?? Number(params.get('court') ?? 1);
+  const court = Number(params.get('court') ?? 1);
   const drawn = useMemo(() => categories.filter((c) => !['registration', 'cancelled'].includes(c.status)), [categories]);
   const byId = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
 
   useEffect(() => {
     myRole(tournamentId).then(setRole).catch(() => setRole(null));
-    myCourt(tournamentId).then((c) => { if (c) setScorerCourt(c); }).catch(() => {});
   }, [tournamentId]);
 
   const reload = useCallback(async () => {
@@ -182,11 +180,9 @@ function ScoreInput() {
       <BackToDashboard />
       <div className="st-head">
         <h2>Shiaijo {court}</h2>
-        {!scorerCourt && (
-          <select value={court} onChange={(e) => { setParams({ court: e.target.value }); setPickedId(null); }}>
-            {courts.map((n) => <option key={n} value={n}>Shiaijo {n}</option>)}
-          </select>
-        )}
+        <select value={court} onChange={(e) => { setParams({ court: e.target.value }); setPickedId(null); }}>
+          {courts.map((n) => <option key={n} value={n}>Shiaijo {n}</option>)}
+        </select>
         <span className="tp-muted">{tournament?.name}</span>
       </div>
       <Message type={msg.type || 'info'}>{msg.text}</Message>

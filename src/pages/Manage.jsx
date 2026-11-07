@@ -5,7 +5,7 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
-  listPins, listRunFights, setPin, startTournament, subscribeFights,
+  getPin, listRunFights, setPin, startTournament, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
@@ -15,8 +15,8 @@ const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
 /**
  * Manage: start the tournament and watch every shiaijo live — the fight on
- * the court, what comes next, progress. The manager gives each scoretable a
- * PIN; scorers join at /join/<tournament> with it.
+ * the court, what comes next, progress. One PIN per tournament for editors
+ * and tables; they join at /join/<tournament> with it.
  */
 function Manage() {
   const {
@@ -24,7 +24,7 @@ function Manage() {
   } = useTournament();
   const [fights, setFights] = useState([]);
   const [entries, setEntries] = useState([]);
-  const [pins, setPins] = useState({});
+  const [pin, setPinState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -38,10 +38,10 @@ function Manage() {
   const reload = useCallback(async () => {
     const ids = drawn.map((c) => c.id);
     try {
-      const [fs, ens, ps] = await Promise.all([listRunFights(ids), listEntriesFor(ids), listPins(tournamentId)]);
+      const [fs, ens, p] = await Promise.all([listRunFights(ids), listEntriesFor(ids), getPin(tournamentId)]);
       setFights(fs);
       setEntries(ens);
-      setPins(Object.fromEntries(ps.map((p) => [p.shiaijo, p.pin])));
+      setPinState(p);
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
   }, [drawn, tournamentId]);
 
@@ -98,28 +98,21 @@ function Manage() {
       </div>
 
       <div className="tp-card">
-        <h3>Scoretables</h3>
+        <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
-          Give each table its PIN. Scorers open <strong>{joinUrl}</strong>, choose the shiaijo and type the PIN.
+          One PIN for this tournament. Before the start it lets editors change the tournament; after the start the same
+          PIN opens the scoretables (each table picks its shiaijo) and Manage. Share <strong>{joinUrl}</strong>.
         </p>
-        <table className="tp-table">
-          <thead><tr><th>Shiaijo</th><th>PIN</th><th /><th /></tr></thead>
-          <tbody>
-            {courts.map((n) => (
-              <tr key={n}>
-                <td>Shiaijo {n}</td>
-                <td><strong style={{ fontSize: '1.2rem', letterSpacing: '0.15em' }}>{pins[n] ?? '—'}</strong></td>
-                <td>
-                  <button type="button" className="tp-btn secondary small" disabled={busy}
-                    onClick={() => run(() => setPin(tournamentId, n, randomPin()))}>
-                    {pins[n] ? 'New PIN' : 'Create PIN'}
-                  </button>
-                </td>
-                <td><Link className="tp-btn small" to={`/tournament/${tournamentId}/score?court=${n}`}>Open scoretable</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="tp-actions">
+          <strong style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>{pin ?? '—'}</strong>
+          <button type="button" className="tp-btn secondary small" disabled={busy}
+            onClick={() => run(() => setPin(tournamentId, randomPin()))}>
+            {pin ? 'New PIN' : 'Create PIN'}
+          </button>
+          {courts.map((n) => (
+            <Link key={n} className="tp-btn small" to={`/tournament/${tournamentId}/score?court=${n}`}>Scoretable {n}</Link>
+          ))}
+        </div>
       </div>
 
       <div className="tp-pools">

@@ -31,13 +31,35 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
-import { listMyTournaments } from './lib/api';
+import { listMyTournaments, listPublicTournaments } from './lib/api';
+import PublicTournament from './pages/PublicTournament';
+import './pages/TournamentPages.css';
 
 
 
+const fmtDate = (d) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+
+function tournamentState(t) {
+  if (t.status === 'running') return { label: 'Live now', cls: 'ok' };
+  if (t.status === 'finished') return { label: 'Finished', cls: '' };
+  const closed = !t.registration_open || (t.registration_deadline && new Date(t.registration_deadline) < new Date());
+  if (closed) return { label: 'Registration closed', cls: 'warn' };
+  return {
+    label: t.registration_deadline
+      ? `Registration open until ${new Date(t.registration_deadline).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+      : 'Registration open',
+    cls: 'ok',
+  };
+}
+
+/** Home (before login): published tournaments with the ways in — competitor, editor/table (PIN), owner. */
 function Home () {
-return (
-  <>
+  const [tournaments, setTournaments] = useState(null);
+  const [query, setQuery] = useState('');
+  useEffect(() => { listPublicTournaments().then(setTournaments).catch(() => setTournaments([])); }, []);
+  const q = query.trim().toLowerCase();
+  const shown = (tournaments ?? []).filter((t) => !q || [t.name, t.city, t.country, t.venue].some((x) => x?.toLowerCase().includes(q)));
+  return (
     <div className="app-container">
       <h1 className="home-logo">
         <span className="shiai">Shiai</span><span className="flow">Flow</span>
@@ -49,22 +71,40 @@ return (
           <input
             type="text"
             className="search-tournaments"
-            placeholder="By name, city, country or dojo"
+            placeholder="By name, city or country"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        {/* <div className="live-results">
-          <h2>Watch Live Results</h2>
-          <ul className="live-list">
-            <li><a href="#">Rijeka Spring Cup 2025</a></li>
-          </ul>
-        </div> */}
       </div>
-      <h1>WORKING HARD TO BRING YOU TAIKAI APP</h1>
+      <div className="home-tournaments">
+        {tournaments === null && <p>Loading tournaments…</p>}
+        {tournaments?.length === 0 && <p>No published tournaments yet.</p>}
+        {shown.map((t) => {
+          const st = tournamentState(t);
+          return (
+            <div className="home-tournament" key={t.id}>
+              <div className="home-tournament-info">
+                <h3><Link to={`/t/${t.id}`}>{t.name}</Link></h3>
+                <p>
+                  {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
+                  {(t.venue || t.city) && ` · ${[t.venue, t.city, t.country].filter(Boolean).join(', ')}`}
+                </p>
+                <span className={`tp-badge ${st.cls}`}>{st.label}</span>
+              </div>
+              <div className="home-tournament-actions">
+                <Link className="tp-btn" to={`/t/${t.id}`}>{t.status === 'running' ? 'Live results' : 'Competitor'}</Link>
+                <Link className="tp-btn secondary" to={`/join/${t.id}`}>Editor / table (PIN)</Link>
+                <Link className="tp-btn secondary" to="/login">Owner</Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <p className="powered">Powered by ChatGPT</p>
       <p className="app-version">Version {packageJson.version}</p>
     </div>
-  </>
-);
+  );
 }
 
 function Explore() {
@@ -376,6 +416,7 @@ function AppContent() {
 />
 <Route path="/reset-password" element={<ResetPasswordPage />} />
 <Route path="/join/:tournamentId" element={<JoinCourt />} />
+<Route path="/t/:tournamentId" element={<PublicTournament />} />
 
       </Routes>
     </>

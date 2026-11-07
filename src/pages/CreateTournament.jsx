@@ -28,7 +28,7 @@ function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Croatia',
-    shiaijo_count: 2, is_public: true,
+    shiaijo_count: 2, is_public: false,
   });
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -110,7 +110,7 @@ function CreateTournament() {
             </label>
             <label className="tp-field tp-check">
               <input type="checkbox" checked={form.is_public} onChange={set('is_public')} />
-              Public results (visible without login)
+              Published (on the home page; entries, draw and results are public)
             </label>
           </div>
         </div>

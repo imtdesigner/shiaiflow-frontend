@@ -180,22 +180,15 @@ export async function fillKo(category) {
   }
 }
 
-// --- shiaijo PINs and scorers ---------------------------------------------------------
+// --- tournament PIN (editors and tables) ------------------------------------------------
 
-export async function listPins(tournamentId) {
-  return unwrap(await supabase.from('shiaijo_pins').select('shiaijo, pin').eq('tournament_id', tournamentId));
+export async function getPin(tournamentId) {
+  const row = unwrap(await supabase.from('tournament_pins').select('pin').eq('tournament_id', tournamentId).maybeSingle());
+  return row?.pin ?? null;
 }
 
-export async function setPin(tournamentId, shiaijo, pin) {
-  unwrap(await supabase.from('shiaijo_pins').upsert({ tournament_id: tournamentId, shiaijo, pin }));
-}
-
-/** Court of the signed-in scorer for this tournament, or null. */
-export async function myCourt(tournamentId) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const row = unwrap(await supabase.from('tournament_scorers').select('shiaijo').eq('tournament_id', tournamentId).eq('user_id', user.id).maybeSingle());
-  return row?.shiaijo ?? null;
+export async function setPin(tournamentId, pin) {
+  unwrap(await supabase.from('tournament_pins').upsert({ tournament_id: tournamentId, pin }));
 }
 
 /** Role of the signed-in user in this tournament: 'owner' | 'organizer' | 'scorer' | null. */
@@ -206,14 +199,14 @@ export async function myRole(tournamentId) {
   return row?.role ?? null;
 }
 
-/** Scorer joins a court with its PIN (signs in anonymously when needed). */
-export async function claimCourt(tournamentId, shiaijo, pin) {
+/** Editor / table joins a tournament with its PIN (signs in anonymously when needed). */
+export async function claimTournament(tournamentId, pin) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     const { error } = await supabase.auth.signInAnonymously();
-    if (error) throw new Error(`Cannot sign in the scoretable: ${error.message}. The manager has to enable anonymous sign-ins in Supabase.`);
+    if (error) throw new Error(`Cannot sign in with a PIN: ${error.message}. The owner has to enable anonymous sign-ins in Supabase.`);
   }
-  unwrap(await supabase.rpc('claim_shiaijo', { t_id: tournamentId, court: shiaijo, p: pin }));
+  return unwrap(await supabase.rpc('claim_tournament', { t_id: tournamentId, p: pin }));
 }
 
 /** Realtime: call `onChange` when fights or score events of these categories change. */
