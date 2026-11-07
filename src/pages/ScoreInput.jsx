@@ -169,7 +169,7 @@ function ScoreInput() {
       {fight.status === 'running' && !status?.over && (
         <div className="st-buttons">
           {POINTS.map((p) => <button key={p} type="button" className={`st-btn ippon ${side}`} disabled={busy} onClick={() => point(side, p)}>{p}</button>)}
-          <button type="button" className="st-btn hansoku" disabled={busy} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
+          <button type="button" className={`st-btn hansoku ippon ${side}`} disabled={busy} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
         </div>
       )}
     </div>
