@@ -1,6 +1,7 @@
 // Thin data layer over Supabase. Pages call these instead of building queries.
 import { supabase } from '../supabaseClient';
 import { directKoQualifiers } from './tournament/draw.js';
+import { drawCourts } from './tournament/courts.js';
 
 function unwrap({ data, error }) {
   if (error) throw new Error(error.message);
@@ -22,6 +23,10 @@ export async function listMyTournaments() {
     .sort((a, b) => String(b.start_date ?? '').localeCompare(String(a.start_date ?? '')));
 }
 
+export async function updateTournament(id, fields) {
+  return unwrap(await supabase.from('tournaments').update(fields).eq('id', id).select().single());
+}
+
 export async function getTournament(id) {
   return unwrap(await supabase.from('tournaments').select('*').eq('id', id).single());
 }
@@ -31,6 +36,7 @@ export async function createTournament(fields, categories = []) {
   if (categories.length) {
     unwrap(await supabase.from('categories').insert(
       categories.map((c, i) => ({ ...c, tournament_id: t.id, sort_order: i })),
+      { defaultToNull: false }, // fields a category leaves out get the column default
     ));
   }
   return t;
@@ -149,7 +155,7 @@ export async function getSavedDraw(categoryId) {
     .order('number'));
   const matches = unwrap(await supabase
     .from('matches')
-    .select('id, phase, label, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, status')
+    .select('id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, status')
     .eq('category_id', categoryId)
     .order('queue_order'));
   return { pools, matches };
@@ -168,8 +174,9 @@ export async function clearDraw(categoryId) {
  * Save a draw from buildDraw(): pools, pool matches and KO matches.
  * KO matches keep their template codes; for a direct KO the first round is filled in.
  */
-export async function saveDraw(category, draw, { shiaijo = 1 } = {}) {
+export async function saveDraw(category, draw) {
   await clearDraw(category.id);
+  const courts = drawCourts(draw, category.shiaijos);
 
   const poolRows = unwrap(await supabase.from('pools')
     .insert(draw.pools.map((_, i) => ({ category_id: category.id, number: i + 1 })))
@@ -188,7 +195,7 @@ export async function saveDraw(category, draw, { shiaijo = 1 } = {}) {
     pool_id: poolId[m.pool],
     red_entry_id: m.red,
     white_entry_id: m.white,
-    shiaijo,
+    shiaijo: courts.pool[m.pool - 1],
     queue_order: (queue += 1),
   }));
 
@@ -204,7 +211,7 @@ export async function saveDraw(category, draw, { shiaijo = 1 } = {}) {
         white_code: k.white,
         red_entry_id: direct[k.red] ?? null,
         white_entry_id: direct[k.white] ?? null,
-        shiaijo,
+        shiaijo: courts.ko.get(k.no),
         queue_order: (queue += 1),
       });
     }
@@ -217,4 +224,47 @@ export async function saveDraw(category, draw, { shiaijo = 1 } = {}) {
     ko_template: draw.koTemplate,
     status: 'drawn',
   });
+}
+
+// --- shiaijo plan -----------------------------------------------------------------
+
+/** Checked-in entry count per category id. */
+export async function checkedInCounts(categoryIds) {
+  if (!categoryIds.length) return {};
+  const rows = unwrap(await supabase.from('entries').select('category_id').in('category_id', categoryIds).eq('checked_in', true));
+  return rows.reduce((acc, r) => ({ ...acc, [r.category_id]: (acc[r.category_id] ?? 0) + 1 }), {});
+}
+
+/** Saved fights of drawn categories: [{ category_id, phase, ko_no, shiaijo, status }]. */
+export async function listFights(categoryIds) {
+  if (!categoryIds.length) return [];
+  return unwrap(await supabase.from('matches')
+    .select('id, category_id, phase, ko_no, shiaijo, status')
+    .in('category_id', categoryIds));
+}
+
+/**
+ * Set the courts of a category; for a drawn category the fights that have not
+ * started move to the new courts (same split as when the draw is saved).
+ */
+export async function setCategoryCourts(category, shiaijos) {
+  const updated = await updateCategory(category.id, { shiaijos });
+  if (category.status === 'registration' || category.status === 'cancelled') return updated;
+  const { pools, matches } = await getSavedDraw(category.id);
+  const draw = {
+    directKo: category.pool_size === 1,
+    pools: pools.map((p) => p.pool_entries),
+    koTemplate: category.ko_template,
+  };
+  const courts = drawCourts(draw, shiaijos);
+  const poolIndex = Object.fromEntries(pools.map((p, i) => [p.id, i]));
+  const byCourt = new Map();
+  for (const m of matches.filter((x) => x.status === 'scheduled')) {
+    const court = m.phase === 'ko' ? courts.ko.get(m.ko_no) : courts.pool[poolIndex[m.pool_id]];
+    if (court && court !== m.shiaijo) byCourt.set(court, [...(byCourt.get(court) ?? []), m.id]);
+  }
+  for (const [court, ids] of byCourt) {
+    unwrap(await supabase.from('matches').update({ shiaijo: court }).in('id', ids));
+  }
+  return updated;
 }

@@ -79,7 +79,6 @@ function Drawings() {
   const [entries, setEntries] = useState([]);
   const [saved, setSaved] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [shiaijo, setShiaijo] = useState(1);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [moveTarget, setMoveTarget] = useState('');
@@ -142,7 +141,7 @@ function Drawings() {
   const save = async () => {
     setBusy(true);
     try {
-      replaceCategory(await saveDraw(category, preview, { shiaijo }));
+      replaceCategory(await saveDraw(category, preview));
       setPreview(null);
       await reload();
       setMsg({ type: 'success', text: 'Draw saved. Matches have been created.' });
@@ -258,14 +257,11 @@ function Drawings() {
                 <option value={2}>2</option>
               </select>
             </label>
-            <label className="tp-field">
-              Court
-              <select value={shiaijo} onChange={(e) => setShiaijo(Number(e.target.value))}>
-                {Array.from({ length: tournament?.shiaijo_count ?? 1 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>Shiaijo {i + 1}</option>
-                ))}
-              </select>
-            </label>
+            <div className="tp-field">
+              Shiaijo
+              <strong>{category.shiaijos.join(' + ')}</strong>
+              <Link className="tp-muted" to={`/tournament/${tournamentId}/shiaijo`}>Change in Shiaijo plan</Link>
+            </div>
           </div>
           {smallFormats && (
             <Message type="info">

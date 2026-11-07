@@ -22,6 +22,7 @@ import Registration from './pages/Registration';
 import Manage from './pages/Manage';
 import Shinpan from './pages/Shinpan';
 import ScoreInput from './pages/ScoreInput';
+import ShiaijoPlan from './pages/ShiaijoPlan';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './ProtectRoute'; // import it
@@ -330,6 +331,14 @@ function AppContent() {
       <Manage />
     </ProtectedRoute>
   } 
+/>
+<Route
+  path="/tournament/:tournamentId/shiaijo"
+  element={
+    <ProtectedRoute>
+      <ShiaijoPlan />
+    </ProtectedRoute>
+  }
 />
 <Route 
   path="/tournament/:tournamentId/shinpan" 

@@ -104,7 +104,9 @@ function CreateTournament() {
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
             <label className="tp-field">
               Number of courts (shiaijo)
-              <input type="number" min="1" max="12" value={form.shiaijo_count} onChange={set('shiaijo_count')} />
+              <select value={form.shiaijo_count} onChange={set('shiaijo_count')}>
+                {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
             </label>
             <label className="tp-field tp-check">
               <input type="checkbox" checked={form.is_public} onChange={set('is_public')} />

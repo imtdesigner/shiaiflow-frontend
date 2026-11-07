@@ -246,6 +246,7 @@ function Registration() {
                   <div className="tp-actions">
                     <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => checkAll(true)}>All present</button>
                     <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => checkAll(false)}>Clear check-in</button>
+                    <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
                     <Link className="tp-btn" to={`/tournament/${tournamentId}/drawings`}>To the draw →</Link>
                   </div>
                 )}

@@ -425,3 +425,38 @@ test('bracket labels: P pool.place, W/L match refs, # in a direct KO, short roun
   assert.equal(slotLabel('051', true), '#5');
   assert.deepEqual([1, 2, 3, 4].map(roundShort), ['Final', '1/2 final', '1/4 final', '1/8 final']);
 });
+
+// --- shiaijo plan ------------------------------------------------------------
+import { poolCourts, koCourts, drawCourts, plannedFights, courtSeconds } from '../src/lib/tournament/courts.js';
+
+test('courts: pools spread over the category courts by fight count', () => {
+  assert.deepEqual(poolCourts([3, 3, 3, 3, 3], [1, 2]), [1, 2, 1, 2, 1]);
+  assert.deepEqual(poolCourts([3, 2, 2], [1, 2]), [1, 2, 2]); // 3 fights vs 1+1
+  assert.deepEqual(poolCourts([3, 3], [4]), [4, 4]);
+});
+
+test('courts: KO halves on their own court, final on the first court', () => {
+  const k = koCourts(tpl('K042'), [1, 2]);
+  // K042 final is W06-W05: the W06 half (03, 04, 06) on court 1, the W05 half (01, 02, 05) on court 2
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => k.get(n)), [2, 2, 1, 1, 2, 1, 1]);
+  const one = koCourts(tpl('K042'), [3]);
+  assert.ok([...one.values()].every((c) => c === 3));
+});
+
+test('courts: drawCourts for a direct KO keeps all entries on the first court', () => {
+  const d = buildDraw(Array.from({ length: 8 }, (_, i) => `e${i}`), { poolSize: 1, advancing: 1 }, 1);
+  const c = drawCourts(d, [2, 1]);
+  assert.ok(c.pool.every((x) => x === 1));
+  assert.equal(c.ko.get(7), 1);
+  assert.equal(c.ko.get(4), 2);
+});
+
+test('courts: planned fights and seconds per court', () => {
+  const fights = plannedFights(15, { poolSize: 3, advancing: 2 }, [1, 2]);
+  assert.equal(fights.filter((f) => f.phase === 'pool').length, 15);
+  assert.equal(fights.filter((f) => f.phase === 'final').length, 1);
+  assert.equal(fights.length, 15 + 9);
+  const secs = courtSeconds(fights, { pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 });
+  assert.equal([...secs.values()].reduce((a, b) => a + b, 0), 23 * 180 + 240);
+  assert.deepEqual(plannedFights(1, { poolSize: 3, advancing: 2 }, [1]), []);
+});
