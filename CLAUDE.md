@@ -50,6 +50,6 @@ Talk to the owner in Croatian; code, commits, code comments and all UI text in E
 - Full background: ShiaiFlow claude.ai project docs `excel-analiza-i-specifikacija.md`.
 
 ## Next planned work
-1. Verify Create tournament → Registration → Drawings against the real DB (RLS).
-2. ScoreInput (scoretable per shiaijo): score events, timer, finish match, pool ranking + ipponshobu, KO winner propagation, realtime.
-3. Public live view (replaces the Excel dashboard), Brackets editor, Manage/queue.
+1. Tournament setup flow per the owner's concept (logic only, keep the current UI): name/date/time → categories and their rules → what signup needs.
+2. Polish: wire dashboard icons and menus (Shiaijo plan / Fight plan have no icon yet), remove or re-point dead links (navbar Explore / Attend a Tournament, Shinpan).
+3. Later: team lineups per match, change notifications by email, share link with poster preview, missing KO templates (K031, K151, K152, K162), members-only categories for federations.
