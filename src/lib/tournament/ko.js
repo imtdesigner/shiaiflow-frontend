@@ -25,7 +25,7 @@ export const parsePoolCode = (code) => ({ pool: Number(code.slice(0, 2)), place:
 export const poolCode = (pool, place) => `${String(pool).padStart(2, '0')}${place}`;
 
 /** Leaves (pool codes) under a slot, following W references. */
-function leaves(code, byNo) {
+export function leaves(code, byNo) {
   if (!isWinnerRef(code)) return [code];
   const m = byNo.get(winnerRefNo(code));
   return m ? [...leaves(m.red, byNo), ...leaves(m.white, byNo)] : [];

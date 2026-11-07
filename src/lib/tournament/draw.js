@@ -3,10 +3,12 @@
 
 import { seededRandom, shuffle, splitEvenly, poolMatches, systemCode } from './pools.js';
 import { getTemplate, validateTemplate, poolCode } from './ko.js';
+import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 
 /**
- * Random draw: shuffle the entries and split them into even pools.
- * @param {string[]} entryIds checked-in entries
+ * Draw: even pools; with clubs/seeds known, seeds are kept apart along the KO
+ * bracket and same-club entries are spread (placement.js), otherwise random.
+ * @param {Array<string | { id, club?, seed? }>} entries checked-in entries
  * @param {{ poolSize: number, advancing: number }} settings
  * @param {number} seed reproducible random seed
  * @returns {{
@@ -14,16 +16,25 @@ import { getTemplate, validateTemplate, poolCode } from './ko.js';
  *   koTemplate: object[]|null, problems: string[], directKo: boolean
  * }}
  */
-export function buildDraw(entryIds, settings, seed) {
-  const order = shuffle(entryIds, seededRandom(seed));
-  return drawFromPools(splitEvenly(order, settings.poolSize), settings, seed);
+export function buildDraw(entries, settings, seed) {
+  const meta = entryMeta(entries);
+  const ids = meta.map((m) => m.id);
+  const sizes = splitEvenly(ids, settings.poolSize).map((p) => p.length);
+  const directKo = settings.poolSize === 1;
+  const adv = directKo ? 1 : settings.advancing;
+  const template = adv > 0 && sizes.length * adv >= 2 ? getTemplate(systemCode(sizes.length, adv)) : null;
+  const pools = meta.some((m) => m.club || m.seed)
+    ? placeEntries(meta, sizes, template, directKo, seed)
+    : splitEvenly(shuffle(ids, seededRandom(seed)), settings.poolSize);
+  return drawFromPools(pools, settings, seed, meta);
 }
 
 /**
- * Pool matches, KO template and problems for given pools — used for the random
+ * Pool matches, KO template, problems (block saving) and placement warnings
+ * (seeds/clubs, informative) for given pools — used for the random
  * draw and again after the organizer edits the pools by hand (seed = null).
  */
-export function drawFromPools(pools, { poolSize, advancing }, seed = null) {
+export function drawFromPools(pools, { poolSize, advancing }, seed = null, meta = null) {
   const problems = [];
   const directKo = poolSize === 1;
   const count = pools.reduce((n, p) => n + p.length, 0);
@@ -63,7 +74,10 @@ export function drawFromPools(pools, { poolSize, advancing }, seed = null) {
     }
   }
 
-  return { seed, pools, poolMatches: matches, koCode, koTemplate, problems, directKo };
+  const warnings = meta ? analyzePlacement(pools, meta, koTemplate, directKo) : [];
+  return {
+    seed, pools, poolMatches: matches, koCode, koTemplate, problems, warnings, directKo, meta,
+  };
 }
 
 /** Swap two entries between (or within) pools; returns new pools. */

@@ -283,3 +283,84 @@ test('manual edit: swap and move keep entries, drawFromPools recomputes matches'
   assert.ok(drawFromPools(moveEntry(emptied, 'c', 1), settings).problems.some((p) => p.includes('prazan')));
   assert.equal(moveEntry(pools, 'zz', 0), pools);
 });
+
+// --- placement: seeds and clubs -------------------------------------------
+import { poolMeetingRound, analyzePlacement } from '../src/lib/tournament/placement.js';
+import { getTemplate as tpl } from '../src/lib/tournament/ko.js';
+
+const people = (n, clubOf = () => '', seedOf = () => null) => Array.from({ length: n }, (_, i) => ({
+  id: `p${i}`, club: clubOf(i), seed: seedOf(i),
+}));
+const poolOf = (d, id) => d.pools.findIndex((p) => p.includes(id));
+
+test('meeting round: K022 pool winners meet only in the final', () => {
+  const meet = poolMeetingRound(tpl('K022'));
+  assert.equal(meet(0, 1), 1);
+  const k041 = poolMeetingRound(tpl('K041'));
+  assert.equal(k041(0, 1), 2); // 011 vs 021 = semifinal
+  assert.equal(k041(0, 2), 1);
+});
+
+function checkSeeds(n, seedCount, seeds = [1, 2, 3, 42, 99]) {
+  for (const s of seeds) {
+    const d = buildDraw(people(n, () => '', (i) => (i < seedCount ? i + 1 : null)), { poolSize: 3, advancing: 2 }, s);
+    const meet = poolMeetingRound(d.koTemplate);
+    const pools = Array.from({ length: seedCount }, (_, i) => poolOf(d, `p${i}`));
+    assert.equal(new Set(pools).size, seedCount, `seed ${s}`);
+    assert.equal(meet(pools[0], pools[1]), 1, `seed ${s}`);
+    for (let a = 0; a < seedCount; a += 1) {
+      for (let b = a + 1; b < seedCount; b += 1) assert.ok(meet(pools[a], pools[b]) <= 2, `seed ${s}`);
+    }
+    assert.deepEqual(d.warnings, []);
+    assert.deepEqual(d.problems, []);
+  }
+}
+
+test('seeds: 4 seeds in 24 (K082) never meet before the semifinal, 1 and 2 only in the final', () => {
+  checkSeeds(24, 4);
+});
+
+test('seeds: K052 (15) separates 3 seeds; a 4th cannot be kept apart and is reported', () => {
+  checkSeeds(15, 3);
+  // Excel K052: winners of pools 1/2 meet in the quarterfinal, 4/5 in round one.
+  const d = buildDraw(people(15, () => '', (i) => (i < 4 ? i + 1 : null)), { poolSize: 3, advancing: 2 }, 1);
+  assert.equal(new Set([0, 1, 2, 3].map((i) => poolOf(d, `p${i}`))).size, 4);
+  assert.ok(d.warnings.some((w) => w.includes('prerano')));
+});
+
+test('seeds: direct KO with 8 (K081) puts seeds 1 and 2 in opposite halves', () => {
+  const d = buildDraw(people(8, () => '', (i) => (i < 2 ? i + 1 : null)), { poolSize: 1, advancing: 1 }, 5);
+  const meet = poolMeetingRound(d.koTemplate);
+  assert.equal(meet(poolOf(d, 'p0'), poolOf(d, 'p1')), 1);
+});
+
+test('clubs: 9 people from 3 clubs in pools of 3 → no pool shares a club', () => {
+  for (const s of [1, 7, 123]) {
+    const d = buildDraw(people(9, (i) => ['RIJEKA', 'ZAGREB', 'SPLIT'][i % 3]), { poolSize: 3, advancing: 2 }, s);
+    for (const p of d.pools) assert.equal(new Set(p.map((id) => ['RIJEKA', 'ZAGREB', 'SPLIT'][Number(id.slice(1)) % 3])).size, 3);
+    assert.deepEqual(d.warnings, []);
+  }
+});
+
+test('clubs: direct KO avoids same-club first matches', () => {
+  const d = buildDraw(people(8, (i) => `K${i % 4}`), { poolSize: 1, advancing: 1 }, 11);
+  assert.deepEqual(d.warnings, []);
+});
+
+test('clubs + seeds: impossible separation is reported, draw is still valid and reproducible', () => {
+  const entries = people(6, (i) => (i < 5 ? 'RIJEKA' : 'ZAGREB'));
+  const d = buildDraw(entries, { poolSize: 3, advancing: 2 }, 3);
+  assert.deepEqual(d.problems, []);
+  assert.ok(d.warnings.some((w) => w.includes('RIJEKA')));
+  assert.deepEqual(buildDraw(entries, { poolSize: 3, advancing: 2 }, 3).pools, d.pools);
+  assert.deepEqual(d.pools.flat().sort(), entries.map((e) => e.id).sort());
+});
+
+test('manual edit keeps warnings up to date', () => {
+  const entries = people(6, (i) => ['A', 'B', 'C'][i % 3], (i) => (i < 2 ? i + 1 : null));
+  const d = buildDraw(entries, { poolSize: 3, advancing: 2 }, 1);
+  assert.deepEqual(d.warnings, []);
+  const together = drawFromPools(swapEntries(d.pools, 'p1', d.pools[poolOf(d, 'p0')].find((id) => id !== 'p0')), { poolSize: 3, advancing: 2 }, null, d.meta);
+  assert.ok(together.warnings.some((w) => w.includes('Nositelji 1 i 2')));
+  assert.ok(analyzePlacement(d.pools, d.meta, d.koTemplate, false).length === 0);
+});

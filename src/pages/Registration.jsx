@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn,
+  addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setSeed,
 } from '../lib/api';
 import './TournamentPages.css';
 
@@ -201,7 +201,7 @@ function Registration() {
                   <thead>
                     <tr>
                       <th>#</th><th>{isTeam ? 'Ekipa' : 'Natjecatelj'}</th><th>Klub</th>
-                      {!isTeam && <th>Zvanje</th>}<th>Check-in</th><th />
+                      {!isTeam && <th>Zvanje</th>}<th title="Nositelj (1 = prvi)">Nositelj</th><th>Check-in</th><th />
                     </tr>
                   </thead>
                   <tbody>
@@ -211,6 +211,16 @@ function Registration() {
                         <td>{entryName(en)}</td>
                         <td>{en.team?.club ?? en.competitor?.club ?? ''}</td>
                         {!isTeam && <td>{en.competitor?.grade ?? ''}</td>}
+                        <td>
+                          <select
+                            value={en.seed ?? ''}
+                            disabled={busy || locked}
+                            onChange={(e) => run(() => setSeed(en.id, e.target.value ? Number(e.target.value) : null))}
+                          >
+                            <option value="">—</option>
+                            {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </td>
                         <td>
                           <input
                             type="checkbox"
