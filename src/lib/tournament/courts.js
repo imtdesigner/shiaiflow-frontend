@@ -1,9 +1,12 @@
 // Shiaijo plan (owner, 2026-11-07): the director picks the courts of each
 // category; when a category has more than one court, its pools are spread
-// over them (balanced by fight count) and each part of the KO bracket stays on
-// one court, the final on the category's first court.
+// over them (balanced by fight count; a pool never splits) and each part of
+// the KO bracket stays on one court, the final on the first KO court.
+// Options: KO on other courts than the pools (categories.ko_shiaijos), and
+// finals — or semifinals and finals — of all categories at the end of the
+// tournament on the central courts (tournaments.end_block / central_shiaijos).
 
-import { getTemplate, leaves } from './ko.js';
+import { getTemplate, leaves, matchRounds } from './ko.js';
 import { POOL_ORDER, splitEvenly, systemCode } from './pools.js';
 
 const fightsInPool = (size) => (size >= 2 ? (POOL_ORDER[size]?.length ?? (size * (size - 1)) / 2) : 0);
@@ -39,36 +42,86 @@ export function koCourts(template, courts) {
   return out;
 }
 
-/** Courts for a draw: { pool: court[] per pool, ko: Map(fightNo → court) }. */
-export function drawCourts(draw, courts) {
-  const list = courts?.length ? [...courts].sort((a, b) => a - b) : [1];
+const sorted = (list, fallback) => (list?.length ? [...list].sort((a, b) => a - b) : fallback);
+
+/** Court plan of a category: its courts, KO courts and the tournament's end-block options. */
+export function courtPlan(category, tournament) {
+  const courts = sorted(category?.shiaijos, [1]);
   return {
-    pool: draw.directKo ? draw.pools.map(() => list[0]) : poolCourts(draw.pools.map((p) => p.length), list),
-    ko: koCourts(draw.koTemplate, list),
+    courts,
+    koCourts: sorted(category?.ko_shiaijos, courts),
+    central: sorted(tournament?.central_shiaijos, []),
+    endBlock: tournament?.end_block ?? 'none',
   };
 }
 
 /**
- * Expected fights for a category before the draw (or from its saved draw):
- * [{ phase: 'pool'|'ko'|'final', court }]. Used for the time estimate.
+ * KO fights moved to the end of the tournament: { court: Map, end: Set }.
+ * 'finals' → the final on the first central court; 'semis_finals' → also the
+ * semifinals, spread over the central courts in bracket order. Without central
+ * courts the fights keep their court but are still flagged for the end.
  */
-export function plannedFights(count, { poolSize, advancing }, courts) {
-  if (count < 2) return [];
-  const list = courts?.length ? [...courts].sort((a, b) => a - b) : [1];
-  const sizes = splitEvenly(Array.from({ length: count }, (_, i) => i), poolSize).map((p) => p.length);
-  const directKo = poolSize === 1;
-  const fights = [];
-  if (!directKo) {
-    poolCourts(sizes, list).forEach((court, i) => {
-      for (let f = 0; f < fightsInPool(sizes[i]); f += 1) fights.push({ phase: 'pool', court });
-    });
+function endBlockCourts(template, base, { central, endBlock }) {
+  const court = new Map(base);
+  const end = new Set();
+  if (!template?.length || endBlock === 'none') return { court, end };
+  const rounds = matchRounds(template);
+  const byNo = new Map(template.map((m) => [m.no, m]));
+  const finalNo = template[template.length - 1].no;
+  const order = leaves(`W${finalNo}`, byNo);
+  const firstLeaf = (m) => order.indexOf(leaves(m.red, byNo)[0]);
+  end.add(finalNo);
+  if (central.length) court.set(finalNo, central[0]);
+  if (endBlock === 'semis_finals') {
+    template.filter((m) => rounds.get(m.no) === 2)
+      .sort((a, b) => firstLeaf(a) - firstLeaf(b))
+      .forEach((m, i) => {
+        end.add(m.no);
+        if (central.length) court.set(m.no, central[i % central.length]);
+      });
   }
+  return { court, end };
+}
+
+/**
+ * Courts for a draw: { pool: court[] per pool, ko: Map(fightNo → court),
+ * end: Set(fightNo) of KO fights played at the end of the tournament }.
+ * `plan` is courtPlan(...) or, for short, an array of courts.
+ */
+export function drawCourts(draw, plan) {
+  const p = Array.isArray(plan) || !plan ? courtPlan({ shiaijos: plan }) : plan;
+  const { court, end } = endBlockCourts(draw.koTemplate, koCourts(draw.koTemplate, p.koCourts), p);
+  return {
+    pool: draw.directKo ? draw.pools.map(() => p.courts[0]) : poolCourts(draw.pools.map((x) => x.length), p.courts),
+    ko: court,
+    end,
+  };
+}
+
+/**
+ * Expected fights for a category before the draw:
+ * [{ phase: 'pool'|'ko'|'final', court, end }]. Used for the time estimate.
+ * `plan` is courtPlan(...) or an array of courts.
+ */
+export function plannedFights(count, { poolSize, advancing }, plan) {
+  if (count < 2) return [];
+  const p = Array.isArray(plan) || !plan ? courtPlan({ shiaijos: plan }) : plan;
+  const sizes = splitEvenly(Array.from({ length: count }, (_, i) => i), poolSize).map((x) => x.length);
+  const directKo = poolSize === 1;
   const adv = directKo ? 1 : advancing;
   const template = adv > 0 && sizes.length * adv >= 2 ? getTemplate(systemCode(sizes.length, adv)) : null;
+  const courts = drawCourts({ directKo, pools: sizes.map((n) => Array(n)), koTemplate: template }, p);
+  const fights = [];
+  if (!directKo) {
+    courts.pool.forEach((court, i) => {
+      for (let f = 0; f < fightsInPool(sizes[i]); f += 1) fights.push({ phase: 'pool', court, end: false });
+    });
+  }
   if (template) {
-    const courtsByNo = koCourts(template, list);
     const finalNo = template[template.length - 1].no;
-    for (const m of template) fights.push({ phase: m.no === finalNo ? 'final' : 'ko', court: courtsByNo.get(m.no) });
+    for (const m of template) {
+      fights.push({ phase: m.no === finalNo ? 'final' : 'ko', court: courts.ko.get(m.no), end: courts.end.has(m.no) });
+    }
   }
   return fights;
 }

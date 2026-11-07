@@ -460,3 +460,30 @@ test('courts: planned fights and seconds per court', () => {
   assert.equal([...secs.values()].reduce((a, b) => a + b, 0), 23 * 180 + 240);
   assert.deepEqual(plannedFights(1, { poolSize: 3, advancing: 2 }, [1]), []);
 });
+
+test('courts: KO on other courts than the pools, final on the first KO court', async () => {
+  const { courtPlan } = await import('../src/lib/tournament/courts.js');
+  const d = buildDraw(Array.from({ length: 12 }, (_, i) => `e${i}`), { poolSize: 3, advancing: 2 }, 1); // K042
+  const c = drawCourts(d, courtPlan({ shiaijos: [1, 2], ko_shiaijos: [3] }));
+  assert.deepEqual(c.pool, [1, 2, 1, 2]);
+  assert.ok([...c.ko.values()].every((x) => x === 3));
+  assert.equal(c.end.size, 0);
+});
+
+test('courts: finals / semifinals and finals at the end on the central courts', async () => {
+  const { courtPlan } = await import('../src/lib/tournament/courts.js');
+  const d = buildDraw(Array.from({ length: 12 }, (_, i) => `e${i}`), { poolSize: 3, advancing: 2 }, 1); // K042: 05, 06 semis, 07 final
+  const cat = { shiaijos: [1, 2] };
+  const finals = drawCourts(d, courtPlan(cat, { central_shiaijos: [4, 3], end_block: 'finals' }));
+  assert.deepEqual([...finals.end], [7]);
+  assert.equal(finals.ko.get(7), 3); // first central court (sorted)
+  assert.equal(finals.ko.get(5), 2); // semis stay with the category
+  const sf = drawCourts(d, courtPlan(cat, { central_shiaijos: [3, 4], end_block: 'semis_finals' }));
+  assert.deepEqual([...sf.end].sort(), [5, 6, 7]);
+  assert.deepEqual([sf.ko.get(6), sf.ko.get(5), sf.ko.get(7)], [3, 4, 3]); // final is W06-W05 → 06 first
+  const noCentral = drawCourts(d, courtPlan(cat, { central_shiaijos: [], end_block: 'finals' }));
+  assert.equal(noCentral.ko.get(7), 1);
+  assert.ok(noCentral.end.has(7));
+  const planned = plannedFights(12, { poolSize: 3, advancing: 2 }, courtPlan(cat, { central_shiaijos: [3, 4], end_block: 'semis_finals' }));
+  assert.equal(planned.filter((f) => f.end).length, 3);
+});

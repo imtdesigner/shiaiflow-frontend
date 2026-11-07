@@ -141,7 +141,7 @@ function Drawings() {
   const save = async () => {
     setBusy(true);
     try {
-      replaceCategory(await saveDraw(category, preview));
+      replaceCategory(await saveDraw(category, preview, tournament));
       setPreview(null);
       await reload();
       setMsg({ type: 'success', text: 'Draw saved. Matches have been created.' });
@@ -259,7 +259,10 @@ function Drawings() {
             </label>
             <div className="tp-field">
               Shiaijo
-              <strong>{category.shiaijos.join(' + ')}</strong>
+              <strong>
+                {category.shiaijos.join(' + ')}
+                {category.ko_shiaijos && <span className="tp-muted"> · KO {category.ko_shiaijos.join(' + ')}</span>}
+              </strong>
               <Link className="tp-muted" to={`/tournament/${tournamentId}/shiaijo`}>Change in Shiaijo plan</Link>
             </div>
           </div>
