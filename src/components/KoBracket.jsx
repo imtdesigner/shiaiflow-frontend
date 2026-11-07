@@ -9,7 +9,6 @@ const GAP_X = 30;
 const UNIT = BOX_H + 18;
 const HEADER = 26;
 
-const pad = (n) => String(n).padStart(2, '0');
 
 /** Positions: column by round (first round left), rows from the tree order. */
 function layout(template) {
@@ -70,7 +69,7 @@ export default function KoBracket({ template, nameOf, resolved = {}, directKo = 
           return (
             <div key={m.no} className="ko-match" style={{ left: p.x, top: p.y, width: BOX_W, height: BOX_H }}>
               <div className="ko-match-head">
-                <strong>{pad(m.no)}</strong>
+                <strong>F-{m.no}</strong>
                 <span>{roundShort(p.round)}</span>
               </div>
               {[['aka', m.red], ['shiro', m.white]].map(([side, code]) => (

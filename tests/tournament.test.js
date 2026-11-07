@@ -42,9 +42,9 @@ test('seeded shuffle is reproducible', () => {
 test('pool matches for DAN M pool 1 match the Excel labels', () => {
   const m = poolMatches(['RENDULIĆ', 'MERLAK', 'KOŠUTIĆ'], 1);
   assert.deepEqual(m.map((x) => [x.label, x.red, x.white]), [
-    ['P1.1', 'RENDULIĆ', 'MERLAK'],
-    ['P1.2', 'KOŠUTIĆ', 'MERLAK'],
-    ['P1.3', 'KOŠUTIĆ', 'RENDULIĆ'],
+    ['F-P1.1', 'RENDULIĆ', 'MERLAK'],
+    ['F-P1.2', 'KOŠUTIĆ', 'MERLAK'],
+    ['F-P1.3', 'KOŠUTIĆ', 'RENDULIĆ'],
   ]);
 });
 
@@ -72,7 +72,7 @@ test('DAN M pool 1 (DP26): tie for 2nd → ipponshobu KOŠUTIĆ vs MERLAK, MERLA
 
   const after = rankPool({
     members,
-    matches: [...matches, { kind: 'ipponshobu', label: 'P1.D', red: 'KOŠUTIĆ', white: 'MERLAK', bout: bout('', 'M') }],
+    matches: [...matches, { kind: 'ipponshobu', label: 'F-P1.D', red: 'KOŠUTIĆ', white: 'MERLAK', bout: bout('', 'M') }],
     expectedMatches: 3,
     advancing: 2,
   });

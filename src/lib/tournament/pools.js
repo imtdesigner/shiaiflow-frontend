@@ -75,7 +75,8 @@ export function systemCode(poolCount, advancing) {
 }
 
 /**
- * Matches of one pool. Returns [{ label: 'P1.1', pool: 1, order: 1, red, white }].
+ * Matches of one pool. Returns [{ label: 'F-P1.1', pool: 1, order: 1, red, white }].
+ * Labels: F-P1.1 = fight 1 of pool 1 (P1.1 alone means pool 1, 1st place in the KO).
  * `members` is the pool in position order.
  */
 export function poolMatches(members, poolNumber) {
@@ -83,7 +84,7 @@ export function poolMatches(members, poolNumber) {
   const order = POOL_ORDER[members.length];
   if (!order) throw new Error(`No fight order for pool size ${members.length} (supported 2–8)`);
   return order.map(([r, w], i) => ({
-    label: `P${poolNumber}.${i + 1}`,
+    label: `F-P${poolNumber}.${i + 1}`,
     pool: poolNumber,
     order: i + 1,
     red: members[r - 1],

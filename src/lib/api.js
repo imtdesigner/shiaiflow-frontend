@@ -198,7 +198,7 @@ export async function saveDraw(category, draw, { shiaijo = 1 } = {}) {
       rows.push({
         category_id: category.id,
         phase: 'ko',
-        label: String(k.no),
+        label: `F-${k.no}`, // KO fight number, as W05 / L05 refer to it
         ko_no: k.no,
         red_code: k.red,
         white_code: k.white,
