@@ -22,7 +22,8 @@ export function buildDraw(entries, settings, seed) {
   const sizes = splitEvenly(ids, settings.poolSize).map((p) => p.length);
   const directKo = settings.poolSize === 1;
   const adv = directKo ? 1 : settings.advancing;
-  const template = adv > 0 && sizes.length * adv >= 2 ? getTemplate(systemCode(sizes.length, adv)) : null;
+  const code = adv > 0 && sizes.length * adv >= 2 ? systemCode(sizes.length, adv) : null;
+  const template = code ? (settings.custom?.code === code ? settings.custom.template : getTemplate(code)) : null;
   const pools = meta.some((m) => m.club || m.tier)
     ? placeEntries(meta, sizes, template, directKo, seed)
     : splitEvenly(shuffle(ids, seededRandom(seed)), settings.poolSize);
@@ -34,7 +35,7 @@ export function buildDraw(entries, settings, seed) {
  * (seeds/clubs, informative) for given pools — used for the random
  * draw and again after the organizer edits the pools by hand (seed = null).
  */
-export function drawFromPools(pools, { poolSize, advancing }, seed = null, meta = null) {
+export function drawFromPools(pools, { poolSize, advancing, custom = null }, seed = null, meta = null) {
   const problems = [];
   const directKo = poolSize === 1;
   const count = pools.reduce((n, p) => n + p.length, 0);
@@ -66,7 +67,8 @@ export function drawFromPools(pools, { poolSize, advancing }, seed = null, meta 
   const adv = directKo ? 1 : advancing;
   if (!koNotPossible && adv > 0 && pools.length * adv >= 2) {
     koCode = systemCode(pools.length, adv);
-    koTemplate = getTemplate(koCode);
+    // a template edited in the bracket editor wins when it fits this draw
+    koTemplate = custom?.code === koCode ? custom.template : getTemplate(koCode);
     if (!koTemplate) {
       problems.push(`KO system ${koCode} is not in the library — add it or change the pool size.`);
     } else {

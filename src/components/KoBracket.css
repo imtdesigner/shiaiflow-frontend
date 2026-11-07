@@ -82,3 +82,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.ko-slot.editable {
+  cursor: grab;
+}
+
+.ko-slot.editable:hover,
+.ko-slot.over {
+  background: #fff4d6;
+}
+
+.ko-input {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  border: 1px solid #711921;
+  padding: 0 0.2rem;
+  height: 16px;
+}
+
+.ko-slot.editable {
+  touch-action: none;
+  user-select: none;
+}
+
+.ko-slot.dragging {
+  opacity: 0.4;
+}
+
+.ko-slot.over {
+  outline: 2px dashed #711921;
+  outline-offset: -2px;
+}

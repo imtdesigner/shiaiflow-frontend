@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   isWinnerRef, matchRounds, roundShort, slotLabel, winnerRefNo,
 } from '../lib/tournament/ko.js';
@@ -32,11 +33,93 @@ function layout(template) {
 }
 
 /**
+ * One slot. In edit mode: press and drag onto another slot to swap them
+ * (pointer events, so mouse and touch both work), or click to type a code.
+ */
+function Slot({
+  side, code, no, directKo, name, editable, editing, over, dragging, onPress, onTyped,
+}) {
+  const field = side === 'aka' ? 'red' : 'white';
+  const [text, setText] = useState(slotLabel(code, directKo));
+  if (!editable) {
+    return (
+      <div className={`ko-slot ${side}`}>
+        <span className="ko-code">{slotLabel(code, directKo)}</span>
+        <span className="ko-name">{name}</span>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`ko-slot ${side} editable ${over ? 'over' : ''} ${dragging ? 'dragging' : ''}`}
+      data-slot={`${no}|${field}`}
+      title="Drag onto another slot to swap, or click to type (P2.1, W03, #5)"
+      onPointerDown={(e) => { if (!editing) { setText(slotLabel(code, directKo)); onPress(e, { no, side: field }); } }}
+    >
+      {editing ? (
+        <input
+          className="ko-input"
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onTyped({ no, side: field }, text);
+            if (e.key === 'Escape') onTyped(null);
+          }}
+          onBlur={() => onTyped({ no, side: field }, text)}
+        />
+      ) : (
+        <>
+          <span className="ko-code">{slotLabel(code, directKo)}</span>
+          <span className="ko-name">{name}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+const slotAt = (x, y) => {
+  const el = document.elementFromPoint(x, y)?.closest('[data-slot]');
+  if (!el) return null;
+  const [no, side] = el.dataset.slot.split('|');
+  return { no: Number(no), side };
+};
+const sameSlot = (a, b) => a && b && a.no === b.no && a.side === b.side;
+
+/**
  * Graphical KO bracket. `resolved` maps slot codes to entry ids once known
  * (e.g. direct KO first round); names are shown next to the slot code.
+ * With `onSwap` / `onSet` the slots can be edited (bracket editor).
  */
-export default function KoBracket({ template, nameOf, resolved = {}, directKo = false }) {
+export default function KoBracket({
+  template, nameOf, resolved = {}, directKo = false, onSwap, onSet,
+}) {
+  const [editing, setEditing] = useState(null);
+  const [drag, setDrag] = useState(null); // { from, over, moved }
   if (!template?.length) return null;
+  const editable = !!onSwap;
+
+  const press = (e, from) => {
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    let state = { from, over: null, moved: false };
+    setDrag(state);
+    const move = (ev) => {
+      const moved = state.moved || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 6;
+      state = { ...state, moved, over: moved ? slotAt(ev.clientX, ev.clientY) : null };
+      setDrag(state);
+    };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setDrag(null);
+      if (!state.moved) { setEditing(from); return; }
+      const target = slotAt(ev.clientX, ev.clientY);
+      if (target && !sameSlot(target, from)) onSwap(from, target);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   const { pos, maxRound, height, width } = layout(template);
 
   const lines = [];
@@ -73,10 +156,20 @@ export default function KoBracket({ template, nameOf, resolved = {}, directKo = 
                 <span>{roundShort(p.round)}</span>
               </div>
               {[['aka', m.red], ['shiro', m.white]].map(([side, code]) => (
-                <div key={side} className={`ko-slot ${side}`}>
-                  <span className="ko-code">{slotLabel(code, directKo)}</span>
-                  <span className="ko-name">{resolved[code] ? nameOf(resolved[code]) : ''}</span>
-                </div>
+                <Slot
+                  key={side}
+                  side={side}
+                  code={code}
+                  no={m.no}
+                  directKo={directKo}
+                  name={resolved[code] ? nameOf(resolved[code]) : ''}
+                  editable={editable}
+                  editing={sameSlot(editing, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
+                  over={drag?.moved && sameSlot(drag.over, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
+                  dragging={drag?.moved && sameSlot(drag.from, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
+                  onPress={press}
+                  onTyped={(slot, text) => { setEditing(null); if (slot) onSet(slot, text); }}
+                />
               ))}
             </div>
           );

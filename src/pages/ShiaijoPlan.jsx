@@ -275,6 +275,7 @@ function ShiaijoPlan() {
       <div className="tp-actions">
         <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/registration`}>Registration</Link>
         <Link className="tp-btn" to={`/tournament/${tournamentId}/drawings`}>Draw →</Link>
+        <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
       </div>
     </div>
   );

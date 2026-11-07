@@ -487,3 +487,65 @@ test('courts: finals / semifinals and finals at the end on the central courts', 
   const planned = plannedFights(12, { poolSize: 3, advancing: 2 }, courtPlan(cat, { central_shiaijos: [3, 4], end_block: 'semis_finals' }));
   assert.equal(planned.filter((f) => f.end).length, 3);
 });
+
+// --- bracket editor ----------------------------------------------------------
+import { parseSlotInput, swapSlots, setSlot, normalizeTemplate, checkTemplate } from '../src/lib/tournament/bracketEdit.js';
+
+test('bracket editor: typed slot codes', () => {
+  assert.equal(parseSlotInput('P2.1'), '021');
+  assert.equal(parseSlotInput(' p12.2 '), '122');
+  assert.equal(parseSlotInput('#5'), '051');
+  assert.equal(parseSlotInput('w3'), 'W03');
+  assert.equal(parseSlotInput('P2.3'), null);
+  assert.equal(parseSlotInput('L4'), null);
+});
+
+test('bracket editor: swap pool places keeps a valid template', () => {
+  const t = tpl('K042');
+  const s = swapSlots(t, { no: 1, side: 'white' }, { no: 2, side: 'white' }); // 022 <-> 042
+  assert.equal(s[0].white, '042');
+  assert.equal(s[1].white, '022');
+  assert.equal(t[0].white, '022'); // not mutated
+  assert.deepEqual(checkTemplate(s, 4, 2).errors, []);
+});
+
+test('bracket editor: same-half is a warning, a missing qualifier an error', () => {
+  const t = tpl('K042');
+  const sameHalf = swapSlots(t, { no: 1, side: 'white' }, { no: 3, side: 'red' }); // 022 <-> 012
+  const r = checkTemplate(sameHalf, 4, 2);
+  assert.deepEqual(r.errors, []);
+  assert.ok(r.warnings.length > 0);
+  const broken = setSlot(t, { no: 1, side: 'red' }, '099');
+  assert.ok(checkTemplate(broken, 4, 2).errors.some((e) => e.includes('011')));
+});
+
+test('bracket editor: setSlot with a code already in use swaps the two', () => {
+  const t = tpl('K042');
+  const s = setSlot(t, { no: 1, side: 'red' }, '031');
+  assert.equal(s[0].red, '031');
+  assert.equal(s[1].red, '011');
+});
+
+test('bracket editor: moving a preliminary fight renumbers when needed', () => {
+  // K052: 04 = 031 vs W01, 06 = 032 vs W02. Move W01 next to pool 1 winner (03 red).
+  const t = tpl('K052');
+  const moved = swapSlots(t, { no: 4, side: 'white' }, { no: 3, side: 'white' }); // W01 <-> 021
+  const n = normalizeTemplate(moved);
+  assert.equal(n.error, null);
+  assert.deepEqual(checkTemplate(n.template, 5, 2).errors, []);
+  // a W ref pointing forward gets renumbered
+  const forward = swapSlots(t, { no: 3, side: 'red' }, { no: 7, side: 'red' }); // 011 <-> W03 → match 3 takes W03 = itself
+  assert.ok(normalizeTemplate(forward).error);
+  const later = swapSlots(t, { no: 1, side: 'red' }, { no: 8, side: 'red' }); // 042 <-> W05: match 1 takes W05
+  const r = normalizeTemplate(later);
+  assert.equal(r.error, null);
+  assert.ok(r.template.every((m) => [m.red, m.white].every((c) => !c.startsWith('W') || Number(c.slice(1)) < m.no)));
+  assert.equal(r.template.length, 9);
+});
+
+test('bracket editor: untouched templates keep their numbering', () => {
+  for (const code of ['K022', 'K042', 'K052', 'K082', 'K141']) {
+    const t = tpl(code);
+    assert.deepEqual(normalizeTemplate(t).template, t, code);
+  }
+});

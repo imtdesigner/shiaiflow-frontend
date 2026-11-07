@@ -125,17 +125,21 @@ function Drawings() {
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
   };
 
+  // KO template adjusted in the bracket editor (used when it fits the draw)
+  const custom = category?.ko_template_edited && category.ko_template
+    ? { code: category.ko_template_code, template: category.ko_template } : null;
+
   const makePreview = () => {
     setMsg({ type: '', text: '' });
     setPreview(buildDraw(checkedIn.map((e) => ({
       id: e.id, club: e.team?.club ?? e.competitor?.club ?? '', tier: e.tier,
     })), {
-      poolSize: category.pool_size, advancing: category.advancing,
+      poolSize: category.pool_size, advancing: category.advancing, custom,
     }, newSeed()));
   };
 
   const editPools = (pools) => setPreview(drawFromPools(pools, {
-    poolSize: category.pool_size, advancing: category.advancing,
+    poolSize: category.pool_size, advancing: category.advancing, custom,
   }, null, preview.meta));
 
   const save = async () => {
@@ -154,9 +158,9 @@ function Drawings() {
     setBusy(true);
     try {
       await clearDraw(category.id);
-      replaceCategory(await updateCategory(category.id, {
-        status: 'registration', draw_seed: null, ko_template_code: null, ko_template: null,
-      }));
+      replaceCategory(await updateCategory(category.id, category.ko_template_edited
+        ? { status: 'registration', draw_seed: null } // keep the bracket edited by hand
+        : { status: 'registration', draw_seed: null, ko_template_code: null, ko_template: null }));
       setSaved(null);
       setMsg({ type: 'info', text: 'Draw undone. Registration is open again.' });
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
@@ -321,6 +325,7 @@ function Drawings() {
           <h3>
             Draw preview
             {preview.koCode && <> · system <span className="tp-badge">{preview.koCode}</span></>}
+            {custom?.code === preview.koCode && preview.koCode && <span className="tp-muted"> (edited bracket)</span>}
             {' '}<span className="tp-muted">{preview.seed === null ? '(edited by hand)' : `(seed ${preview.seed})`}</span>
           </h3>
           {preview.problems.length > 0 && (
@@ -391,6 +396,8 @@ function Drawings() {
             </>
           )}
           <div className="tp-actions">
+            <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
+            <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/brackets`}>Edit bracket</Link>
             <button type="button" className="tp-btn danger" onClick={undo} disabled={busy}>Undo draw</button>
           </div>
         </div>

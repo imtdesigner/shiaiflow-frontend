@@ -1,6 +1,7 @@
 // Thin data layer over Supabase. Pages call these instead of building queries.
 import { supabase } from '../supabaseClient';
 import { directKoQualifiers } from './tournament/draw.js';
+import { getTemplate } from './tournament/ko.js';
 import { courtPlan, drawCourts } from './tournament/courts.js';
 
 function unwrap({ data, error }) {
@@ -155,7 +156,7 @@ export async function getSavedDraw(categoryId) {
     .order('number'));
   const matches = unwrap(await supabase
     .from('matches')
-    .select('id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, end_block, status')
+    .select('id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, end_block, court_manual, queue_order, status')
     .eq('category_id', categoryId)
     .order('queue_order'));
   return { pools, matches };
@@ -247,6 +248,74 @@ export async function listFights(categoryIds) {
 }
 
 /**
+ * Save a KO template edited in the bracket editor (null = back to the default).
+ * Before the draw it is stored on the category and used by the draw; after
+ * the draw the KO fights are rebuilt from it — refused once a KO fight started.
+ */
+export async function saveKoTemplate(category, code, template, tournament) {
+  const edited = !!template;
+  if (category.status === 'registration' || category.status === 'cancelled') {
+    return updateCategory(category.id, {
+      ko_template_code: edited ? code : null, ko_template: template, ko_template_edited: edited,
+    });
+  }
+  const { pools, matches } = await getSavedDraw(category.id);
+  const ko = matches.filter((m) => m.phase === 'ko');
+  if (ko.some((m) => m.status !== 'scheduled')) throw new Error('KO fights have already started — the bracket can no longer be changed.');
+  const finalTemplate = template ?? getTemplate(code);
+  const draw = {
+    directKo: category.pool_size === 1,
+    pools: pools.map((p) => [...p.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id)),
+    koTemplate: finalTemplate,
+  };
+  const courts = drawCourts(draw, courtPlan(category, tournament));
+  const direct = draw.directKo ? directKoQualifiers(draw.pools) : {};
+  const start = Math.max(0, ...matches.filter((m) => m.phase !== 'ko').map((m) => m.queue_order ?? 0));
+  if (ko.length) unwrap(await supabase.from('matches').delete().in('id', ko.map((m) => m.id)));
+  unwrap(await supabase.from('matches').insert(finalTemplate.map((k, i) => ({
+    category_id: category.id,
+    phase: 'ko',
+    label: `F-${k.no}`,
+    ko_no: k.no,
+    red_code: k.red,
+    white_code: k.white,
+    red_entry_id: direct[k.red] ?? null,
+    white_entry_id: direct[k.white] ?? null,
+    shiaijo: courts.ko.get(k.no),
+    end_block: courts.end.has(k.no),
+    queue_order: start + i + 1,
+  })), { defaultToNull: false }));
+  return updateCategory(category.id, { ko_template_code: code, ko_template: finalTemplate, ko_template_edited: edited });
+}
+
+/** Change the court of one fight by hand (null = back to the plan). */
+export async function setFightCourt(match, court, category, tournament) {
+  if (court === null) {
+    unwrap(await supabase.from('matches').update({ court_manual: false }).eq('id', match.id));
+    return applyCourts(category, tournament);
+  }
+  unwrap(await supabase.from('matches').update({ shiaijo: court, court_manual: true }).eq('id', match.id));
+}
+
+/** Every fight of a tournament's categories, with entry names resolved by the page. */
+export async function listTournamentFights(categoryIds) {
+  if (!categoryIds.length) return [];
+  return unwrap(await supabase.from('matches')
+    .select('id, category_id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, end_block, court_manual, queue_order, status')
+    .in('category_id', categoryIds)
+    .order('queue_order'));
+}
+
+/** Entries of several categories at once (names for the fight plan). */
+export async function listEntriesFor(categoryIds) {
+  if (!categoryIds.length) return [];
+  return unwrap(await supabase
+    .from('entries')
+    .select('id, category_id, checked_in, tier, competitor:competitors(id, last_name, first_name, display_name, club, grade), team:teams(id, name, club)')
+    .in('category_id', categoryIds));
+}
+
+/**
  * Re-apply the court plan to a drawn category: fights that have not started
  * get their court and end-of-tournament flag from the current plan.
  */
@@ -261,7 +330,7 @@ export async function applyCourts(category, tournament) {
   const courts = drawCourts(draw, courtPlan(category, tournament));
   const poolIndex = Object.fromEntries(pools.map((p, i) => [p.id, i]));
   const groups = new Map(); // "court|end" -> ids
-  for (const m of matches.filter((x) => x.status === 'scheduled')) {
+  for (const m of matches.filter((x) => x.status === 'scheduled' && !x.court_manual)) {
     const ko = m.phase === 'ko';
     const court = ko ? courts.ko.get(m.ko_no) : courts.pool[poolIndex[m.pool_id]];
     const end = ko && courts.end.has(m.ko_no);
