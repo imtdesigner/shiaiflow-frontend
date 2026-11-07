@@ -94,7 +94,8 @@ function Home () {
               </div>
               <div className="home-tournament-actions">
                 <Link className="tp-btn" to={`/t/${t.id}`}>{t.status === 'running' ? 'Live results' : 'Competitor'}</Link>
-                <Link className="tp-btn secondary" to={`/join/${t.id}`}>Editor / table (PIN)</Link>
+                <Link className="tp-btn secondary" to={`/join/${t.id}?as=editor`}>Editor (PIN)</Link>
+                {t.status === 'running' && <Link className="tp-btn secondary" to={`/join/${t.id}?as=table`}>Table (PIN)</Link>}
                 <Link className="tp-btn secondary" to="/login">Owner</Link>
               </div>
             </div>

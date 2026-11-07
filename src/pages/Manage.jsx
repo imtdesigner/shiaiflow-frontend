@@ -5,7 +5,7 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
-  getPin, listRunFights, setPin, startTournament, subscribeFights,
+  getPin, listRunFights, myRole, setPin, startTournament, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
@@ -27,6 +27,9 @@ function Manage() {
   const [pin, setPinState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+  const [role, setRole] = useState(null);
+
+  useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
 
   const drawn = useMemo(() => categories.filter((c) => !['registration', 'cancelled'].includes(c.status)), [categories]);
   const notDrawn = categories.filter((c) => c.status === 'registration');
@@ -65,6 +68,17 @@ function Manage() {
 
   if (loading) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
+  if (role === 'scorer') {
+    return (
+      <div className="tp-page">
+        <h2>Scoretable</h2>
+        <Message type="info">This device is a scoretable. Pick your shiaijo:</Message>
+        <div className="tp-actions">
+          {courts.map((n) => <Link key={n} className="tp-btn" to={`/tournament/${tournamentId}/score?court=${n}`}>Shiaijo {n}</Link>)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tp-page">

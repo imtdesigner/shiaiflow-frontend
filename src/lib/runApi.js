@@ -199,14 +199,20 @@ export async function myRole(tournamentId) {
   return row?.role ?? null;
 }
 
-/** Editor / table joins a tournament with its PIN (signs in anonymously when needed). */
-export async function claimTournament(tournamentId, pin) {
+/**
+ * Join a tournament with its PIN (signs in anonymously when needed). The door
+ * decides the role: 'editor' → organizer (needs a published tournament),
+ * 'table' → scorer (needs a running tournament). Returns the role.
+ */
+export async function claimTournament(tournamentId, pin, door = 'editor') {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     const { error } = await supabase.auth.signInAnonymously();
     if (error) throw new Error(`Cannot sign in with a PIN: ${error.message}. The owner has to enable anonymous sign-ins in Supabase.`);
   }
-  return unwrap(await supabase.rpc('claim_tournament', { t_id: tournamentId, p: pin }));
+  return unwrap(await supabase.rpc('claim_tournament', {
+    t_id: tournamentId, p: pin, as_role: door === 'table' ? 'scorer' : 'organizer',
+  }));
 }
 
 /** Realtime: call `onChange` when fights or score events of these categories change. */
