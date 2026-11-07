@@ -173,3 +173,47 @@ test('team tie on wins and ippons needs daihyōsen', () => {
   assert.equal(teamMatchResult(bouts).needsDaihyosen, true);
   assert.equal(teamMatchResult([...bouts, { position: 'daihyosen', bout: bout('', 'M') }]).winner, 'white');
 });
+
+// --- draw ------------------------------------------------------------------
+import { buildDraw, directKoQualifiers } from '../src/lib/tournament/index.js';
+
+test('draw: 15 entries, pools of 3, 2 advancing → K052 with 15 pool matches', () => {
+  const ids = Array.from({ length: 15 }, (_, i) => `e${i}`);
+  const d = buildDraw(ids, { poolSize: 3, advancing: 2 }, 123);
+  assert.equal(d.pools.length, 5);
+  assert.equal(d.poolMatches.length, 15);
+  assert.equal(d.koCode, 'K052');
+  assert.equal(d.koTemplate.length, 9);
+  assert.deepEqual(d.problems, []);
+  assert.deepEqual(buildDraw(ids, { poolSize: 3, advancing: 2 }, 123).pools, d.pools);
+});
+
+test('draw: Dan Ž style (3 entries, pools only) has no KO', () => {
+  const d = buildDraw(['a', 'b', 'c'], { poolSize: 3, advancing: 0 }, 1);
+  assert.equal(d.koCode, null);
+  assert.equal(d.poolMatches.length, 3);
+});
+
+test('draw: Junior B style (5 entries) → pools 3+2, K022', () => {
+  const d = buildDraw(['a', 'b', 'c', 'd', 'e'], { poolSize: 3, advancing: 2 }, 7);
+  assert.deepEqual(d.pools.map((p) => p.length), [3, 2]);
+  assert.equal(d.koCode, 'K022');
+  assert.deepEqual(d.problems, []);
+});
+
+test('draw: team direct KO with 11 teams → K111, qualifiers per pool', () => {
+  const ids = Array.from({ length: 11 }, (_, i) => `t${i}`);
+  const d = buildDraw(ids, { poolSize: 1, advancing: 2 }, 5);
+  assert.equal(d.directKo, true);
+  assert.equal(d.koCode, 'K111');
+  assert.equal(d.poolMatches.length, 0);
+  const q = directKoQualifiers(d.pools);
+  assert.equal(Object.keys(q).length, 11);
+  assert.equal(q['011'], d.pools[0][0]);
+});
+
+test('draw: missing template is reported', () => {
+  const ids = Array.from({ length: 45 }, (_, i) => `e${i}`);
+  const d = buildDraw(ids, { poolSize: 3, advancing: 2 }, 1); // K152
+  assert.ok(d.problems.some((p) => p.includes('K152')));
+});

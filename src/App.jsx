@@ -28,6 +28,7 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
+import { listMyTournaments } from './lib/api';
 
 
 
@@ -74,15 +75,22 @@ function Attend() {
 
 function Dashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedTournament, setSelectedTournament] = useState('');
+  const [tournaments, setTournaments] = useState([]);
+  const [selectedTournament, setSelectedTournament] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('sf-selected-tournament')) ?? null; } catch { return null; }
+  });
   const [pendingPath, setPendingPath] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    listMyTournaments().then(setTournaments).catch(() => setTournaments([]));
+  }, []);
 
   const handleNavigation = (path) => {
     if (path === '/create-tournament') {
       navigate(path);
     } else if (selectedTournament) {
-      navigate(`/tournament/${selectedTournament}/${path}`);
+      navigate(`/tournament/${selectedTournament.id}/${path}`);
     } else {
       setPendingPath(path); // store where user wanted to go
       setShowDropdown(true); // open selector
@@ -90,12 +98,14 @@ function Dashboard() {
   };
 
   const handleTournamentSelect = (tournament) => {
-    setSelectedTournament(tournament);
+    const selected = { id: tournament.id, name: tournament.name };
+    setSelectedTournament(selected);
+    try { sessionStorage.setItem('sf-selected-tournament', JSON.stringify(selected)); } catch { /* ignore */ }
     setShowDropdown(false);
 
     // If user had clicked an icon before, go to that path
     if (pendingPath) {
-      navigate(`/tournament/${tournament}/${pendingPath}`);
+      navigate(`/tournament/${tournament.id}/${pendingPath}`);
       setPendingPath(''); // reset
     }
   };
@@ -119,13 +129,18 @@ function Dashboard() {
             className="dropdown-icon"
             onClick={() => setShowDropdown(!showDropdown)}
           />
-          {selectedTournament && <p className="selected-tournament">{selectedTournament}</p>}
+          {selectedTournament && <p className="selected-tournament">{selectedTournament.name}</p>}
 
           {showDropdown && (
             <ul className="dropdown-list">
-              <li onClick={() => handleTournamentSelect('RijekaCup2025')}>Rijeka Cup 2025</li>
-              <li onClick={() => handleTournamentSelect('ShiaiFlowTest')}>ShiaiFlow Test Event</li>
-              <li onClick={() => handleTournamentSelect('SpringOpen2025')}>Spring Open 2025</li>
+              {tournaments.length === 0 && (
+                <li onClick={() => navigate('/create-tournament')}>Još nemaš turnira — kreiraj prvi</li>
+              )}
+              {tournaments.map((t) => (
+                <li key={t.id} onClick={() => handleTournamentSelect(t)}>
+                  {t.name}{t.start_date ? ` (${t.start_date.slice(0, 4)})` : ''}
+                </li>
+              ))}
             </ul>
           )}
         </div>

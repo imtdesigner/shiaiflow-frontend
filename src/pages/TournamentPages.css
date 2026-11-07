@@ -1,0 +1,243 @@
+/* Shared styles for tournament pages (create, registration, drawings). */
+
+.tp-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+  color: #222;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+}
+
+.tp-page h2 {
+  color: #711921;
+  margin: 0 0 0.25rem;
+}
+
+.tp-subtitle {
+  margin: 0 0 1.5rem;
+  color: #555;
+}
+
+.tp-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+.tp-card h3 {
+  margin: 0 0 1rem;
+  color: #711921;
+  font-size: 1.1rem;
+}
+
+.tp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.tp-field input,
+.tp-field select,
+.tp-field textarea,
+.tp-inline input,
+.tp-inline select {
+  border: none;
+  border-bottom: 2px solid #711921;
+  background: transparent;
+  padding: 0.4rem 0;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  color: #000;
+}
+
+.tp-field textarea {
+  border: 2px solid #711921;
+  border-radius: 6px;
+  padding: 0.5rem;
+  min-height: 7rem;
+}
+
+.tp-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tp-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.tp-btn {
+  background-color: #00bfff;
+  color: #000;
+  border: 2px solid #000;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: bold;
+  font-family: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.tp-btn:hover:not(:disabled) {
+  background-color: #00a3cc;
+}
+
+.tp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tp-btn.secondary {
+  background: #fff;
+}
+
+.tp-btn.danger {
+  background: #fff;
+  border-color: #711921;
+  color: #711921;
+}
+
+.tp-btn.small {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.tp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.tp-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #711921;
+  border-bottom: 2px solid #711921;
+  padding: 0.4rem 0.5rem;
+}
+
+.tp-table td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.4rem 0.5rem;
+}
+
+.tp-table td input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #bbb;
+  background: transparent;
+  font: inherit;
+}
+
+.tp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.tp-tab {
+  border: 2px solid #711921;
+  background: #fff;
+  color: #711921;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.tp-tab.active {
+  background: #711921;
+  color: #fff;
+}
+
+.tp-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #eee;
+  color: #333;
+}
+
+.tp-badge.ok { background: #d8f5d0; color: #1d5e12; }
+.tp-badge.warn { background: #fde7c3; color: #7a4a00; }
+
+.tp-message {
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.tp-message.error { background: #fde2e4; color: #711921; }
+.tp-message.success { background: #d8f5d0; color: #1d5e12; }
+.tp-message.info { background: #e2f4fd; color: #034e6e; }
+
+.tp-pools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.tp-pool {
+  border: 2px solid #711921;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.tp-pool h4 {
+  margin: 0 0 0.5rem;
+  color: #711921;
+}
+
+.tp-pool ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.tp-muted {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.tp-ko-list {
+  columns: 2 260px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+
+.aka { color: #c8102e; font-weight: 600; }
+.shiro { color: #333; font-weight: 600; }
+
+.back-to-dashboard-icon {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  height: 40px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  z-index: 20;
+}
+
+.back-to-dashboard-icon:hover {
+  transform: scale(1.1);
+}
