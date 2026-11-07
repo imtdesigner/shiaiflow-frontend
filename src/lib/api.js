@@ -301,7 +301,7 @@ export async function setFightCourt(match, court, category, tournament) {
 export async function listTournamentFights(categoryIds) {
   if (!categoryIds.length) return [];
   return unwrap(await supabase.from('matches')
-    .select('id, category_id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, end_block, court_manual, queue_order, status')
+    .select('id, category_id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, shiaijo, end_block, court_manual, queue_order, court_seq, status')
     .in('category_id', categoryIds)
     .order('queue_order'));
 }

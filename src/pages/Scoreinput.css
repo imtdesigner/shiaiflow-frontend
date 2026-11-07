@@ -1,18 +1,142 @@
-.scoretable-page {
-    padding: 2rem;
-    color: white;
+/* Scoretable — big touch targets for a table laptop or tablet. */
+.st-head {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.st-head h2 {
+  margin: 0;
+}
+
+.st-fight-head {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.st-board {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.st-side {
+  border-radius: 10px;
+  padding: 0.75rem;
+  border: 3px solid #bbb;
+  background: #fff;
+  min-width: 0;
+}
+
+.st-side.red {
+  border-color: #c62828;
+  background: #fff5f5;
+}
+
+.st-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.st-side.red .st-name {
+  color: #c62828;
+}
+
+.st-club {
+  color: #777;
+  min-height: 1.2em;
+}
+
+.st-marks {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  margin: 0.4rem 0;
+  min-height: 3rem;
+}
+
+.st-hansoku {
+  font-size: 1.2rem;
+  color: #c62828;
+  margin-left: 0.5rem;
+  letter-spacing: 0;
+}
+
+.st-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.st-btn {
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 0.7rem 0.4rem;
+  border-radius: 8px;
+  border: 2px solid #711921;
+  background: #fff;
+  color: #711921;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.st-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.st-btn.hansoku {
+  grid-column: 1 / -1;
+  font-size: 1rem;
+  border-color: #c62828;
+  color: #c62828;
+}
+
+.st-btn.big {
+  font-size: 1.6rem;
+  padding: 1rem 1.6rem;
+}
+
+.st-btn.go {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+
+.st-btn.small {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.st-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-width: 10rem;
+}
+
+.st-clock {
+  font-size: 3.2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.st-clock.up {
+  color: #c62828;
+}
+
+.st-actions {
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .st-board {
+    grid-template-columns: 1fr;
   }
-  
-  .back-to-dashboard-icon {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 1.5rem;
-    height: 40px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-    z-index: 20;
-  }
-  
-  .back-to-dashboard-icon:hover {
-    transform: scale(1.1);
-  }
+}

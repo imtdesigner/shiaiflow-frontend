@@ -5,11 +5,20 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
 import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
+import { courtQueue } from '../lib/tournament/run.js';
 import './TournamentPages.css';
 
 const fmt = (seconds) => {
   const m = Math.round(seconds / 60);
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+};
+
+/** Clock time from the tournament start ('09:00:00') plus seconds, or +h:mm without a start. */
+const clock = (startTime, seconds) => {
+  if (!startTime) return `+${fmt(seconds)}`;
+  const [h, m] = startTime.split(':').map(Number);
+  const total = Math.round((h * 60 + m) + seconds / 60);
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
 
 /** Seconds a fight takes (fight time of its category and phase). */
@@ -64,7 +73,7 @@ function FightPlan() {
     const code = which === 'red' ? f.red_code : f.white_code;
     return code ? slotLabel(code, meta[f.category_id]?.directKo) : '—';
   };
-  const roundOf = (f) => (f.phase === 'ko' ? roundShort(meta[f.category_id]?.rounds.get(f.ko_no)) : 'Pool');
+  const roundOf = (f) => (f.phase === 'ko' ? roundShort(meta[f.category_id]?.rounds.get(f.ko_no)) : f.phase === 'ipponshobu' ? 'Ipponshobu' : 'Pool');
 
   const changeCourt = async (f, value) => {
     setBusy(true); setMsg({ type: '', text: '' });
@@ -89,17 +98,8 @@ function FightPlan() {
 
   // --- by shiaijo: whole tournament per court, in order -----------------------
   const perCourt = useMemo(() => {
-    const order = (f) => byId[f.category_id]?.sort_order ?? 0;
-    const sorted = [...fights].sort((a, b) => {
-      if (a.end_block !== b.end_block) return a.end_block ? 1 : -1;
-      if (a.end_block) {
-        // end of the tournament: semifinals of all categories, then finals
-        const ra = meta[a.category_id]?.rounds.get(a.ko_no) ?? 0;
-        const rb = meta[b.category_id]?.rounds.get(b.ko_no) ?? 0;
-        if (ra !== rb) return rb - ra;
-      }
-      return order(a) - order(b) || (a.queue_order ?? 0) - (b.queue_order ?? 0);
-    });
+    // same order as the scoretables: court_seq once the tournament started, plan order before
+    const sorted = courts.flatMap((n) => courtQueue(fights, drawn, n));
     const secs = (f) => fightSeconds(f, byId[f.category_id], meta[f.category_id]?.finalNo);
     // regular fights first; the end-of-tournament block starts once every court is done
     const regularEnd = Math.max(0, ...courts.map((n) => sorted
@@ -115,7 +115,7 @@ function FightPlan() {
       });
       return { court: n, list, total: t };
     });
-  }, [fights, byId, meta, courtCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fights, byId, meta, courtCount, drawn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const category = byId[selectedId];
   const catFights = fights.filter((f) => f.category_id === selectedId);
@@ -134,13 +134,13 @@ function FightPlan() {
       <tbody>
         {list.map(({ f, start }) => (
           <tr key={f.id} className={f.end_block ? 'tp-end-block' : ''}>
-            {showStart && <td className="tp-muted">+{fmt(start)}</td>}
+            {showStart && <td className="tp-muted">{clock(tournament?.start_time, start)}</td>}
             <td><strong>{f.label}</strong></td>
             {showCategory && <td>{byId[f.category_id]?.name}</td>}
             <td className="tp-muted">{roundOf(f)}{f.end_block ? ' · end' : ''}</td>
             <td className="aka">{side(f, 'red')}</td>
             <td className="shiro">{side(f, 'white')}</td>
-            <td><CourtSelect f={f} /></td>
+            <td><span className="tp-print-only">{f.shiaijo}</span><span className="tp-no-print"><CourtSelect f={f} /></span></td>
           </tr>
         ))}
       </tbody>
@@ -156,7 +156,8 @@ function FightPlan() {
       <h2>Fight plan</h2>
       <p className="tp-subtitle">{tournament?.name}</p>
 
-      <div className="tp-tabs">
+      {tournament?.start_time && <p className="tp-print-only">Start {tournament.start_time.slice(0, 5)}</p>}
+      <div className="tp-tabs tp-no-print">
         <button type="button" className={`tp-tab ${view === 'category' ? 'active' : ''}`} onClick={() => setView('category')}>By category</button>
         <button type="button" className={`tp-tab ${view === 'court' ? 'active' : ''}`} onClick={() => setView('court')}>By shiaijo</button>
       </div>
@@ -170,7 +171,8 @@ function FightPlan() {
 
       {view === 'category' && drawn.length > 0 && (
         <>
-          <CategoryTabs categories={drawn} selectedId={selectedId} onSelect={setSelectedId} />
+          <div className="tp-no-print"><CategoryTabs categories={drawn} selectedId={selectedId} onSelect={setSelectedId} /></div>
+          {category && <h3 className="tp-print-only">{category.name}</h3>}
           {category && (
             <>
               {poolNumbers.map((p) => (
@@ -191,21 +193,22 @@ function FightPlan() {
       )}
 
       {view === 'court' && drawn.length > 0 && perCourt.map(({ court, list, total }) => (
-        <div className="tp-card" key={court}>
+        <div className="tp-card tp-print-page" key={court}>
           <h3>
             Shiaijo {court}
             {tournament?.central_shiaijos?.includes(court) && <span className="tp-badge ok">central</span>}
-            {' '}<span className="tp-muted">· {list.length} fights · ends ≈ +{fmt(total)} h</span>
+            {' '}<span className="tp-muted">· {list.length} fights · ends ≈ {clock(tournament?.start_time, total)}</span>
           </h3>
           {list.length === 0 ? <p className="tp-muted">No fights.</p> : <FightRows list={list} showCategory showStart />}
         </div>
       ))}
 
       <p className="tp-muted">
-        Start = estimated from fight times only (no breaks or changeovers); the end-of-tournament block starts once
+        Start = {tournament?.start_time ? `from ${tournament.start_time.slice(0, 5)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times only (no breaks or changeovers); the end-of-tournament block starts once
         every shiaijo has finished its other fights. ✎ = court changed by hand.
       </p>
-      <div className="tp-actions">
+      <div className="tp-actions tp-no-print">
+        <button type="button" className="tp-btn" onClick={() => window.print()}>Print</button>
         <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
         <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/brackets`}>Bracket editor</Link>
       </div>

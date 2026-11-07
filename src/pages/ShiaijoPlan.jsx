@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
 import {
-  checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory,
+  checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
 } from '../lib/api';
 import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts.js';
 import './TournamentPages.css';
@@ -132,6 +132,18 @@ function ShiaijoPlan() {
             {Array.from({ length: MAX_COURTS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
+        <div className="tp-grid">
+          <label className="tp-field">
+            Start time
+            <input type="time" value={tournament?.start_time?.slice(0, 5) ?? ''} disabled={busy}
+              onChange={(e) => run(() => updateTournament(tournamentId, { start_time: e.target.value || null }))} />
+          </label>
+          <label className="tp-field tp-check">
+            <input type="checkbox" checked={tournament?.use_timer ?? true} disabled={busy}
+              onChange={(e) => run(() => updateTournament(tournamentId, { use_timer: e.target.checked }))} />
+            Scoretable runs the timer (off = separate timekeeper)
+          </label>
+        </div>
         <div className="tp-field">
           Central shiaijo
           <div className="tp-actions" style={{ marginTop: 0 }}>

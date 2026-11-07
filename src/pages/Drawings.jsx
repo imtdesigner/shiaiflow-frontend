@@ -270,6 +270,43 @@ function Drawings() {
               <Link className="tp-muted" to={`/tournament/${tournamentId}/shiaijo`}>Change in Shiaijo plan</Link>
             </div>
           </div>
+          <details style={{ marginTop: '0.75rem' }}>
+            <summary className="tp-muted">
+              Fight rules — pools: {category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
+              {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
+            </summary>
+            <div className="tp-grid" style={{ marginTop: '0.75rem' }}>
+              <label className="tp-field">
+                Pools: tie at time
+                <select value={category.pool_tie} onChange={(e) => changeSetting('pool_tie', e.target.value)}>
+                  <option value="hikiwake">hikiwake (draw)</option>
+                  <option value="encho">encho</option>
+                </select>
+              </label>
+              {category.pool_tie === 'encho' && (
+                <>
+                  <label className="tp-field">
+                    Pools: encho (min, empty = until a point)
+                    <input type="number" min="0.5" step="0.5" defaultValue={category.pool_encho_seconds ? category.pool_encho_seconds / 60 : ''}
+                      onBlur={(e) => changeSetting('pool_encho_seconds', e.target.value ? Math.round(Number(e.target.value) * 60) : null)} />
+                  </label>
+                  <label className="tp-field tp-check">
+                    <input type="checkbox" checked={category.pool_hantei} onChange={(e) => changeSetting('pool_hantei', e.target.checked)} />
+                    Pools: hantei after encho
+                  </label>
+                </>
+              )}
+              <label className="tp-field">
+                KO: encho (min, empty = until a point)
+                <input type="number" min="0.5" step="0.5" defaultValue={category.ko_encho_seconds ? category.ko_encho_seconds / 60 : ''}
+                  onBlur={(e) => changeSetting('ko_encho_seconds', e.target.value ? Math.round(Number(e.target.value) * 60) : null)} />
+              </label>
+              <label className="tp-field tp-check">
+                <input type="checkbox" checked={category.ko_hantei} onChange={(e) => changeSetting('ko_hantei', e.target.checked)} />
+                KO: hantei after encho
+              </label>
+            </div>
+          </details>
           {smallFormats && (
             <Message type="info">
               {checkedIn.length === 3

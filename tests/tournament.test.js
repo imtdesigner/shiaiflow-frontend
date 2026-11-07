@@ -549,3 +549,63 @@ test('bracket editor: untouched templates keep their numbering', () => {
     assert.deepEqual(normalizeTemplate(t).template, t, code);
   }
 });
+
+// --- running fights ------------------------------------------------------------
+import { fightRules, fightStatus, startSequence, startOutOfOrder, courtQueue, currentFight, koEntries, placesToCodes } from '../src/lib/tournament/run.js';
+
+test('scoring: second hansoku gives I, hantei HH and fusen-gachi OO are 2–0', () => {
+  const r = boutResult(bout('', '', { wh: 2 }));
+  assert.deepEqual(r.totals.red.ippons, ['I']);
+  const h = boutResult({ events: [{ side: 'red', type: 'M' }, { side: 'white', type: 'K' }], decision: 'white' });
+  assert.deepEqual([h.winner, h.redIppons, h.whiteIppons, h.by], ['white', 0, 2, 'hantei']);
+  const f = boutResult({ events: [], fusen: 'red' });
+  assert.deepEqual([f.winner, f.redIppons, f.whiteIppons, f.by], ['red', 2, 0, 'fusen']);
+  assert.equal(boutResult({ events: [{ side: 'red', type: 'M' }], decision: 'white' }).winner, 'red'); // hantei only on a tie
+});
+
+test('fight status: two ippons end it, time-up tie → hikiwake (pool) or encho (KO), encho first point wins', () => {
+  const cat = { pool_fight_seconds: 180, ko_fight_seconds: 180, pool_tie: 'hikiwake', ko_encho_seconds: 120, ko_hantei: true };
+  const pool = fightRules(cat, 'pool');
+  const ko = fightRules(cat, 'ko');
+  assert.equal(fightStatus(bout('MK', ''), pool).next, 'finish');
+  assert.equal(fightStatus(bout('M', ''), pool).next, null);
+  assert.equal(fightStatus(bout('M', ''), pool, { timeUp: true }).next, 'finish');
+  assert.equal(fightStatus(bout('', ''), pool, { timeUp: true }).next, 'hikiwake');
+  assert.equal(fightStatus(bout('M', 'K'), ko, { timeUp: true }).next, 'encho');
+  assert.equal(fightStatus(bout('M', 'KD'), ko, { encho: true }).next, 'finish');
+  assert.equal(fightStatus(bout('', ''), ko, { encho: true, timeUp: true }).next, 'hantei');
+  assert.equal(fightStatus(bout('', ''), { ...ko, hantei: false }, { encho: true, timeUp: true }).next, 'encho');
+  assert.equal(fightStatus(bout('', '', { decision: 'red' }), ko, { encho: true, timeUp: true }).next, 'finish');
+  assert.equal(fightStatus(bout('', 'M'), fightRules(cat, 'ipponshobu')).next, 'finish');
+  assert.equal(fightRules({ ...cat, pool_tie: 'encho' }, 'pool').tie, 'encho');
+});
+
+test('court queue: start sequence, out-of-order start moves skipped fights below, current fight', () => {
+  const cats = [{ id: 'a', sort_order: 0, ko_template: null }, { id: 'b', sort_order: 1, ko_template: null }];
+  const f = (id, cat, q, extra = {}) => ({ id, category_id: cat, queue_order: q, shiaijo: 1, status: 'scheduled', red_entry_id: 'x', white_entry_id: 'y', ...extra });
+  const fights = [f('b1', 'b', 1), f('a2', 'a', 2), f('a1', 'a', 1), f('a3', 'a', 3)];
+  const seq = startSequence(fights, cats);
+  assert.deepEqual(['a1', 'a2', 'a3', 'b1'].map((id) => seq.get(id)), [10, 20, 30, 40]);
+  const started = fights.map((x) => ({ ...x, court_seq: seq.get(x.id) }));
+  const queue = courtQueue(started, cats, 1);
+  assert.deepEqual(queue.map((x) => x.id), ['a1', 'a2', 'a3', 'b1']);
+  const moves = startOutOfOrder(queue, 'a3');
+  assert.deepEqual(Object.fromEntries(moves), { a3: 10, a1: 20, a2: 30 });
+  const done = queue.map((x) => (x.id === 'a1' ? { ...x, status: 'finished' } : x));
+  assert.deepEqual(Object.fromEntries(startOutOfOrder(done, 'a3')), { a3: 20, a2: 30 });
+  assert.equal(currentFight(done).id, 'a2');
+  assert.equal(currentFight([{ ...done[1], white_entry_id: null }, done[2]]).id, 'a3'); // waits for both fighters
+});
+
+test('KO entries: pool places and winners fill the bracket', () => {
+  const ko = [
+    { id: 'k1', ko_no: 1, red_code: '011', white_code: '022', status: 'finished', red_entry_id: 'A', white_entry_id: 'D', winner_entry_id: 'A' },
+    { id: 'k2', ko_no: 2, red_code: '021', white_code: '012', status: 'scheduled', red_entry_id: null, white_entry_id: null },
+    { id: 'k3', ko_no: 3, red_code: 'W01', white_code: 'W02', status: 'scheduled', red_entry_id: null, white_entry_id: null },
+  ];
+  const places = new Map([...placesToCodes(1, ['A', 'B', 'C'], 2), ...placesToCodes(2, ['E', 'D'], 2)]);
+  assert.deepEqual(koEntries(ko, places), [
+    { id: 'k2', red_entry_id: 'E', white_entry_id: 'B' },
+    { id: 'k3', red_entry_id: 'A', white_entry_id: null },
+  ]);
+});

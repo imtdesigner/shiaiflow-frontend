@@ -265,3 +265,46 @@
 .tp-end-block td {
   background: #fff4d6;
 }
+
+/* Print (fight plan): one shiaijo per page, no navigation or controls. */
+.tp-print-only {
+  display: none;
+}
+
+@media print {
+  .navbar,
+  .back-to-dashboard-icon,
+  .tp-no-print,
+  .tp-message {
+    display: none !important;
+  }
+
+  .tp-print-only {
+    display: inline;
+  }
+
+  p.tp-print-only,
+  h3.tp-print-only {
+    display: block;
+  }
+
+  body,
+  .tp-page {
+    background: #fff !important;
+    padding: 0;
+  }
+
+  .tp-card {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+
+  .tp-print-page {
+    break-after: page;
+  }
+
+  .tp-table {
+    font-size: 10pt;
+  }
+}

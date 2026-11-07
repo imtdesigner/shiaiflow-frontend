@@ -24,6 +24,7 @@ import Shinpan from './pages/Shinpan';
 import ScoreInput from './pages/ScoreInput';
 import ShiaijoPlan from './pages/ShiaijoPlan';
 import FightPlan from './pages/FightPlan';
+import JoinCourt from './pages/JoinCourt';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './ProtectRoute'; // import it
@@ -374,6 +375,7 @@ function AppContent() {
   }
 />
 <Route path="/reset-password" element={<ResetPasswordPage />} />
+<Route path="/join/:tournamentId" element={<JoinCourt />} />
 
       </Routes>
     </>
