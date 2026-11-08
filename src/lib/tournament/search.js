@@ -22,7 +22,7 @@ function dateWords(iso) {
 export function searchText(t, statusLabel = '') {
   const cats = t.categories ?? [];
   return fold([
-    t.name, t.venue, t.city, t.country, statusLabel,
+    t.name, t.venue, t.city, t.country, statusLabel, t.organizer?.name,
     ...dateWords(t.start_date), ...dateWords(t.end_date),
     ...cats.map((c) => c.name),
     cats.some((c) => c.kind === 'team') ? 'team ekipno' : '',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
-import { updateTournament } from '../lib/api';
+import { tournamentOrganizers, updateTournament } from '../lib/api';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
 
@@ -25,6 +25,9 @@ function EditTournament() {
   const [form, setForm] = useState(null);
   const [pin, setPinState] = useState(null);
   const [role, setRole] = useState(null);
+  const [organizer, setOrganizer] = useState(null);
+  useEffect(() => { tournamentOrganizers([tournamentId]).then((o) => setOrganizer(o[tournamentId] ?? null)).catch(() => {}); }, [tournamentId]);
+  const waitingVerification = organizer && !organizer.verified;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -88,11 +91,17 @@ function EditTournament() {
       <div className="tp-card">
         <h3>Publishing</h3>
         <label className="tp-field tp-check">
-          <input type="checkbox" checked={tournament.is_public} disabled={busy || role !== 'owner'}
+          <input type="checkbox" checked={tournament.is_public} disabled={busy || role !== 'owner' || (waitingVerification && !tournament.is_public)}
             onChange={(e) => toggle('is_public', e.target.checked, e.target.checked ? 'Published on the home page.' : 'Hidden from the home page.')} />
           Published — shown on the home page; setup, entries, draw, schedule and live results are public
         </label>
         {role !== 'owner' && <p className="tp-muted">Only the owner can publish.</p>}
+        {waitingVerification && (
+          <Message type="info">
+            The organizer's account is waiting for approval by the app admins (new dojo or federation, or a former one turned individual). Everything can be set up,
+            but publishing the signup and starting the tournament wait for the verification.
+          </Message>
+        )}
         {tournament.is_public && <p className="tp-muted">Public page: <a href={publicUrl}>{publicUrl}</a></p>}
       </div>
 

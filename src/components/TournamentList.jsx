@@ -20,6 +20,24 @@ export function tournamentState(t) {
 }
 
 /**
+ * "Organized by KK Rijeka ✓ verified" (dojo / federation) or, for an
+ * individual, "PERSONAL tournament · organized by Ivan Horvat" — a person's
+ * tournament never carries a dojo or federation name.
+ */
+export function OrganizerLine({ organizer }) {
+  if (!organizer) return null;
+  if (organizer.kind === 'person') {
+    return <><span className="tp-badge personal" title="Organized by an individual, not by a dojo or federation">Personal tournament</span> organized by {organizer.name}</>;
+  }
+  return (
+    <>
+      Organized by {organizer.name}
+      {organizer.verified ? <span className="tp-badge ok" title="Verified organization">✓ verified</span> : null}
+    </>
+  );
+}
+
+/**
  * Published tournaments as cards. Active ones get the ways in (competitor /
  * live results, editor or table with the PIN, owner); past ones open their
  * public page with the setup and results.
@@ -42,6 +60,7 @@ export default function TournamentList({ tournaments, query = '', past = false, 
                 {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
                 {(t.venue || t.city) && ` · ${[t.venue, t.city, t.country].filter(Boolean).join(', ')}`}
               </p>
+              {t.organizer && <p className="tp-muted"><OrganizerLine organizer={t.organizer} /></p>}
               {t.categories?.length > 0 && <p className="tp-muted">{t.categories.map((c) => c.name).join(' · ')}</p>}
               <span className={`tp-badge ${st.cls}`}>{st.label}</span>
             </div>

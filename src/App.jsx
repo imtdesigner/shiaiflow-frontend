@@ -31,7 +31,8 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
-import { listMyTournaments, listPublicTournaments } from './lib/api';
+import { amIAdmin, listMyTournaments, listPublicTournaments } from './lib/api';
+import AdminAccounts from './pages/AdminAccounts';
 import PublicTournament from './pages/PublicTournament';
 import Tournaments from './pages/Tournaments';
 import TournamentList from './components/TournamentList';
@@ -183,6 +184,8 @@ function Dashboard() {
 
 function AppContent() {
   const [session, setSession] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => { if (session) amIAdmin().then(setIsAdmin); else setIsAdmin(false); }, [session]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -243,6 +246,7 @@ function AppContent() {
       <>
         <Link to="/dashboard">Dashboard</Link>
         <Link to="/profile">Profile</Link>
+        {isAdmin && <Link to="/admin/accounts">Admin</Link>}
         <button type="button" className="nav-link-button" onClick={handleLogout}>
           Log Out
         </button>
@@ -277,6 +281,7 @@ function AppContent() {
         />
 
         <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/admin/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
         {/* old links */}
         <Route path="/explore" element={<Navigate to="/tournaments" replace />} />
         <Route path="/attend" element={<Navigate to="/tournaments" replace />} />

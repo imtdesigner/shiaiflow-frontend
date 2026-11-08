@@ -123,3 +123,29 @@
   -webkit-text-fill-color: #000 !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+.signup-kinds {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.signup-kind {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid #711921;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #711921;
+}
+
+.signup-kind.active {
+  background: #711921;
+  color: #fff;
+}
+
+.signup-kind input {
+  display: none;
+}

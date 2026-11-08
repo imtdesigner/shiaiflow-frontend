@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   BackToDashboard, Message, entryName, useTournament,
 } from '../components/TournamentShell';
-import { listEntriesFor } from '../lib/api';
+import { listEntriesFor, tournamentOrganizers } from '../lib/api';
 import {
   getPin, listRunFights, myRole, setPin, startTournament, subscribeFights,
 } from '../lib/runApi';
@@ -28,6 +28,9 @@ function Manage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [role, setRole] = useState(null);
+  const [organizer, setOrganizer] = useState(null);
+  useEffect(() => { tournamentOrganizers([tournamentId]).then((o) => setOrganizer(o[tournamentId] ?? null)).catch(() => {}); }, [tournamentId]);
+  const waitingVerification = organizer && !organizer.verified;
 
   useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
 
@@ -98,7 +101,7 @@ function Manage() {
         )}
         <div className="tp-actions">
           {!running && (
-            <button type="button" className="tp-btn" disabled={busy || drawn.length === 0}
+            <button type="button" className="tp-btn" disabled={busy || drawn.length === 0 || waitingVerification}
               onClick={() => run(() => startTournament(tournament, categories), 'Tournament started. Every shiaijo has its order of fights.')}>
               Start tournament
             </button>
@@ -106,6 +109,9 @@ function Manage() {
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
         </div>
+        {waitingVerification && !running && (
+          <Message type="info">The organizer's account is waiting for approval by the app admins — the tournament can be started once it is approved.</Message>
+        )}
         <p className="tp-muted">
           Starting freezes the order on every shiaijo. Categories drawn later are added at the end of their courts.
         </p>

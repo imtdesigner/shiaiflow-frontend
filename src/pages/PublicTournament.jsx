@@ -4,8 +4,9 @@ import { Message, entryName } from '../components/TournamentShell';
 import KoBracket from '../components/KoBracket';
 import {
   getSavedDraw, getTournament, listCategories, listEntriesFor, listEventsFor, listTeams,
-  listTournamentFights, publicRegister, publicRegisterTeam,
+  listTournamentFights, publicRegister, publicRegisterTeam, tournamentOrganizers,
 } from '../lib/api';
+import { OrganizerLine } from '../components/TournamentList';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
@@ -46,6 +47,8 @@ function PublicTournament() {
   const [events, setEvents] = useState([]);
   const [tab, setTab] = useState(null);
   const [error, setError] = useState('');
+  const [organizer, setOrganizer] = useState(null);
+  useEffect(() => { tournamentOrganizers([tournamentId]).then((o) => setOrganizer(o[tournamentId] ?? null)).catch(() => {}); }, [tournamentId]);
   const [me, setMe] = useState(() => { try { return localStorage.getItem(`sf-me-${tournamentId}`) || ''; } catch { return ''; } });
 
   const load = useCallback(async () => {
@@ -152,6 +155,7 @@ function PublicTournament() {
         {[tournament.start_date, tournament.venue, tournament.city, tournament.country].filter(Boolean).join(' · ')}
         {running && <> · <span className="tp-badge ok">live</span></>}
       </p>
+      {organizer && <p className="tp-muted" style={{ marginTop: '-1rem' }}><OrganizerLine organizer={organizer} /></p>}
 
       {competitors.length > 0 && (
         <div className="tp-card">

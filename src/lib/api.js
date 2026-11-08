@@ -41,7 +41,12 @@ export async function listPublicTournaments({ past = false } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const isPast = (t) => t.status === 'finished' || (t.status !== 'running' && t.end_date && t.end_date < today);
   for (const t of rows) t.categories?.sort((a, b) => a.sort_order - b.sort_order);
-  return past ? rows.filter(isPast).reverse() : rows.filter((t) => !isPast(t));
+  const list = past ? rows.filter(isPast).reverse() : rows.filter((t) => !isPast(t));
+  try {
+    const orgs = await tournamentOrganizers(list.map((t) => t.id));
+    for (const t of list) t.organizer = orgs[t.id] ?? null;
+  } catch { /* organizer names are optional */ }
+  return list;
 }
 
 /** Public registration (no account) — individual, or joining / naming a team. */
@@ -508,4 +513,51 @@ export async function withdrawFromPool(poolId, entryId) {
 /** Confirm (or reopen) the draws of the tournament. */
 export async function setDrawsConfirmed(tournamentId, confirmed) {
   return updateTournament(tournamentId, { draws_confirmed: confirmed });
+}
+
+// --- accounts and verification ---------------------------------------------------
+
+/** Is the signed-in user an app admin (verifies dojo / federation accounts)? */
+export async function amIAdmin() {
+  const { data, error } = await supabase.rpc('am_i_admin');
+  return !error && !!data;
+}
+
+/** Dojo and federation accounts for the admins, unverified first. */
+export async function listOrganizationAccounts() {
+  const rows = unwrap(await supabase.from('users')
+    .select('id, email, name, role, city, country, website, contact_name, contact_email, verified_at, needs_review, created_at')
+    .or('role.in.(dojo,regional,continental),needs_review.eq.true')
+    .order('created_at', { ascending: false }));
+  return rows.sort((a, b) => (!!a.verified_at - !!b.verified_at));
+}
+
+/** Verify (or withdraw the verification of) an account — admins only. */
+export async function setAccountVerified(userId, verified) {
+  const { data: { user } } = await supabase.auth.getUser();
+  return unwrap(await supabase.from('users')
+    .update({ verified_at: verified ? new Date().toISOString() : null, verified_by: verified ? user.id : null })
+    .eq('id', userId).select('id, verified_at').single());
+}
+
+/** Account of the signed-in user (kind, verification). */
+export async function myAccount() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  return unwrap(await supabase.from('users').select('id, name, role, verified_at').eq('id', user.id).maybeSingle());
+}
+
+/** Change the account kind (RPC): verification starts again; a former dojo / federation turned individual needs the admins' approval. */
+export async function changeAccountKind({ role, name, website, contactName, contactEmail }) {
+  return unwrap(await supabase.rpc('change_account_kind', {
+    new_role: role, new_name: name, new_website: website || null,
+    new_contact_name: contactName || null, new_contact_email: contactEmail || null,
+  }));
+}
+
+/** Organizer (name, kind, verified) per tournament id. */
+export async function tournamentOrganizers(ids) {
+  if (!ids.length) return {};
+  const rows = unwrap(await supabase.rpc('tournament_organizers', { ids }));
+  return Object.fromEntries(rows.map((r) => [r.tournament_id, r]));
 }
