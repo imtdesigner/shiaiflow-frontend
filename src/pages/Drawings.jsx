@@ -12,7 +12,9 @@ import {
   buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
 import KoBracket from '../components/KoBracket';
-import { GRADES, rulesText } from '../lib/tournament/eligibility.js';
+import { rulesText, teamReserves } from '../lib/tournament/eligibility.js';
+import { categoryRow } from '../lib/tournament/categoryTemplates.js';
+import CategoryRules from '../components/CategoryRules';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import './TournamentPages.css';
 
@@ -202,6 +204,8 @@ function Drawings() {
 
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
+  const [rulesDraft, setRulesDraft] = useState(null);
+  useEffect(() => { setRulesDraft(null); }, [category?.id]);
   const changeSetting = (field, value) => changeSettings({ [field]: value });
 
   const changeSettings = async (fields) => {
@@ -388,38 +392,23 @@ function Drawings() {
             </div>
           </div>
           <details style={{ marginTop: '0.75rem' }}>
-            <summary className="tp-muted">Who can enter — {rulesText(category)}</summary>
-            <div className="tp-grid" style={{ marginTop: '0.75rem' }}>
-              <label className="tp-field">
-                Gender
-                <select value={category.gender ?? ''} onChange={(e) => changeSetting('gender', e.target.value || null)}>
-                  <option value="">any</option><option value="M">men</option><option value="F">women</option>
-                </select>
-              </label>
-              <label className="tp-field">
-                Age from (in the tournament year)
-                <input type="number" min="0" max="120" defaultValue={category.min_age ?? ''}
-                  onBlur={(e) => changeSetting('min_age', e.target.value === '' ? null : Number(e.target.value))} />
-              </label>
-              <label className="tp-field">
-                Age up to
-                <input type="number" min="0" max="120" defaultValue={category.max_age ?? ''}
-                  onBlur={(e) => changeSetting('max_age', e.target.value === '' ? null : Number(e.target.value))} />
-              </label>
-              <label className="tp-field">
-                Grade from
-                <select value={category.min_grade ?? ''} onChange={(e) => changeSetting('min_grade', e.target.value === '' ? null : Number(e.target.value))}>
-                  <option value="">any</option>
-                  {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
-                </select>
-              </label>
-              <label className="tp-field">
-                Grade up to
-                <select value={category.max_grade ?? ''} onChange={(e) => changeSetting('max_grade', e.target.value === '' ? null : Number(e.target.value))}>
-                  <option value="">any</option>
-                  {GRADES.map((g) => <option key={g.rank} value={g.rank}>{g.label}</option>)}
-                </select>
-              </label>
+            <summary className="tp-muted">Who can enter — {rulesText(category)}{category.kind === 'team' ? ` · team ${category.team_size}+${teamReserves(category.team_size)}${category.team_same_dojo ? ' · one dojo' : ''}${category.position_rules ? ' · limits per position' : ''}` : ''}</summary>
+            <div style={{ marginTop: '0.75rem' }}>
+              <CategoryRules key={`${category.id}-${rulesDraft ? 'd' : 's'}-${category.team_size}`} category={rulesDraft ?? category} ageBasis={tournament?.age_basis}
+                onChange={(next) => !locked && setRulesDraft(next)} />
+              {rulesDraft && (
+                <div className="tp-actions">
+                  <button type="button" className="tp-btn small" onClick={async () => {
+                    const row = categoryRow(rulesDraft);
+                    await changeSettings({
+                      gender: row.gender, min_age: row.min_age, max_age: row.max_age, min_grade: row.min_grade, max_grade: row.max_grade,
+                      ...(category.kind === 'team' ? { team_size: row.team_size, team_same_dojo: row.team_same_dojo, position_rules: row.position_rules } : {}),
+                    });
+                    setRulesDraft(null);
+                  }}>Save who can enter</button>
+                  <button type="button" className="tp-btn secondary small" onClick={() => setRulesDraft(null)}>Cancel</button>
+                </div>
+              )}
             </div>
           </details>
           <details style={{ marginTop: '0.75rem' }}>

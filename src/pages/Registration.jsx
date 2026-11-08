@@ -7,11 +7,11 @@ import {
   addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
-import { GRADES, gradeLabel, ineligibleReason, rulesText } from '../lib/tournament/eligibility.js';
+import { GRADES, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
 const EMPTY_PERSON = {
-  last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', grade_rank: '', checked_in: true,
+  last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
 };
 
 /** "Last name; First name; Club; Grade" per line (also tab- or comma-separated). */
@@ -63,12 +63,12 @@ function Registration() {
   const addPerson = (e) => {
     e.preventDefault();
     if (!person.last_name.trim()) return;
-    const year = Number((tournament?.start_date ?? new Date().toISOString()).slice(0, 4));
     const reason = ineligibleReason(category, {
       gender: person.gender || null,
       birth_year: person.birth_year ? Number(person.birth_year) : null,
+      birth_date: person.birth_date || null,
       grade_rank: person.grade_rank === '' ? null : Number(person.grade_rank),
-    }, year);
+    }, tournamentAgeCtx(tournament ?? {}));
     if (reason && !window.confirm(`${category.name} rules: ${reason}. Add anyway?`)) return;
     run(async () => {
       await addCompetitorEntry(tournamentId, selectedId, person);
@@ -151,7 +151,9 @@ function Registration() {
                       <option value="">—</option><option value="M">Male</option><option value="F">Female</option>
                     </select>
                   </label>
-                  <label className="tp-field">Birth year<input type="number" value={person.birth_year} onChange={(e) => setPerson({ ...person, birth_year: e.target.value })} /></label>
+                  {tournament?.age_basis === 'birth_date'
+                    ? <label className="tp-field">Date of birth<input type="date" value={person.birth_date} onChange={(e) => setPerson({ ...person, birth_date: e.target.value })} /></label>
+                    : <label className="tp-field">Birth year<input type="number" value={person.birth_year} onChange={(e) => setPerson({ ...person, birth_year: e.target.value })} /></label>}
                   <label className="tp-field">
                     Grade
                     <select value={person.grade_rank} onChange={(e) => setPerson({ ...person, grade_rank: e.target.value, grade: e.target.value === '' ? '' : gradeLabel(Number(e.target.value)) })}>

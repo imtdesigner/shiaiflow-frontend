@@ -122,6 +122,22 @@ function EditTournament() {
             <input type="datetime-local" value={form.registration_deadline} onChange={set('registration_deadline')} onBlur={save} />
           </label>
         </div>
+        <h3 style={{ marginTop: '1rem' }}>Rules for entering</h3>
+        <div className="tp-grid">
+          <label className="tp-field">
+            Age limits count
+            <select value={tournament.age_basis ?? 'birth_year'} disabled={busy} onChange={(e) => toggle('age_basis', e.target.value)}>
+              <option value="birth_year">by birth year (tournament year − birth year)</option>
+              <option value="birth_date">by exact age on the first day (asks the date of birth)</option>
+            </select>
+          </label>
+          <label className="tp-field tp-check">
+            <input type="checkbox" checked={!!tournament.single_category} disabled={busy}
+              onChange={(e) => toggle('single_category', e.target.checked)} />
+            A competitor may enter only one individual category (of those they qualify for)
+          </label>
+        </div>
+        <p className="tp-muted">Each category's limits (gender, age, grade, team rules) are set on the Drawings page under "Who can enter".</p>
         <h3 style={{ marginTop: '1rem' }}>Teams</h3>
         <div className="tp-grid">
           <label className="tp-field">

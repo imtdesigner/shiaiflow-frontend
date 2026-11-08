@@ -63,6 +63,7 @@ export async function publicRegister(categoryId, person) {
     birth_year: person.birth_year ? Number(person.birth_year) : null,
     grade_rank: person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank),
     email: person.email || null,
+    birth_date: person.birth_date || null,
   }));
 }
 
@@ -102,6 +103,24 @@ export async function createTournament(fields, categories = []) {
 }
 
 // --- categories ----------------------------------------------------------------
+
+/**
+ * Tournaments whose categories can be copied: your own (any) and every
+ * published one, with their categories. Newest first, own ones on top.
+ */
+export async function listCategorySources() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const rows = unwrap(await supabase.from('tournaments')
+    .select('id, name, start_date, city, owner_id, is_public, categories(*)')
+    .order('start_date', { ascending: false, nullsFirst: false })
+    .limit(300));
+  const own = (t) => user && t.owner_id === user.id;
+  for (const t of rows) {
+    t.own = own(t);
+    t.categories = (t.categories ?? []).filter((c) => c.status !== 'cancelled').sort((a, b) => a.sort_order - b.sort_order);
+  }
+  return rows.filter((t) => t.categories.length).sort((a, b) => (b.own - a.own));
+}
 
 export async function listCategories(tournamentId) {
   return unwrap(await supabase
@@ -164,9 +183,14 @@ export async function addCompetitorEntry(tournamentId, categoryId, person) {
     club,
     grade: (person.grade ?? '').trim() || null,
     gender: person.gender || null,
-    birth_year: person.birth_year ? Number(person.birth_year) : null,
+    birth_year: person.birth_year ? Number(person.birth_year) : (person.birth_date ? Number(person.birth_date.slice(0, 4)) : null),
     grade_rank: person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank),
   }).select('id').single());
+  if (person.birth_date) {
+    // the date of birth is private (organizers only)
+    unwrap(await supabase.from('competitor_contacts')
+      .upsert({ competitor_id: competitor.id, birth_date: person.birth_date }, { onConflict: 'competitor_id' }));
+  }
   return unwrap(await supabase.from('entries')
     .insert({ category_id: categoryId, competitor_id: competitor.id, checked_in: !!person.checked_in })
     .select().single());

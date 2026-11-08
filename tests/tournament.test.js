@@ -659,3 +659,52 @@ test('tournament search: any criterion, every word, no diacritics', () => {
     assert.ok(!matchesQuery(t, q, 'Signup open'), q);
   }
 });
+
+import { ruleAge, ageOn, teamProblems, teamMaxMembers } from '../src/lib/tournament/eligibility.js';
+import { CATEGORY_TEMPLATES, categoryRow, categorySetup } from '../src/lib/tournament/categoryTemplates.js';
+
+test('age: by birth year or exact age on the day', () => {
+  assert.equal(ruleAge({ birth_year: 2012 }, 2026), 14);
+  assert.equal(ruleAge({ birth_date: '2012-12-13' }, { date: '2026-12-12', basis: 'birth_year' }), 14);
+  assert.equal(ruleAge({ birth_date: '2012-12-13' }, { date: '2026-12-12', basis: 'birth_date' }), 13);
+  assert.equal(ageOn('2026-12-12', '2012-12-12'), 14);
+  const juniorA = CATEGORY_TEMPLATES.find((c) => c.name === 'Junior A');
+  assert.equal(ineligibleReason(juniorA, { birth_year: 2011 }, 2026), 'up to 14 years');
+  assert.equal(ineligibleReason(juniorA, {}, { date: '2026-12-12', basis: 'birth_date' }), 'date of birth needed');
+  assert.equal(ineligibleReason(juniorA, { birth_date: '2011-12-13' }, { date: '2026-12-12', basis: 'birth_date' }), null);
+});
+
+test('rules switched off do not limit; rules combine', () => {
+  const open = categoryRow({ name: 'Open', kind: 'individual', pool_size: 3, advancing: 2 });
+  assert.equal(ineligibleReason(open, {}, 2026), null);
+  const danW = CATEGORY_TEMPLATES.find((c) => c.name === 'Dan W');
+  assert.equal(ineligibleReason(danW, { gender: 'M', grade_rank: 3 }, 2026), 'men only'.replace('men', 'women'));
+  assert.equal(ineligibleReason(danW, { gender: 'F', grade_rank: -1 }, 2026), 'from 1 dan');
+  assert.equal(ineligibleReason(danW, { gender: 'F', grade_rank: 2 }, 2026), null);
+});
+
+test('teams: 3+1 / 5+2, one dojo, position rules', () => {
+  assert.equal(teamMaxMembers(3), 4);
+  assert.equal(teamMaxMembers(5), 7);
+  const p = (last, birth_year, club = 'RIJEKA') => ({ last_name: last, first_name: '', birth_year, club });
+  const cat = { kind: 'team', team_size: 3, max_age: 18, team_same_dojo: true,
+    position_rules: [{ max_age: 14 }, {}, {}] };
+  const team = { club: 'Rijeka' };
+  assert.deepEqual(teamProblems(cat, team, [p('A', 2013), p('B', 2010), p('C', 2009)], 2026), []);
+  assert.match(teamProblems(cat, team, [p('A', 2010), p('B', 2013), p('C', 2009)], 2026)[0], /as senpo: up to 14 years/);
+  assert.match(teamProblems(cat, team, [p('A', 2013), p('B', 2010, 'ZAGREB')], 2026)[0], /one dojo/);
+  assert.match(teamProblems(cat, team, [p('A', 2013), p('B', 2010), p('C', 2009), p('D', 2009), p('E', 2009)], 2026)[0], /at most 4/);
+  assert.match(teamProblems(cat, team, [p('A', 2013), p('B', 2010), p('C', 2009), p('D', 2000)], 2026)[0], /up to 18/);
+  assert.deepEqual(teamProblems({ ...cat, position_rules: null, team_same_dojo: false }, team, [p('A', 2010, 'X'), p('B', 2009)], 2026), []);
+});
+
+test('category copy keeps the setup only', () => {
+  const c = categorySetup({ id: 'x', tournament_id: 'y', status: 'drawn', draw_seed: 5, shiaijos: [1], ...CATEGORY_TEMPLATES[6] });
+  assert.equal(c.id, undefined);
+  assert.equal(c.draw_seed, undefined);
+  assert.equal(c.shiaijos, undefined);
+  assert.equal(c.max_age, 18);
+  const row = categoryRow({ ...c, position_rules: [{ max_age: '14' }, {}, {}, {}] });
+  assert.equal(row.position_rules.length, 3);
+  assert.equal(row.position_rules[0].max_age, 14);
+});

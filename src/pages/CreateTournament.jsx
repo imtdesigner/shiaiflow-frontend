@@ -1,52 +1,54 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message } from '../components/TournamentShell';
-import { createTournament } from '../lib/api';
+import CategoryRules from '../components/CategoryRules';
+import { createTournament, listCategorySources } from '../lib/api';
+import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, categoryRow, categorySetup } from '../lib/tournament/categoryTemplates.js';
+import { rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
-
-// Category presets taken from DP HKS 2026 (times in seconds).
-const PRESETS = [
-  { name: 'Junior A', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Junior B', kind: 'individual', pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Kyu W', kind: 'individual', gender: 'F', max_grade: -1, pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Kyu M', kind: 'individual', gender: 'M', max_grade: -1, pool_size: 3, advancing: 2, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
-  { name: 'Dan W', kind: 'individual', gender: 'F', min_grade: 1, pool_size: 3, advancing: 2, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
-  { name: 'Dan M', kind: 'individual', gender: 'M', min_grade: 1, pool_size: 3, advancing: 2, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
-  { name: 'Team juniors', kind: 'team', team_size: 3, pool_size: 3, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
-  { name: 'Team adults', kind: 'team', team_size: 3, pool_size: 1, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },
-];
-
-const EMPTY_CATEGORY = {
-  name: '', kind: 'individual', team_size: null, pool_size: 3, advancing: 2,
-  pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240,
-};
 
 const toMin = (s) => (s / 60).toString();
 const toSec = (m) => Math.max(30, Math.round(Number(m) * 60) || 0);
+let nextKey = 1;
+const withKey = (c) => ({ ...c, _key: nextKey++ });
 
+/**
+ * New tournament: details, then categories. A category starts from a template
+ * (everything editable, the name too), from scratch, or as a copy from an
+ * earlier tournament (own or published). Each category has two parts: who can
+ * enter (signup rules) and how it is fought.
+ */
 function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Croatia',
-    shiaijo_count: 2, is_public: false,
+    shiaijo_count: 2, age_basis: 'birth_year', single_category: false,
   });
   const [categories, setCategories] = useState([]);
+  const [sources, setSources] = useState(null); // copy dialog: null = closed
+  const [sourceQuery, setSourceQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
-  const addCategory = (preset) => {
-    if (preset && categories.some((c) => c.name === preset.name)) return;
-    setCategories([...categories, { ...EMPTY_CATEGORY, ...preset }]);
-  };
-  const updateCategory = (i, k, v) => setCategories(categories.map((c, j) => {
-    if (j !== i) return c;
+  const addCategories = (list) => setCategories((cur) => [...cur, ...list.map((c) => withKey({ ...EMPTY_CATEGORY, ...categorySetup(c) }))]);
+  const replaceCategory = (key, next) => setCategories((cur) => cur.map((c) => (c._key === key ? { ...next, _key: key } : c)));
+  const updateCategory = (key, k, v) => setCategories((cur) => cur.map((c) => {
+    if (c._key !== key) return c;
     const next = { ...c, [k]: v };
-    if (k === 'kind') next.team_size = v === 'team' ? 3 : null;
+    if (k === 'kind') {
+      next.team_size = v === 'team' ? 3 : null;
+      if (v !== 'team') { next.team_same_dojo = false; next.position_rules = null; }
+    }
     return next;
   }));
-  const removeCategory = (i) => setCategories(categories.filter((_, j) => j !== i));
+  const removeCategory = (key) => setCategories((cur) => cur.filter((c) => c._key !== key));
+
+  const openCopy = async () => {
+    setSources([]);
+    try { setSources(await listCategorySources()); } catch (e) { setError(e.message); setSources(null); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,23 +65,11 @@ function CreateTournament() {
         city: form.city.trim() || null,
         country: form.country.trim() || null,
         shiaijo_count: Number(form.shiaijo_count),
-        is_public: form.is_public,
+        age_basis: form.age_basis,
+        single_category: form.single_category,
+        is_public: false,
         status: 'registration',
-      }, categories.map((c) => ({
-        name: c.name.trim(),
-        kind: c.kind,
-        team_size: c.kind === 'team' ? Number(c.team_size) : null,
-        pool_size: Number(c.pool_size),
-        advancing: Number(c.advancing),
-        pool_fight_seconds: Number(c.pool_fight_seconds),
-        ko_fight_seconds: Number(c.ko_fight_seconds),
-        final_fight_seconds: Number(c.final_fight_seconds),
-        gender: c.gender ?? null,
-        min_age: c.min_age ?? null,
-        max_age: c.max_age ?? null,
-        min_grade: c.min_grade ?? null,
-        max_grade: c.max_grade ?? null,
-      })));
+      }, categories.map(categoryRow));
       navigate(`/tournament/${t.id}/registration`);
     } catch (err) {
       setError(err.message);
@@ -87,11 +77,14 @@ function CreateTournament() {
     }
   };
 
+  const q = sourceQuery.trim().toLowerCase();
+  const shownSources = (sources ?? []).filter((t) => !q || `${t.name} ${t.city ?? ''} ${t.start_date ?? ''}`.toLowerCase().includes(q));
+
   return (
     <div className="tp-page">
       <BackToDashboard />
       <h2>New tournament</h2>
-      <p className="tp-subtitle">Basic details and categories. Everything can be changed later.</p>
+      <p className="tp-subtitle">Details and categories. Everything can be changed later.</p>
       <Message type="error">{error}</Message>
 
       <form onSubmit={handleSubmit}>
@@ -113,81 +106,94 @@ function CreateTournament() {
                 {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
+          </div>
+          <h4>Signup</h4>
+          <div className="tp-grid">
+            <label className="tp-field">
+              Age limits count
+              <select value={form.age_basis} onChange={set('age_basis')}>
+                <option value="birth_year">by birth year (tournament year − birth year)</option>
+                <option value="birth_date">by exact age on the first day (asks the date of birth)</option>
+              </select>
+            </label>
             <label className="tp-field tp-check">
-              <input type="checkbox" checked={form.is_public} onChange={set('is_public')} />
-              Published (on the home page; entries, draw and results are public)
+              <input type="checkbox" checked={form.single_category} onChange={set('single_category')} />
+              A competitor may enter only one individual category (of those they qualify for)
             </label>
           </div>
         </div>
 
         <div className="tp-card">
           <h3>Categories</h3>
+          <p className="tp-muted">Start from a template — everything can be changed, the name too — or add an empty one.</p>
           <div className="tp-actions" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            {PRESETS.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                className="tp-btn secondary small"
-                disabled={categories.some((c) => c.name === p.name)}
-                onClick={() => addCategory(p)}
-              >
-                + {p.name}
-              </button>
+            {CATEGORY_TEMPLATES.map((p) => (
+              <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => addCategories([p])}>+ {p.name}</button>
             ))}
-            <button type="button" className="tp-btn small" onClick={() => addCategory()}>+ Empty category</button>
+            <button type="button" className="tp-btn small" onClick={() => addCategories([EMPTY_CATEGORY])}>+ Add new</button>
+            <button type="button" className="tp-btn secondary small" onClick={sources ? () => setSources(null) : openCopy}>
+              {sources ? 'Close copying' : 'Copy from another tournament…'}
+            </button>
           </div>
 
-          {categories.length === 0 ? (
-            <p className="tp-muted">Add categories with the buttons above (settings from DP HKS 2026).</p>
-          ) : (
-            <table className="tp-table">
-              <thead>
-                <tr>
-                  <th>Name</th><th>Type</th><th>Team</th><th>Per pool</th><th>Advancing</th>
-                  <th>Pool (min)</th><th>KO (min)</th><th>Final (min)</th><th />
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((c, i) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <tr key={i}>
-                    <td><input value={c.name} onChange={(e) => updateCategory(i, 'name', e.target.value)} /></td>
-                    <td>
-                      <select value={c.kind} onChange={(e) => updateCategory(i, 'kind', e.target.value)}>
-                        <option value="individual">Individual</option>
-                        <option value="team">Team</option>
-                      </select>
-                    </td>
-                    <td>
-                      {c.kind === 'team' ? (
-                        <select value={c.team_size} onChange={(e) => updateCategory(i, 'team_size', Number(e.target.value))}>
-                          <option value={3}>3</option>
-                          <option value={5}>5</option>
-                        </select>
-                      ) : '—'}
-                    </td>
-                    <td>
-                      <select value={c.pool_size} onChange={(e) => updateCategory(i, 'pool_size', Number(e.target.value))}>
-                        <option value={1}>direct KO</option>
-                        {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select value={c.advancing} onChange={(e) => updateCategory(i, 'advancing', Number(e.target.value))} disabled={c.pool_size === 1}>
-                        <option value={0}>pools only</option>
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                      </select>
-                    </td>
-                    <td><input type="number" step="0.5" min="0.5" value={toMin(c.pool_fight_seconds)} onChange={(e) => updateCategory(i, 'pool_fight_seconds', toSec(e.target.value))} /></td>
-                    <td><input type="number" step="0.5" min="0.5" value={toMin(c.ko_fight_seconds)} onChange={(e) => updateCategory(i, 'ko_fight_seconds', toSec(e.target.value))} /></td>
-                    <td><input type="number" step="0.5" min="0.5" value={toMin(c.final_fight_seconds)} onChange={(e) => updateCategory(i, 'final_fight_seconds', toSec(e.target.value))} /></td>
-                    <td><button type="button" className="tp-btn danger small" onClick={() => removeCategory(i)}>✕</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {sources && (
+            <div className="tp-card" style={{ background: '#faf8f3' }}>
+              <input placeholder="Find a tournament (name, city, year)" value={sourceQuery} onChange={(e) => setSourceQuery(e.target.value)} />
+              {sources.length === 0 && <p className="tp-muted">Loading…</p>}
+              {shownSources.slice(0, 30).map((t) => (
+                <div key={t.id} className="ct-source">
+                  <div>
+                    <strong>{t.name}</strong>{t.own && <span className="tp-badge ok">yours</span>}
+                    <div className="tp-muted">{[t.start_date, t.city].filter(Boolean).join(' · ')} — {t.categories.map((c) => c.name).join(', ')}</div>
+                  </div>
+                  <button type="button" className="tp-btn small" onClick={() => { addCategories(t.categories); setSources(null); }}>
+                    Copy {t.categories.length} categor{t.categories.length === 1 ? 'y' : 'ies'}
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
+
+          {categories.length === 0 && <p className="tp-muted">No categories yet.</p>}
+          {categories.map((c) => (
+            <div key={c._key} className="ct-category">
+              <div className="ct-category-head">
+                <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
+                <select value={c.kind} onChange={(e) => updateCategory(c._key, 'kind', e.target.value)}>
+                  <option value="individual">Individual</option>
+                  <option value="team">Team</option>
+                </select>
+                <span className="tp-muted">{rulesText(c)}</span>
+                <button type="button" className="tp-btn danger small" style={{ marginLeft: 'auto' }} onClick={() => removeCategory(c._key)}>Remove</button>
+              </div>
+
+              <h4>1 · Who can enter</h4>
+              <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
+
+              <h4>2 · Fights</h4>
+              <div className="tp-grid">
+                <label className="tp-field">
+                  Per pool
+                  <select value={c.pool_size} onChange={(e) => updateCategory(c._key, 'pool_size', Number(e.target.value))}>
+                    <option value={1}>direct KO</option>
+                    {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <label className="tp-field">
+                  Advancing per pool
+                  <select value={c.advancing} onChange={(e) => updateCategory(c._key, 'advancing', Number(e.target.value))} disabled={c.pool_size === 1}>
+                    <option value={0}>pools only</option>
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                  </select>
+                </label>
+                <label className="tp-field">Pool fight (min)<input type="number" step="0.5" min="0.5" value={toMin(c.pool_fight_seconds)} onChange={(e) => updateCategory(c._key, 'pool_fight_seconds', toSec(e.target.value))} /></label>
+                <label className="tp-field">KO fight (min)<input type="number" step="0.5" min="0.5" value={toMin(c.ko_fight_seconds)} onChange={(e) => updateCategory(c._key, 'ko_fight_seconds', toSec(e.target.value))} /></label>
+                <label className="tp-field">Final (min)<input type="number" step="0.5" min="0.5" value={toMin(c.final_fight_seconds)} onChange={(e) => updateCategory(c._key, 'final_fight_seconds', toSec(e.target.value))} /></label>
+              </div>
+              <p className="tp-muted">Tie rules (encho, hantei) and the KO bracket are set per category on the Drawings page.</p>
+            </div>
+          ))}
         </div>
 
         <div className="tp-actions">
