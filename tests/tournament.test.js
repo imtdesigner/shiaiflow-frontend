@@ -641,3 +641,21 @@ test('templates from the DP HKS 2026 bracket sheets: K132, K142, K161', () => {
   assert.equal(k16.koCode, 'K161');
   assert.deepEqual(k16.problems, []);
 });
+
+// --- tournament search ------------------------------------------------------------
+import { fold, matchesQuery } from '../src/lib/tournament/search.js';
+
+test('tournament search: any criterion, every word, no diacritics', () => {
+  const t = {
+    name: 'Državno kendo prvenstvo HKS 2026', city: 'Rijeka', country: 'Croatia', venue: 'Dvorana Zamet',
+    start_date: '2026-12-12', end_date: '2026-12-12',
+    categories: [{ name: 'Dan Žene', kind: 'individual' }, { name: 'Team adults', kind: 'team' }],
+  };
+  assert.equal(fold('Žene Đurđevac'), 'zene durdevac');
+  for (const q of ['rijeka', 'drzavno', 'RIJEKA 2026', 'december', 'dec', 'prosinac', '12.12.', 'zene', 'team', 'ekipno', 'zamet', 'signup open', '']) {
+    assert.ok(matchesQuery(t, q, 'Signup open'), q);
+  }
+  for (const q of ['zagreb', 'rijeka 2025', 'kyu', 'finished']) {
+    assert.ok(!matchesQuery(t, q, 'Signup open'), q);
+  }
+});

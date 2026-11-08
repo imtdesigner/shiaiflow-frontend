@@ -33,7 +33,7 @@ function Tournaments() {
           <input
             type="text"
             className="search-tournaments"
-            placeholder="By name, city or country"
+            placeholder="Search: name, place, date, category, status…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

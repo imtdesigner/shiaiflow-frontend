@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { matchesQuery } from '../lib/tournament/search.js';
 
 export const fmtDate = (d) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
@@ -24,11 +25,12 @@ export function tournamentState(t) {
  * public page with the setup and results.
  */
 export default function TournamentList({ tournaments, query = '', past = false, emptyText }) {
-  const q = query.trim().toLowerCase();
-  const shown = (tournaments ?? []).filter((t) => !q || [t.name, t.city, t.country, t.venue].some((x) => x?.toLowerCase().includes(q)));
+  const q = query.trim();
+  const shown = (tournaments ?? []).filter((t) => matchesQuery(t, q, tournamentState(t).label));
   return (
     <div className="home-tournaments">
       {tournaments === null && <p>Loading tournaments…</p>}
+      {tournaments && q && shown.length > 0 && <p className="tp-muted">{shown.length} of {tournaments.length}</p>}
       {tournaments && shown.length === 0 && <p>{q ? 'No tournament matches the search.' : emptyText}</p>}
       {shown.map((t) => {
         const st = tournamentState(t);
@@ -40,6 +42,7 @@ export default function TournamentList({ tournaments, query = '', past = false, 
                 {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
                 {(t.venue || t.city) && ` · ${[t.venue, t.city, t.country].filter(Boolean).join(', ')}`}
               </p>
+              {t.categories?.length > 0 && <p className="tp-muted">{t.categories.map((c) => c.name).join(' · ')}</p>}
               <span className={`tp-badge ${st.cls}`}>{st.label}</span>
             </div>
             <div className="home-tournament-actions">

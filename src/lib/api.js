@@ -34,12 +34,13 @@ export async function updateTournament(id, fields) {
  */
 export async function listPublicTournaments({ past = false } = {}) {
   const rows = unwrap(await supabase.from('tournaments')
-    .select('id, name, start_date, end_date, venue, city, country, status, registration_open, registration_deadline')
+    .select('id, name, start_date, end_date, venue, city, country, status, registration_open, registration_deadline, categories(name, kind, sort_order)')
     .eq('is_public', true)
     .order('start_date', { ascending: true, nullsFirst: false })
     .limit(200));
   const today = new Date().toISOString().slice(0, 10);
   const isPast = (t) => t.status === 'finished' || (t.status !== 'running' && t.end_date && t.end_date < today);
+  for (const t of rows) t.categories?.sort((a, b) => a.sort_order - b.sort_order);
   return past ? rows.filter(isPast).reverse() : rows.filter((t) => !isPast(t));
 }
 
