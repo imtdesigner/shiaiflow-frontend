@@ -41,6 +41,10 @@ function ScoreInput() {
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [now, setNow] = useState(Date.now());
   const stopping = useRef(null);
+  // Score and timer actions show at once and are sent in order in the background,
+  // so fast clicks are never lost; screens refresh once the queue is empty.
+  const queueRef = useRef(Promise.resolve());
+  const pendingRef = useRef(0);
 
   const manager = role === 'owner' || role === 'organizer';
   const court = Number(params.get('court') ?? 1);
@@ -71,13 +75,17 @@ function ScoreInput() {
 
   const reloadEvents = useCallback(async () => {
     if (!fight) { setEvents([]); return; }
+    if (pendingRef.current > 0) return; // local clicks not saved yet — refresh after the queue
     try { setEvents(await listEvents(fight.id)); } catch (e) { setMsg({ type: 'error', text: e.message }); }
   }, [fight?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { reloadEvents(); setManualTimeUp(false); }, [reloadEvents]);
 
   // realtime: other screens on this court (and the manager) see the same
-  useEffect(() => subscribeFights(`${tournamentId}-${court}`, () => { reload(); reloadEvents(); }), [tournamentId, court, reload, reloadEvents]);
+  useEffect(() => subscribeFights(`${tournamentId}-${court}`, () => {
+    if (pendingRef.current > 0) return; // our own clicks are still being saved
+    reload(); reloadEvents();
+  }), [tournamentId, court, reload, reloadEvents]);
 
   // clock
   useEffect(() => {
@@ -104,7 +112,7 @@ function ScoreInput() {
 
   const run = async (fn) => {
     setBusy(true); setMsg({ type: '', text: '' });
-    try { const out = await fn(); await reload(); await reloadEvents(); return out; }
+    try { await queueRef.current; const out = await fn(); await reload(); await reloadEvents(); return out; }
     catch (e) { setMsg({ type: 'error', text: e.message }); return null; }
     finally { setBusy(false); }
   };
@@ -116,15 +124,58 @@ function ScoreInput() {
     timerStop(fight).then(() => { stopping.current = null; reload(); });
   }, [fight, remaining, reload]);
 
-  const point = (side, type) => run(async () => {
-    if (fight.timer_started_at) await timerStop(fight); // yame on every point
-    await addEvent(fight.id, side, type);
-  });
+  const patchFight = (id, fields) => setFights((fs) => fs.map((f) => (f.id === id ? { ...f, ...fields } : f)));
 
-  const undo = () => run(async () => {
-    const last = events[events.length - 1];
-    if (last) await deleteEvent(last.id);
-  });
+  /** Queue a server call; the screen was already updated by the caller. */
+  const enqueue = (fn) => {
+    pendingRef.current += 1;
+    queueRef.current = queueRef.current
+      .then(fn)
+      .catch((e) => setMsg({ type: 'error', text: e.message }))
+      .finally(() => {
+        pendingRef.current -= 1;
+        if (pendingRef.current === 0) { reload(); reloadEvents(); }
+      });
+  };
+
+  const stopClock = (f) => {
+    if (!f.timer_started_at) return;
+    const ms = Math.round(f.timer_elapsed_ms + (Date.now() - new Date(f.timer_started_at).getTime()));
+    patchFight(f.id, { timer_elapsed_ms: ms, timer_started_at: null });
+  };
+
+  const point = (side, type) => {
+    const f = fight;
+    stopClock(f); // yame on every point
+    setEvents((ev) => [...ev, { id: `local-${Date.now()}-${ev.length}`, side, type }]);
+    enqueue(async () => {
+      if (f.timer_started_at) await timerStop(f);
+      await addEvent(f.id, side, type);
+    });
+  };
+
+  const hajime = () => {
+    const f = fight;
+    const startedAt = new Date().toISOString();
+    patchFight(f.id, { timer_started_at: startedAt });
+    enqueue(() => timerStart(f));
+  };
+
+  const yame = () => {
+    const f = fight;
+    stopClock(f);
+    enqueue(() => timerStop(f));
+  };
+
+  const undo = () => {
+    const id = fight.id;
+    setEvents((ev) => ev.slice(0, -1));
+    enqueue(async () => {
+      const saved = await listEvents(id);
+      const last = saved[saved.length - 1];
+      if (last) await deleteEvent(last.id);
+    });
+  };
 
   const finish = (extra = {}) => run(async () => {
     if (Object.keys(extra).length) await setFightFields(fight, extra);
@@ -158,7 +209,7 @@ function ScoreInput() {
   if (loading) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
-  const Side = ({ side }) => (
+  const sideBlock = (side) => (
     <div className={`st-side ${side}`}>
       <div className="st-name">{name(fight, side)}</div>
       <div className="st-club">{club(fight, side)}</div>
@@ -168,8 +219,8 @@ function ScoreInput() {
       </div>
       {fight.status === 'running' && !status?.over && (
         <div className="st-buttons">
-          {POINTS.map((p) => <button key={p} type="button" className={`st-btn ippon ${side}`} disabled={busy} onClick={() => point(side, p)}>{p}</button>)}
-          <button type="button" className={`st-btn hansoku ippon ${side}`} disabled={busy} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
+          {POINTS.map((p) => <button key={p} type="button" className={`st-btn ippon ${side}`} onClick={() => point(side, p)}>{p}</button>)}
+          <button type="button" className={`st-btn hansoku ippon ${side}`} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
         </div>
       )}
     </div>
@@ -204,15 +255,15 @@ function ScoreInput() {
           </div>
 
           <div className="st-board">
-            <Side side="red" />
+            {sideBlock('red')}
             <div className="st-center">
               {useTimer ? (
                 <>
                   <div className={`st-clock ${timeUp ? 'up' : ''}`}>{remaining == null ? mmss(elapsed) : mmss(remaining)}</div>
                   {fight.status === 'running' && !status?.over && !timeUp && (
                     fight.timer_started_at
-                      ? <button type="button" className="st-btn big" disabled={busy} onClick={() => run(() => timerStop(fight))}>Yame</button>
-                      : <button type="button" className="st-btn big go" disabled={busy} onClick={() => run(() => timerStart(fight))}>Hajime</button>
+                      ? <button type="button" className="st-btn big" onClick={yame}>Yame</button>
+                      : <button type="button" className="st-btn big go" onClick={hajime}>Hajime</button>
                   )}
                 </>
               ) : (
@@ -223,10 +274,10 @@ function ScoreInput() {
                 )
               )}
               {fight.status === 'running' && (
-                <button type="button" className="st-btn small" disabled={busy || events.length === 0} onClick={undo}>Undo last</button>
+                <button type="button" className="st-btn small" disabled={events.length === 0} onClick={undo}>Undo last</button>
               )}
             </div>
-            <Side side="white" />
+            {sideBlock('white')}
           </div>
 
           <div className="tp-actions st-actions">
