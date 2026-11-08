@@ -100,6 +100,8 @@ export async function publicRegister(categoryId, person) {
     grade_rank: person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank),
     email: person.email || null,
     birth_date: person.birth_date || null,
+    dojo_email: person.dojo_email || null,
+    consents: person.consents && Object.keys(person.consents).length ? person.consents : null,
   }));
 }
 
@@ -139,6 +141,14 @@ export async function createTournament(fields, categories = []) {
 }
 
 // --- categories ----------------------------------------------------------------
+
+/** Private contacts of a tournament's competitors (organizers only): Map(competitor id → row). */
+export async function listContacts(competitorIds) {
+  if (!competitorIds.length) return new Map();
+  const rows = unwrap(await supabase.from('competitor_contacts')
+    .select('competitor_id, email, dojo_email, birth_date, consents').in('competitor_id', competitorIds));
+  return new Map(rows.map((r) => [r.competitor_id, r]));
+}
 
 /**
  * Tournaments whose categories can be copied: your own (any) and every

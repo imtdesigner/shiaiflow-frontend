@@ -4,9 +4,10 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addTeamEntry, listEntries, removeEntry, setCheckedIn, setTier,
+  addCompetitorEntry, addTeamEntry, listContacts, listEntries, removeEntry, setCheckedIn, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
+import { consentLetters } from '../lib/tournament/signup.js';
 import { GRADES, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
@@ -26,6 +27,7 @@ function Registration() {
   const { tournamentId, tournament, categories, error: loadError, loading } = useTournament();
   const [selectedId, setSelectedId] = useState(null);
   const [entries, setEntries] = useState([]);
+  const [contacts, setContacts] = useState(new Map());
   const [person, setPerson] = useState(EMPTY_PERSON);
   const [bulk, setBulk] = useState('');
   const [team, setTeam] = useState({ name: '', club: '', members: [] });
@@ -48,7 +50,12 @@ function Registration() {
 
   const reload = useCallback(async () => {
     if (!selectedId) return;
-    try { setEntries(await listEntries(selectedId)); } catch (e) { setMsg({ type: 'error', text: e.message }); }
+    try {
+      const ens = await listEntries(selectedId);
+      setEntries(ens);
+      // private contacts and consents (organizers only; empty for others)
+      listContacts(ens.map((e) => e.competitor?.id).filter(Boolean)).then(setContacts).catch(() => setContacts(new Map()));
+    } catch (e) { setMsg({ type: 'error', text: e.message }); }
   }, [selectedId]);
 
   useEffect(() => { setEntries([]); reload(); }, [reload]);
@@ -227,7 +234,7 @@ function Registration() {
                   <thead>
                     <tr>
                       <th>#</th><th>{isTeam ? 'Team' : 'Competitor'}</th><th>Club</th>
-                      {!isTeam && <th>Grade</th>}<th title="1 champion, 2 runner-up, 3 third place, 4 strong, 5 medium, 6 weaker">Strength</th><th>Check-in</th><th />
+                      {!isTeam && <th>Grade</th>}{!isTeam && contacts.size > 0 && <th title="Email · dojo email · consents (D data, N news media, S social media, P photos; · = no)">Contact</th>}<th title="1 champion, 2 runner-up, 3 third place, 4 strong, 5 medium, 6 weaker">Strength</th><th>Check-in</th><th />
                     </tr>
                   </thead>
                   <tbody>
@@ -237,6 +244,16 @@ function Registration() {
                         <td>{entryName(en)}</td>
                         <td>{en.team?.club ?? en.competitor?.club ?? ''}</td>
                         {!isTeam && <td>{en.competitor?.grade ?? ''}</td>}
+                        {!isTeam && contacts.size > 0 && (() => {
+                          const ct = contacts.get(en.competitor?.id);
+                          return (
+                            <td className="tp-muted" style={{ fontSize: '0.85em' }}>
+                              {ct?.email && <div>{ct.email}</div>}
+                              {ct?.dojo_email && <div>dojo: {ct.dojo_email}</div>}
+                              {ct?.consents && <div title="D data · N news media · S social media · P photos">{consentLetters(ct.consents)}</div>}
+                            </td>
+                          );
+                        })()}
                         <td>
                           <select
                             value={en.tier ?? ''}

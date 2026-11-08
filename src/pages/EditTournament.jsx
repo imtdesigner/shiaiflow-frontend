@@ -4,6 +4,7 @@ import { BackToDashboard, Message, useTournament } from '../components/Tournamen
 import { tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
 import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
 import { daysValue } from '../lib/tournament/days.js';
+import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
 
@@ -86,6 +87,8 @@ function EditTournament() {
   };
 
   const toggle = (field, value, ok) => run(() => updateTournament(tournamentId, { [field]: value }), ok);
+  const signup = signupSettings(tournament);
+  const saveSignup = (patch) => run(() => updateTournament(tournamentId, { signup_fields: { ...signup, ...patch } }), 'Signup form saved.');
 
   if (loading || !form) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
@@ -153,6 +156,38 @@ function EditTournament() {
           </label>
         </div>
         <p className="tp-muted">Each category's limits (gender, age, grade, team rules) are set on the Drawings page under "Who can enter".</p>
+        <h3 style={{ marginTop: '1rem' }}>Signup form</h3>
+        <p className="tp-muted">Name, club and what the category rules need (gender, birth, grade) are always asked. Switch the rest on as needed.</p>
+        <div className="tp-grid">
+          {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
+            <label key={k} className="tp-field">
+              {label}
+              <select value={signup[k]} disabled={busy} onChange={(e) => saveSignup({ [k]: e.target.value })}>
+                <option value="off">not asked</option>
+                <option value="optional">optional</option>
+                <option value="required">required</option>
+              </select>
+            </label>
+          ))}
+          <label className="tp-field tp-check">
+            <input type="checkbox" checked={signup.add_another} disabled={busy} onChange={(e) => saveSignup({ add_another: e.target.checked })} />
+            "Add another" — register several people in one go (e.g. a dojo for its members)
+          </label>
+        </div>
+        <h4>Consents (GDPR)</h4>
+        <div className="tp-grid">
+          {CONSENTS.map((c) => (
+            <label key={c.key} className="tp-field">
+              {c.label}
+              <select value={signup.consents[c.key]} disabled={busy} onChange={(e) => saveSignup({ consents: { ...signup.consents, [c.key]: e.target.value } })}>
+                <option value="off">not asked</option>
+                <option value="ask">asked (yes / no)</option>
+                <option value="required">required to register</option>
+              </select>
+            </label>
+          ))}
+        </div>
+        <p className="tp-muted">Emails and consents are seen by the organizers only (Registration).</p>
         <h3 style={{ marginTop: '1rem' }}>Teams</h3>
         <div className="tp-grid">
           <label className="tp-field">

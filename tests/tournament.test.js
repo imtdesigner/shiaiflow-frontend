@@ -820,3 +820,16 @@ test('link name: suggestion and rules', () => {
   assert.equal(linkProblem('-abc'), 'only small letters, digits and "-" (not at the start or end)');
   assert.equal(linkProblem('croatian-open'), null);
 });
+
+import { signupSettings, signupProblems, consentLetters, askedConsents } from '../src/lib/tournament/signup.js';
+
+test('signup setup: defaults, required fields and consents', () => {
+  const s0 = signupSettings({});
+  assert.equal(s0.email, 'optional');
+  assert.equal(askedConsents(s0).length, 0);
+  const s = signupSettings({ signup_fields: { email: 'required', consents: { data_use: 'required', photos: 'ask' } } });
+  assert.deepEqual(signupProblems(s, { last_name: 'A' }), ['email', 'consent: use of my data for the tournament']);
+  assert.deepEqual(signupProblems(s, { last_name: 'A', email: 'a@b.hr', consents: { data_use: true } }), []);
+  assert.equal(askedConsents(s).length, 2);
+  assert.equal(consentLetters({ data_use: true, photos: false }), 'D ·');
+});

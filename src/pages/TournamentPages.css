@@ -359,3 +359,9 @@
 .pt-title h2 { margin: 0.4rem 0; }
 .pt-logo { max-height: 3.5rem; max-width: 7rem; object-fit: contain; }
 .home-tournament-logo { max-height: 3rem; max-width: 5rem; object-fit: contain; float: right; margin-left: 0.75rem; }
+
+/* Public registration: several people */
+.pt-person { border-bottom: 1px solid #eee5d6; padding-bottom: 1rem; margin-bottom: 1rem; }
+.pt-person-head { display: flex; justify-content: space-between; align-items: center; }
+.pt-person h4 { margin: 0.9rem 0 0.3rem; }
+.pt-consents { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; align-items: center; margin-top: 0.6rem; }
