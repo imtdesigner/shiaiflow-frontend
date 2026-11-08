@@ -708,3 +708,76 @@ test('category copy keeps the setup only', () => {
   assert.equal(row.position_rules.length, 3);
   assert.equal(row.position_rules[0].max_age, 14);
 });
+
+import { splitPools } from '../src/lib/tournament/pools.js';
+import { thirdPlaceFight, getTemplate as getKo } from '../src/lib/tournament/ko.js';
+import { fightSeconds, koRound, koRoundLabel } from '../src/lib/tournament/run.js';
+import { boutResult as br, scoringOptions } from '../src/lib/tournament/scoring.js';
+import { rankPool as rank } from '../src/lib/tournament/standings.js';
+
+test('uneven pools: even split (3+2+2) or bigger pools (4+3)', () => {
+  const ids = [1, 2, 3, 4, 5, 6, 7];
+  assert.deepEqual(splitPools(ids, 3, 'even').map((p) => p.length), [3, 2, 2]);
+  assert.deepEqual(splitPools(ids, 3, 'bigger').map((p) => p.length), [4, 3]);
+  assert.deepEqual(splitPools([1, 2, 3, 4, 5, 6], 3, 'bigger').map((p) => p.length), [3, 3]);
+  assert.deepEqual(splitPools([1, 2], 3, 'bigger').map((p) => p.length), [2]);
+  assert.deepEqual(splitPools([1, 2, 3, 4, 5], 1, 'bigger').length, 5);
+  const d = buildDraw(ids.map(String), { poolSize: 3, advancing: 2, split: 'bigger' }, 7);
+  assert.equal(d.koCode, 'K022');
+});
+
+test('ippon-shobu: first point wins, fusen / hantei count one ippon', () => {
+  const cat = { fight_system: 'ippon', pool_fight_seconds: 120, ko_fight_seconds: 180 };
+  const rules = fightRules(cat, 'pool');
+  const one = { events: [{ side: 'red', type: 'M' }] };
+  assert.equal(fightStatus(one, rules, {}, scoringOptions(cat)).next, 'finish');
+  assert.equal(fightStatus(one, fightRules({ ...cat, fight_system: 'sanbon' }, 'pool'), {}).next, null);
+  assert.equal(br({ events: [], fusen: 'white' }, scoringOptions(cat)).whiteIppons, 1);
+  assert.equal(br({ events: [], fusen: 'white' }, scoringOptions({})).whiteIppons, 2);
+});
+
+test('fight time per KO round, empty = KO time', () => {
+  const t = getKo('K041'); // semis 1, 2 → final 3
+  const c = { ko_template: t, pool_fight_seconds: 120, ko_fight_seconds: 180, sf_fight_seconds: 240, qf_fight_seconds: null, final_fight_seconds: 300 };
+  assert.equal(koRound(c, 3), 1);
+  assert.equal(fightSeconds(c, 'ko', koRound(c, 1)), 240);
+  assert.equal(fightSeconds(c, 'ko', koRound(c, 3)), 300);
+  assert.equal(fightSeconds(c, 'ko', 3), 180);
+  assert.equal(fightSeconds(c, 'ko', true), 300);
+  assert.equal(fightSeconds(c, 'pool'), 120);
+  assert.equal(koRoundLabel(c, 4), '3rd place');
+  assert.equal(koRound(c, 4), 2);
+});
+
+test('daihyosen tie rules are their own', () => {
+  const r = fightRules({ ko_encho_seconds: 120, ko_hantei: true, daihyosen_encho_seconds: null, daihyosen_hantei: false }, 'daihyosen');
+  assert.equal(r.enchoSeconds, null);
+  assert.equal(r.hantei, false);
+});
+
+test('fight for 3rd place: semifinal losers, after the final, on its court', () => {
+  const t = getKo('K041');
+  const b = thirdPlaceFight(t);
+  assert.deepEqual(b, { no: 4, red: 'L1', white: 'L2', third: true });
+  const courts = drawCourts({ directKo: true, pools: [[1], [2], [3], [4]], koTemplate: t, thirdPlace: b }, [1, 2]);
+  assert.equal(courts.ko.get(4), courts.ko.get(3));
+  assert.equal(thirdPlaceFight(getKo('K021')), null); // 2 pools → straight final
+  const fights = [
+    { id: 'a', ko_no: 1, status: 'finished', red_entry_id: 'A', white_entry_id: 'B', winner_entry_id: 'A' },
+    { id: 'b', ko_no: 2, status: 'finished', red_entry_id: 'C', white_entry_id: 'D', winner_entry_id: 'D' },
+    { id: 'c', ko_no: 4, status: 'scheduled', red_code: 'L1', white_code: 'L2', red_entry_id: null, white_entry_id: null },
+  ];
+  assert.deepEqual(koEntries(fights, new Map()), [{ id: 'c', red_entry_id: 'B', white_entry_id: 'C' }]);
+  assert.equal(plannedFights(4, { poolSize: 1, advancing: 1, thirdPlace: true }, [1]).length, 4);
+  assert.equal(plannedFights(4, { poolSize: 1, advancing: 1 }, [1]).length, 3);
+});
+
+test('ranking criteria chosen by the organizer (head-to-head first)', () => {
+  // A beat B, B beat C, C beat A; A scored most ippons
+  const m = (red, white, side, n = 1) => ({ red, white, bout: { events: Array(n).fill({ side, type: 'M' }) } });
+  const matches = [m('A', 'B', 'red', 2), m('B', 'C', 'red'), m('C', 'A', 'red')];
+  const byIppons = rank({ members: ['A', 'B', 'C'], matches, expectedMatches: 3, advancing: 1 });
+  assert.equal(byIppons.ranking[0], 'A');
+  const byLoss = rank({ members: ['A', 'B', 'C'], matches, expectedMatches: 3, advancing: 1, criteria: ['wins', 'conceded'] });
+  assert.equal(byLoss.status, 'ipponshobu'); // all 1 win; conceded A 1, C 1, B 2 → A and C tie for 1st
+});

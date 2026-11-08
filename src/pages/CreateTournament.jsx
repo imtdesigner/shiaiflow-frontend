@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message } from '../components/TournamentShell';
 import CategoryRules from '../components/CategoryRules';
+import FightRules from '../components/FightRules';
 import { createTournament, listCategorySources } from '../lib/api';
 import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, categoryRow, categorySetup } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
-const toMin = (s) => (s / 60).toString();
-const toSec = (m) => Math.max(30, Math.round(Number(m) * 60) || 0);
 let nextKey = 1;
 const withKey = (c) => ({ ...c, _key: nextKey++ });
 
@@ -171,27 +170,8 @@ function CreateTournament() {
               <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
 
               <h4>2 · Fights</h4>
-              <div className="tp-grid">
-                <label className="tp-field">
-                  Per pool
-                  <select value={c.pool_size} onChange={(e) => updateCategory(c._key, 'pool_size', Number(e.target.value))}>
-                    <option value={1}>direct KO</option>
-                    {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </label>
-                <label className="tp-field">
-                  Advancing per pool
-                  <select value={c.advancing} onChange={(e) => updateCategory(c._key, 'advancing', Number(e.target.value))} disabled={c.pool_size === 1}>
-                    <option value={0}>pools only</option>
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                  </select>
-                </label>
-                <label className="tp-field">Pool fight (min)<input type="number" step="0.5" min="0.5" value={toMin(c.pool_fight_seconds)} onChange={(e) => updateCategory(c._key, 'pool_fight_seconds', toSec(e.target.value))} /></label>
-                <label className="tp-field">KO fight (min)<input type="number" step="0.5" min="0.5" value={toMin(c.ko_fight_seconds)} onChange={(e) => updateCategory(c._key, 'ko_fight_seconds', toSec(e.target.value))} /></label>
-                <label className="tp-field">Final (min)<input type="number" step="0.5" min="0.5" value={toMin(c.final_fight_seconds)} onChange={(e) => updateCategory(c._key, 'final_fight_seconds', toSec(e.target.value))} /></label>
-              </div>
-              <p className="tp-muted">Tie rules (encho, hantei) and the KO bracket are set per category on the Drawings page.</p>
+              <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)} />
+              <p className="tp-muted">The KO bracket can be adjusted per category in the bracket editor.</p>
             </div>
           ))}
         </div>

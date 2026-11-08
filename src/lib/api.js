@@ -1,7 +1,7 @@
 // Thin data layer over Supabase. Pages call these instead of building queries.
 import { supabase } from '../supabaseClient';
 import { directKoQualifiers } from './tournament/draw.js';
-import { getTemplate } from './tournament/ko.js';
+import { getTemplate, thirdPlaceFight } from './tournament/ko.js';
 import { courtPlan, drawCourts } from './tournament/courts.js';
 
 function unwrap({ data, error }) {
@@ -256,13 +256,41 @@ export async function clearDraw(categoryId) {
   unwrap(await supabase.from('pools').delete().eq('category_id', categoryId));
 }
 
+/** The draw with the category's fight for 3rd place (null when shared or not possible). */
+function withThird(category, draw) {
+  return { ...draw, thirdPlace: category.third_place === 'fight' ? thirdPlaceFight(draw.koTemplate) : null };
+}
+
+/**
+ * KO fight rows of a template, the fight for 3rd place (if any) right before
+ * the final. Labels F-<no>: W05 / L05 refer to the number.
+ */
+function koRows(category, template, courts, direct, startQueue) {
+  const bronze = category.third_place === 'fight' ? thirdPlaceFight(template) : null;
+  const finalNo = template[template.length - 1].no;
+  const list = bronze ? [...template.filter((k) => k.no !== finalNo), bronze, template[template.length - 1]] : template;
+  return list.map((k, i) => ({
+    category_id: category.id,
+    phase: 'ko',
+    label: `F-${k.no}`,
+    ko_no: k.no,
+    red_code: k.red,
+    white_code: k.white,
+    red_entry_id: direct[k.red] ?? null,
+    white_entry_id: direct[k.white] ?? null,
+    shiaijo: courts.ko.get(k.no),
+    end_block: courts.end.has(k.no),
+    queue_order: startQueue + i + 1,
+  }));
+}
+
 /**
  * Save a draw from buildDraw(): pools, pool matches and KO matches.
  * KO matches keep their template codes; for a direct KO the first round is filled in.
  */
 export async function saveDraw(category, draw, tournament) {
   await clearDraw(category.id);
-  const courts = drawCourts(draw, courtPlan(category, tournament));
+  const courts = drawCourts(withThird(category, draw), courtPlan(category, tournament));
 
   const poolRows = unwrap(await supabase.from('pools')
     .insert(draw.pools.map((_, i) => ({ category_id: category.id, number: i + 1 })))
@@ -288,21 +316,7 @@ export async function saveDraw(category, draw, tournament) {
 
   if (draw.koTemplate) {
     const direct = draw.directKo ? directKoQualifiers(draw.pools) : {};
-    for (const k of draw.koTemplate) {
-      rows.push({
-        category_id: category.id,
-        phase: 'ko',
-        label: `F-${k.no}`, // KO fight number, as W05 / L05 refer to it
-        ko_no: k.no,
-        red_code: k.red,
-        white_code: k.white,
-        red_entry_id: direct[k.red] ?? null,
-        white_entry_id: direct[k.white] ?? null,
-        shiaijo: courts.ko.get(k.no),
-        end_block: courts.end.has(k.no),
-        queue_order: (queue += 1),
-      });
-    }
+    for (const r of koRows(category, draw.koTemplate, courts, direct, queue)) rows.push(r);
   }
   // defaultToNull: false → a column a row leaves out gets its default, not null
   if (rows.length) unwrap(await supabase.from('matches').insert(rows, { defaultToNull: false }));
@@ -353,23 +367,11 @@ export async function saveKoTemplate(category, code, template, tournament) {
     pools: pools.map((p) => [...p.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id)),
     koTemplate: finalTemplate,
   };
-  const courts = drawCourts(draw, courtPlan(category, tournament));
+  const courts = drawCourts(withThird(category, draw), courtPlan(category, tournament));
   const direct = draw.directKo ? directKoQualifiers(draw.pools) : {};
   const start = Math.max(0, ...matches.filter((m) => m.phase !== 'ko').map((m) => m.queue_order ?? 0));
   if (ko.length) unwrap(await supabase.from('matches').delete().in('id', ko.map((m) => m.id)));
-  unwrap(await supabase.from('matches').insert(finalTemplate.map((k, i) => ({
-    category_id: category.id,
-    phase: 'ko',
-    label: `F-${k.no}`,
-    ko_no: k.no,
-    red_code: k.red,
-    white_code: k.white,
-    red_entry_id: direct[k.red] ?? null,
-    white_entry_id: direct[k.white] ?? null,
-    shiaijo: courts.ko.get(k.no),
-    end_block: courts.end.has(k.no),
-    queue_order: start + i + 1,
-  })), { defaultToNull: false }));
+  unwrap(await supabase.from('matches').insert(koRows(category, finalTemplate, courts, direct, start), { defaultToNull: false }));
   return updateCategory(category.id, { ko_template_code: code, ko_template: finalTemplate, ko_template_edited: edited });
 }
 
@@ -412,7 +414,7 @@ export async function applyCourts(category, tournament) {
     pools: pools.map((p) => p.pool_entries),
     koTemplate: category.ko_template,
   };
-  const courts = drawCourts(draw, courtPlan(category, tournament));
+  const courts = drawCourts(withThird(category, draw), courtPlan(category, tournament));
   const poolIndex = Object.fromEntries(pools.map((p, i) => [p.id, i]));
   const groups = new Map(); // "court|end" -> ids
   for (const m of matches.filter((x) => x.status === 'scheduled' && !x.court_manual)) {

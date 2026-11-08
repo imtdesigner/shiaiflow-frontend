@@ -42,10 +42,10 @@ export function boutTotals(bout, { autoHansokuIppon = true } = {}) {
  */
 export function boutResult(bout, options) {
   const special = bout.fusen === 'red' || bout.fusen === 'white' ? { side: bout.fusen, mark: 'O' } : null;
-  if (special) return twoNil(special.side, special.mark);
+  if (special) return twoNil(special.side, special.mark, undefined, options);
   const t = boutTotals(bout, options);
   if (t.red.ippons.length === t.white.ippons.length && (bout.decision === 'red' || bout.decision === 'white')) {
-    return twoNil(bout.decision, 'H', t);
+    return twoNil(bout.decision, 'H', t, options);
   }
   const r = t.red.ippons.length;
   const w = t.white.ippons.length;
@@ -63,23 +63,31 @@ export function boutResult(bout, options) {
   };
 }
 
-/** 2–0 win by fusen-gachi (OO) or hantei (HH). */
-function twoNil(side, mark, base) {
+/** 2–0 win by fusen-gachi (OO) or hantei (HH); 1–0 (O / H) in ippon-shobu. */
+function twoNil(side, mark, base, options) {
+  const n = options?.ipponShobu ? 1 : 2;
+  const marks = Array(n).fill(mark);
   const totals = {
-    red: { ippons: side === 'red' ? [mark, mark] : [], hansoku: base?.red.hansoku ?? 0 },
-    white: { ippons: side === 'white' ? [mark, mark] : [], hansoku: base?.white.hansoku ?? 0 },
+    red: { ippons: side === 'red' ? marks : [], hansoku: base?.red.hansoku ?? 0 },
+    white: { ippons: side === 'white' ? [...marks] : [], hansoku: base?.white.hansoku ?? 0 },
   };
   return {
     winner: side,
     draw: false,
-    redIppons: side === 'red' ? 2 : 0,
-    whiteIppons: side === 'white' ? 2 : 0,
+    redIppons: side === 'red' ? n : 0,
+    whiteIppons: side === 'white' ? n : 0,
     redHansoku: totals.red.hansoku,
     whiteHansoku: totals.white.hansoku,
     totals,
     by: mark === 'O' ? 'fusen' : 'hantei',
   };
 }
+
+/** Scoring options of a category: auto ippon on the 2nd hansoku, ippon-shobu. */
+export const scoringOptions = (category) => ({
+  autoHansokuIppon: category?.auto_hansoku_ippon ?? true,
+  ipponShobu: category?.fight_system === 'ippon',
+});
 
 /** Short text like the Excel cells: "MK", "D", "HH", "OO" … */
 export function ipponString(totals, side) {

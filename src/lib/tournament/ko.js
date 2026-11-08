@@ -19,6 +19,20 @@ export function getTemplate(code) {
 }
 
 export const isWinnerRef = (code) => /^W\d+$/.test(code);
+export const loserRefNo = (code) => Number(code.slice(1));
+
+/**
+ * Fight for 3rd place (category.third_place = 'fight'): the semifinal losers
+ * meet in a fight numbered after the final — { no, red: 'L<sf1>', white:
+ * 'L<sf2>', third: true }; null when the final has no two semifinals.
+ * The template itself stays unchanged (W refs, final = last).
+ */
+export function thirdPlaceFight(template) {
+  if (!template?.length) return null;
+  const final = template[template.length - 1];
+  if (!isWinnerRef(final.red) || !isWinnerRef(final.white)) return null;
+  return { no: final.no + 1, red: `L${winnerRefNo(final.red)}`, white: `L${winnerRefNo(final.white)}`, third: true };
+}
 export const winnerRefNo = (code) => Number(code.slice(1));
 /** '052' -> { pool: 5, place: 2 } */
 export const parsePoolCode = (code) => ({ pool: Number(code.slice(0, 2)), place: Number(code.slice(2)) });

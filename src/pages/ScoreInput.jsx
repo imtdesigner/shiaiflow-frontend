@@ -8,11 +8,11 @@ import {
   addEvent, boutOf, deleteEvent, finishFight, listEvents, listRunFights, myRole, reopenFight,
   setFightFields, startEncho, startFight, subscribeFights, timerStart, timerStop,
 } from '../lib/runApi';
-import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
+import { slotLabel } from '../lib/tournament/ko.js';
 import {
-  courtQueue, currentFight, fightRules, fightSeconds, fightStatus,
+  courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
 } from '../lib/tournament/run.js';
-import { boutTotals } from '../lib/tournament/scoring.js';
+import { boutTotals, scoringOptions } from '../lib/tournament/scoring.js';
 import './TournamentPages.css';
 import './Scoreinput.css';
 
@@ -95,18 +95,16 @@ function ScoreInput() {
 
   const category = fight ? byId[fight.category_id] : null;
   const rules = category ? fightRules(category, fight.phase) : null;
-  const template = category?.ko_template ?? [];
-  const finalNo = template.length ? template[template.length - 1].no : null;
   const useTimer = tournament?.use_timer ?? true;
   const limitSec = !fight || !rules ? null
     : fight.is_encho ? rules.enchoSeconds
       : rules.ipponshobu ? null
-        : fightSeconds(category, fight.phase, fight.ko_no === finalNo);
+        : fightSeconds(category, fight.phase, koRound(category, fight.ko_no));
   const elapsed = fight ? fight.timer_elapsed_ms + (fight.timer_started_at ? now - new Date(fight.timer_started_at).getTime() : 0) : 0;
   const remaining = limitSec == null ? null : limitSec * 1000 - elapsed;
   const timeUp = useTimer ? remaining != null && remaining <= 0 : manualTimeUp;
   const bout = fight ? boutOf(fight, events) : { events: [] };
-  const opts = { autoHansokuIppon: category?.auto_hansoku_ippon ?? true };
+  const opts = scoringOptions(category);
   const status = fight && rules ? fightStatus(bout, rules, { encho: fight.is_encho, timeUp }, opts) : null;
   const totals = fight ? boutTotals({ events }, opts) : null;
 
@@ -199,7 +197,7 @@ function ScoreInput() {
   const roundOf = (f) => {
     if (f.phase === 'pool') return 'Pool';
     if (f.phase === 'ipponshobu') return 'Ipponshobu';
-    return roundShort(matchRounds(byId[f.category_id]?.ko_template ?? []).get(f.ko_no));
+    return koRoundLabel(byId[f.category_id], f.ko_no);
   };
 
   const upcoming = queue.filter((f) => f.status !== 'finished' && f.id !== fight?.id);

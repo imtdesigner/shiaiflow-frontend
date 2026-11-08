@@ -337,3 +337,13 @@
 .ct-category-head input { font-weight: 600; min-width: 14rem; }
 .ct-category h4 { margin: 0.9rem 0 0.4rem; font-size: 0.95rem; }
 .ct-source { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid #eee5d6; }
+
+/* Fight rules editor (FightRules.jsx) */
+.fr-h { margin: 0.9rem 0 0.4rem; font-size: 0.9rem; }
+.fr-tie { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.fr-tie-title { min-width: 6.5rem; font-weight: 600; }
+.fr-tie .cr-range input { width: 4.5rem; }
+.fr-criteria { margin: 0 0 0.5rem; padding-left: 1.4rem; }
+.fr-criteria li { margin-bottom: 0.25rem; }
+.fr-criteria li span { display: inline-block; min-width: 13rem; }
+.fr-criteria .tp-btn { margin-left: 0.25rem; padding: 0.1rem 0.45rem; }

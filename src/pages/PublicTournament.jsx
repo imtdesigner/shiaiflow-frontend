@@ -9,9 +9,9 @@ import {
 import { OrganizerLine } from '../components/TournamentList';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
-import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue, fightSeconds } from '../lib/tournament/run.js';
-import { boutResult } from '../lib/tournament/scoring.js';
+import { slotLabel, thirdPlaceFight } from '../lib/tournament/ko.js';
+import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
+import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 import { GRADES, ineligibleReason, rulesText, teamPositions, teamProblems, teamReserves, teamMaxMembers, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
@@ -92,14 +92,13 @@ function PublicTournament() {
     return code ? slotLabel(code, byCat[f.category_id]?.pool_size === 1) : '—';
   };
   const roundOf = (f) => (f.phase === 'pool' ? 'Pool' : f.phase === 'ipponshobu' ? 'Ipponshobu'
-    : roundShort(matchRounds(byCat[f.category_id]?.ko_template ?? []).get(f.ko_no)));
+    : koRoundLabel(byCat[f.category_id], f.ko_no));
   const secsOf = (f) => {
     const c = byCat[f.category_id];
-    const t = c?.ko_template ?? [];
-    return c ? fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', f.ko_no === t[t.length - 1]?.no) : 180;
+    return c ? fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no)) : 180;
   };
   const score = (f) => {
-    const r = boutResult({ events: events.filter((e) => e.match_id === f.id), decision: f.decision, fusen: f.fusen });
+    const r = boutResult({ events: events.filter((e) => e.match_id === f.id), decision: f.decision, fusen: f.fusen }, scoringOptions(byCat[f.category_id]));
     return `${r.totals.red.ippons.join('') || '–'} : ${r.totals.white.ippons.join('') || '–'}`;
   };
 
@@ -271,6 +270,7 @@ function PublicTournament() {
                   return r;
                 })()}
                 directKo={c.pool_size === 1}
+                thirdPlace={c.third_place === 'fight' ? thirdPlaceFight(c.ko_template) : null}
               />
             )}
           </div>

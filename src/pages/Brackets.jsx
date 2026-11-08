@@ -12,7 +12,7 @@ import {
 import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { getTemplate, parseTemplate } from '../lib/tournament/ko.js';
 import { KO_VARIANTS } from '../lib/tournament/koTemplates.data.js';
-import { splitEvenly, systemCode } from '../lib/tournament/pools.js';
+import { splitPools, systemCode } from '../lib/tournament/pools.js';
 import './TournamentPages.css';
 
 /**
@@ -61,7 +61,7 @@ function Brackets() {
     const adv = directKo ? 1 : category.advancing;
     const poolCount = saved
       ? saved.pools.length
-      : splitEvenly(entries.filter((e) => e.checked_in), category.pool_size).length;
+      : splitPools(entries.filter((e) => e.checked_in), category.pool_size, category.pool_split).length;
     if (adv < 1 || poolCount * adv < 2) return { directKo, adv, poolCount, code: null };
     return { directKo, adv, poolCount, code: systemCode(poolCount, adv) };
   }, [category, saved, entries]);

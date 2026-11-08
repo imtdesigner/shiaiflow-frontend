@@ -69,6 +69,17 @@ export function splitEvenly(entries, poolSize) {
   return pools;
 }
 
+/**
+ * Pools by the category's choice for an uneven count (owner, 2026-11-08):
+ * 'even' = splitEvenly (Excel pool count: 7 by 3 → 3+2+2), 'bigger' = fewer,
+ * bigger pools (7 by 3 → 4+3). Exact multiples are the same either way.
+ */
+export function splitPools(entries, poolSize, mode = 'even') {
+  if (mode !== 'bigger' || poolSize === 1) return splitEvenly(entries, poolSize);
+  const count = Math.max(1, Math.floor(entries.length / poolSize));
+  return splitEvenly(entries, Math.ceil(entries.length / count));
+}
+
 /** KO system code: K + pool count (2 digits) + advancing per pool, e.g. K052. */
 export function systemCode(poolCount, advancing) {
   return `K${String(poolCount).padStart(2, '0')}${advancing}`;

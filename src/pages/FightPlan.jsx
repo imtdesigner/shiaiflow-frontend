@@ -4,8 +4,8 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
-import { matchRounds, roundShort, slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue } from '../lib/tournament/run.js';
+import { matchRounds, slotLabel } from '../lib/tournament/ko.js';
+import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
 import './TournamentPages.css';
 
 const fmt = (seconds) => {
@@ -21,11 +21,8 @@ const clock = (startTime, seconds) => {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
 
-/** Seconds a fight takes (fight time of its category and phase). */
-const fightSeconds = (f, c, finalNo) => {
-  if (f.phase !== 'ko') return c.pool_fight_seconds;
-  return f.ko_no === finalNo ? c.final_fight_seconds : c.ko_fight_seconds;
-};
+/** Seconds a fight takes (fight time of its category, phase and KO round). */
+const fightSecondsOf = (f, c) => fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no));
 
 /**
  * Fight plan: every saved fight, by category (pools, then KO) or by shiaijo
@@ -73,7 +70,7 @@ function FightPlan() {
     const code = which === 'red' ? f.red_code : f.white_code;
     return code ? slotLabel(code, meta[f.category_id]?.directKo) : '—';
   };
-  const roundOf = (f) => (f.phase === 'ko' ? roundShort(meta[f.category_id]?.rounds.get(f.ko_no)) : f.phase === 'ipponshobu' ? 'Ipponshobu' : 'Pool');
+  const roundOf = (f) => (f.phase === 'ko' ? koRoundLabel(byId[f.category_id], f.ko_no) : f.phase === 'ipponshobu' ? 'Ipponshobu' : 'Pool');
 
   const changeCourt = async (f, value) => {
     setBusy(true); setMsg({ type: '', text: '' });
@@ -100,7 +97,7 @@ function FightPlan() {
   const perCourt = useMemo(() => {
     // same order as the scoretables: court_seq once the tournament started, plan order before
     const sorted = courts.flatMap((n) => courtQueue(fights, drawn, n));
-    const secs = (f) => fightSeconds(f, byId[f.category_id], meta[f.category_id]?.finalNo);
+    const secs = (f) => fightSecondsOf(f, byId[f.category_id]);
     // regular fights first; the end-of-tournament block starts once every court is done
     const regularEnd = Math.max(0, ...courts.map((n) => sorted
       .filter((f) => f.shiaijo === n && !f.end_block).reduce((t, f) => t + secs(f), 0)));

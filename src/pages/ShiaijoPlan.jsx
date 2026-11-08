@@ -57,7 +57,7 @@ function ShiaijoPlan() {
   /** Fights per category with their court: saved ones once drawn, planned before. */
   const categoryFights = (c) => {
     if (c.status === 'registration') {
-      return plannedFights(counts[c.id] ?? 0, { poolSize: c.pool_size, advancing: c.advancing }, courtPlan(c, tournament));
+      return plannedFights(counts[c.id] ?? 0, { poolSize: c.pool_size, advancing: c.advancing, split: c.pool_split, thirdPlace: c.third_place === 'fight' }, courtPlan(c, tournament));
     }
     const finalNo = c.ko_template?.length ? c.ko_template[c.ko_template.length - 1].no : null;
     return fights.filter((f) => f.category_id === c.id).map((f) => ({

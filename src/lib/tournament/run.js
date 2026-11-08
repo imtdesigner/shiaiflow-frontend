@@ -2,7 +2,7 @@
 // scoretable may do when time is up, and the order of fights on a court.
 
 import { boutResult } from './scoring.js';
-import { isWinnerRef, matchRounds, poolCode, winnerRefNo } from './ko.js';
+import { isLoserRef, isWinnerRef, loserRefNo, matchRounds, poolCode, roundShort, winnerRefNo } from './ko.js';
 
 /**
  * Rules for a fight of this category:
@@ -12,19 +12,45 @@ import { isWinnerRef, matchRounds, poolCode, winnerRefNo } from './ko.js';
  */
 export function fightRules(category, phase) {
   const ko = phase !== 'pool';
+  const daihyosen = phase === 'daihyosen';
   return {
     seconds: phase === 'pool' ? category.pool_fight_seconds : category.ko_fight_seconds,
     tie: ko ? 'encho' : category.pool_tie ?? 'hikiwake',
-    enchoSeconds: (ko ? category.ko_encho_seconds : category.pool_encho_seconds) ?? null,
-    hantei: !!(ko ? category.ko_hantei : category.pool_hantei),
+    enchoSeconds: (daihyosen ? category.daihyosen_encho_seconds : ko ? category.ko_encho_seconds : category.pool_encho_seconds) ?? null,
+    hantei: !!(daihyosen ? category.daihyosen_hantei : ko ? category.ko_hantei : category.pool_hantei),
     ipponshobu: phase === 'ipponshobu', // first point wins, no time limit
+    ipponSystem: category.fight_system === 'ippon', // ippon-shobu category: first point wins within the time
   };
 }
 
-/** Seconds of a fight: final of the KO uses the final time. */
-export const fightSeconds = (category, phase, isFinal) => (
-  phase === 'pool' ? category.pool_fight_seconds : isFinal ? category.final_fight_seconds : category.ko_fight_seconds
-);
+/**
+ * Seconds of a fight. round: KO round (1 final, 2 semifinal, 3 quarterfinal,
+ * from matchRounds) or true for the final; a quarter- / semifinal time left
+ * empty falls back to the KO time.
+ */
+export function fightSeconds(category, phase, round) {
+  if (phase === 'pool') return category.pool_fight_seconds;
+  const r = round === true ? 1 : round;
+  if (r === 1) return category.final_fight_seconds ?? category.ko_fight_seconds;
+  if (r === 2) return category.sf_fight_seconds ?? category.ko_fight_seconds;
+  if (r === 3) return category.qf_fight_seconds ?? category.ko_fight_seconds;
+  return category.ko_fight_seconds;
+}
+
+/** Round label of a KO fight: 1/4 final, 1/2 final, Final, 3rd place. */
+export function koRoundLabel(category, koNo) {
+  const t = category?.ko_template ?? [];
+  if (t.length && koNo === t[t.length - 1].no + 1) return '3rd place';
+  return roundShort(matchRounds(t).get(koNo));
+}
+
+/** KO round of a fight number (the fight for 3rd place counts as a semifinal). */
+export function koRound(category, koNo) {
+  const t = category?.ko_template ?? [];
+  const r = matchRounds(t).get(koNo);
+  if (r) return r;
+  return t.length && koNo === t[t.length - 1].no + 1 ? 2 : null;
+}
 
 /**
  * Where a fight stands, for the scoretable buttons.
@@ -41,7 +67,7 @@ export function fightStatus(bout, rules, { encho = false, timeUp = false } = {},
   if (r.by) return { ...r, over: true, next: 'finish' }; // fusen-gachi / hantei
   const lead = r.winner;
   if (Math.max(r.redIppons, r.whiteIppons) >= 2) return { ...r, over: true, next: 'finish' };
-  if ((encho || rules.ipponshobu) && lead) return { ...r, over: true, next: 'finish' };
+  if ((encho || rules.ipponshobu || rules.ipponSystem) && lead) return { ...r, over: true, next: 'finish' };
   if (!timeUp) return { ...r, over: false, next: null };
   if (lead) return { ...r, over: true, next: 'finish' };
   // tie at time
@@ -122,6 +148,11 @@ export function koEntries(koFights, poolPlaces) {
   const slot = (code) => {
     if (!code) return null;
     if (isWinnerRef(code)) return byNo.get(winnerRefNo(code))?.winner_entry_id ?? null;
+    if (isLoserRef(code)) {
+      const f = byNo.get(loserRefNo(code));
+      if (!f?.winner_entry_id) return null;
+      return f.winner_entry_id === f.red_entry_id ? f.white_entry_id : f.red_entry_id;
+    }
     return poolPlaces.get(code) ?? null;
   };
   return koFights

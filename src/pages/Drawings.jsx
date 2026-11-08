@@ -15,7 +15,9 @@ import KoBracket from '../components/KoBracket';
 import { rulesText, teamReserves } from '../lib/tournament/eligibility.js';
 import { categoryRow } from '../lib/tournament/categoryTemplates.js';
 import CategoryRules from '../components/CategoryRules';
+import FightRules from '../components/FightRules';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
+import { thirdPlaceFight } from '../lib/tournament/ko.js';
 import './TournamentPages.css';
 
 const FORMAT_LABEL = { roundRobin: 'Round robin', directKo: 'Direct KO' };
@@ -205,7 +207,8 @@ function Drawings() {
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
   const [rulesDraft, setRulesDraft] = useState(null);
-  useEffect(() => { setRulesDraft(null); }, [category?.id]);
+  const [fightDraft, setFightDraft] = useState(null);
+  useEffect(() => { setRulesDraft(null); setFightDraft(null); }, [category?.id]);
   const changeSetting = (field, value) => changeSettings({ [field]: value });
 
   const changeSettings = async (fields) => {
@@ -224,7 +227,7 @@ function Drawings() {
     setPreview(buildDraw(checkedIn.map((e) => ({
       id: e.id, club: e.team?.club ?? e.competitor?.club ?? '', tier: e.tier,
     })), {
-      poolSize: category.pool_size, advancing: category.advancing, custom,
+      poolSize: category.pool_size, advancing: category.advancing, split: category.pool_split, custom,
     }, newSeed()));
   };
 
@@ -413,39 +416,25 @@ function Drawings() {
           </details>
           <details style={{ marginTop: '0.75rem' }}>
             <summary className="tp-muted">
-              Fight rules — pools: {category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
+              Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
+              {' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
               {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
+              {category.third_place === 'fight' ? ' · fight for 3rd' : ''}
             </summary>
-            <div className="tp-grid" style={{ marginTop: '0.75rem' }}>
-              <label className="tp-field">
-                Pools: tie at time
-                <select value={category.pool_tie} onChange={(e) => changeSetting('pool_tie', e.target.value)}>
-                  <option value="hikiwake">hikiwake (draw)</option>
-                  <option value="encho">encho</option>
-                </select>
-              </label>
-              {category.pool_tie === 'encho' && (
-                <>
-                  <label className="tp-field">
-                    Pools: encho (min, empty = until a point)
-                    <input type="number" min="0.5" step="0.5" defaultValue={category.pool_encho_seconds ? category.pool_encho_seconds / 60 : ''}
-                      onBlur={(e) => changeSetting('pool_encho_seconds', e.target.value ? Math.round(Number(e.target.value) * 60) : null)} />
-                  </label>
-                  <label className="tp-field tp-check">
-                    <input type="checkbox" checked={category.pool_hantei} onChange={(e) => changeSetting('pool_hantei', e.target.checked)} />
-                    Pools: hantei after encho
-                  </label>
-                </>
+            <div style={{ marginTop: '0.75rem' }}>
+              <FightRules hidePools category={fightDraft ?? category} onChange={(next) => !locked && setFightDraft(next)} />
+              {fightDraft && (
+                <div className="tp-actions">
+                  <button type="button" className="tp-btn small" onClick={async () => {
+                    const keys = ['pool_split', 'fight_system', 'third_place', 'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds',
+                      'sf_fight_seconds', 'final_fight_seconds', 'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds',
+                      'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria'];
+                    await changeSettings(Object.fromEntries(keys.map((k) => [k, fightDraft[k] ?? null]).filter(([k, v]) => v !== null || !['pool_split', 'fight_system', 'third_place', 'pool_tie', 'pool_hantei', 'ko_hantei', 'daihyosen_hantei'].includes(k))));
+                    setFightDraft(null);
+                  }}>Save fight rules</button>
+                  <button type="button" className="tp-btn secondary small" onClick={() => setFightDraft(null)}>Cancel</button>
+                </div>
               )}
-              <label className="tp-field">
-                KO: encho (min, empty = until a point)
-                <input type="number" min="0.5" step="0.5" defaultValue={category.ko_encho_seconds ? category.ko_encho_seconds / 60 : ''}
-                  onBlur={(e) => changeSetting('ko_encho_seconds', e.target.value ? Math.round(Number(e.target.value) * 60) : null)} />
-              </label>
-              <label className="tp-field tp-check">
-                <input type="checkbox" checked={category.ko_hantei} onChange={(e) => changeSetting('ko_hantei', e.target.checked)} />
-                KO: hantei after encho
-              </label>
             </div>
           </details>
           {smallFormats && (
@@ -530,7 +519,7 @@ function Drawings() {
           {preview.koTemplate && (
             <>
               <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
-              <KoBracket template={preview.koTemplate} nameOf={nameOf} directKo={preview.directKo} />
+              <KoBracket template={preview.koTemplate} nameOf={nameOf} directKo={preview.directKo} thirdPlace={category.third_place === 'fight' ? thirdPlaceFight(preview.koTemplate) : null} />
             </>
           )}
           <div className="tp-actions">
@@ -584,7 +573,7 @@ function Drawings() {
           {category.ko_template && (
             <>
               <h3 style={{ marginTop: '1rem' }}>KO bracket</h3>
-              <KoBracket template={category.ko_template} nameOf={nameOf} resolved={savedResolved} directKo={category.pool_size === 1} />
+              <KoBracket template={category.ko_template} nameOf={nameOf} resolved={savedResolved} directKo={category.pool_size === 1} thirdPlace={category.third_place === 'fight' ? thirdPlaceFight(category.ko_template) : null} />
             </>
           )}
           <div className="tp-actions">

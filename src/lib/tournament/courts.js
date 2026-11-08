@@ -6,8 +6,8 @@
 // finals — or semifinals and finals — of all categories at the end of the
 // tournament on the central courts (tournaments.end_block / central_shiaijos).
 
-import { getTemplate, leaves, matchRounds } from './ko.js';
-import { POOL_ORDER, splitEvenly, systemCode } from './pools.js';
+import { getTemplate, leaves, matchRounds, thirdPlaceFight } from './ko.js';
+import { POOL_ORDER, splitPools, systemCode } from './pools.js';
 
 const fightsInPool = (size) => (size >= 2 ? (POOL_ORDER[size]?.length ?? (size * (size - 1)) / 2) : 0);
 
@@ -91,6 +91,12 @@ function endBlockCourts(template, base, { central, endBlock }) {
 export function drawCourts(draw, plan) {
   const p = Array.isArray(plan) || !plan ? courtPlan({ shiaijos: plan }) : plan;
   const { court, end } = endBlockCourts(draw.koTemplate, koCourts(draw.koTemplate, p.koCourts), p);
+  // fight for 3rd place: on the final's court, right before it (also in the end block)
+  if (draw.thirdPlace && draw.koTemplate?.length) {
+    const finalNo = draw.koTemplate[draw.koTemplate.length - 1].no;
+    court.set(draw.thirdPlace.no, court.get(finalNo));
+    if (end.has(finalNo)) end.add(draw.thirdPlace.no);
+  }
   return {
     pool: draw.directKo ? draw.pools.map(() => p.courts[0]) : poolCourts(draw.pools.map((x) => x.length), p.courts),
     ko: court,
@@ -103,14 +109,15 @@ export function drawCourts(draw, plan) {
  * [{ phase: 'pool'|'ko'|'final', court, end }]. Used for the time estimate.
  * `plan` is courtPlan(...) or an array of courts.
  */
-export function plannedFights(count, { poolSize, advancing }, plan) {
+export function plannedFights(count, { poolSize, advancing, split = 'even', thirdPlace = false }, plan) {
   if (count < 2) return [];
   const p = Array.isArray(plan) || !plan ? courtPlan({ shiaijos: plan }) : plan;
-  const sizes = splitEvenly(Array.from({ length: count }, (_, i) => i), poolSize).map((x) => x.length);
+  const sizes = splitPools(Array.from({ length: count }, (_, i) => i), poolSize, split).map((x) => x.length);
   const directKo = poolSize === 1;
   const adv = directKo ? 1 : advancing;
   const template = adv > 0 && sizes.length * adv >= 2 ? getTemplate(systemCode(sizes.length, adv)) : null;
-  const courts = drawCourts({ directKo, pools: sizes.map((n) => Array(n)), koTemplate: template }, p);
+  const bronze = thirdPlace ? thirdPlaceFight(template) : null;
+  const courts = drawCourts({ directKo, pools: sizes.map((n) => Array(n)), koTemplate: template, thirdPlace: bronze }, p);
   const fights = [];
   if (!directKo) {
     courts.pool.forEach((court, i) => {
@@ -122,6 +129,7 @@ export function plannedFights(count, { poolSize, advancing }, plan) {
     for (const m of template) {
       fights.push({ phase: m.no === finalNo ? 'final' : 'ko', court: courts.ko.get(m.no), end: courts.end.has(m.no) });
     }
+    if (bronze) fights.push({ phase: 'ko', court: courts.ko.get(bronze.no), end: courts.end.has(bronze.no) });
   }
   return fights;
 }

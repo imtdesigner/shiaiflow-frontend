@@ -1,7 +1,7 @@
 // Draw for one category: shuffle → pools → pool matches → KO template.
 // Pure function; the page saves the result to the database.
 
-import { seededRandom, shuffle, splitEvenly, poolMatches, systemCode } from './pools.js';
+import { seededRandom, shuffle, splitPools, poolMatches, systemCode } from './pools.js';
 import { getTemplate, validateTemplate, poolCode } from './ko.js';
 import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 
@@ -19,14 +19,14 @@ import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 export function buildDraw(entries, settings, seed) {
   const meta = entryMeta(entries);
   const ids = meta.map((m) => m.id);
-  const sizes = splitEvenly(ids, settings.poolSize).map((p) => p.length);
+  const sizes = splitPools(ids, settings.poolSize, settings.split).map((p) => p.length);
   const directKo = settings.poolSize === 1;
   const adv = directKo ? 1 : settings.advancing;
   const code = adv > 0 && sizes.length * adv >= 2 ? systemCode(sizes.length, adv) : null;
   const template = code ? (settings.custom?.code === code ? settings.custom.template : getTemplate(code)) : null;
   const pools = meta.some((m) => m.club || m.tier)
     ? placeEntries(meta, sizes, template, directKo, seed)
-    : splitEvenly(shuffle(ids, seededRandom(seed)), settings.poolSize);
+    : splitPools(shuffle(ids, seededRandom(seed)), settings.poolSize, settings.split);
   return drawFromPools(pools, settings, seed, meta);
 }
 

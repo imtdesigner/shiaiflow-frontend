@@ -92,7 +92,7 @@ const sameSlot = (a, b) => a && b && a.no === b.no && a.side === b.side;
  * With `onSwap` / `onSet` the slots can be edited (bracket editor).
  */
 export default function KoBracket({
-  template, nameOf, resolved = {}, directKo = false, onSwap, onSet,
+  template, nameOf, resolved = {}, directKo = false, onSwap, onSet, thirdPlace = null,
 }) {
   const [editing, setEditing] = useState(null);
   const [drag, setDrag] = useState(null); // { from, over, moved }
@@ -175,6 +175,17 @@ export default function KoBracket({
           );
         })}
       </div>
+      {thirdPlace && (
+        <div className="ko-bracket" style={{ width: BOX_W, height: BOX_H + 8, marginTop: '0.75rem' }}>
+          <div className="ko-match" style={{ left: 0, top: 0, width: BOX_W, height: BOX_H }}>
+            <div className="ko-match-head"><strong>F-{thirdPlace.no}</strong><span>3rd place</span></div>
+            {[['aka', thirdPlace.red], ['shiro', thirdPlace.white]].map(([side, code]) => (
+              <Slot key={side} side={side} code={code} no={thirdPlace.no} directKo={directKo}
+                name={resolved[code] ? nameOf(resolved[code]) : ''} editable={false} onPress={() => {}} onTyped={() => {}} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

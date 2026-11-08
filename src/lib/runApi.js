@@ -2,6 +2,7 @@
 // and what happens after a fight (pool ranking, ipponshobu, KO filling).
 import { supabase } from '../supabaseClient';
 import { rankPool } from './tournament/standings.js';
+import { scoringOptions } from './tournament/scoring.js';
 import {
   koEntries, placesToCodes, startOutOfOrder, startSequence,
 } from './tournament/run.js';
@@ -127,7 +128,7 @@ export async function afterFight(fight, category) {
     expectedMatches: fights.filter((f) => f.phase === 'pool').length,
     advancing: category.advancing,
     criteria: category.ranking_criteria ?? undefined,
-    scoringOptions: { autoHansokuIppon: category.auto_hansoku_ippon },
+    scoringOptions: scoringOptions(category),
   });
 
   if (res.status === 'incomplete') return { message: null };

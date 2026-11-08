@@ -21,6 +21,9 @@ export const EMPTY_CATEGORY = {
   pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240,
   gender: null, min_age: null, max_age: null, min_grade: null, max_grade: null,
   team_same_dojo: false, position_rules: null,
+  fight_system: 'sanbon', pool_split: 'even', qf_fight_seconds: null, sf_fight_seconds: null,
+  pool_tie: 'hikiwake', pool_encho_seconds: null, pool_hantei: false, ko_encho_seconds: null, ko_hantei: false,
+  daihyosen_encho_seconds: null, daihyosen_hantei: false, third_place: 'shared',
 };
 
 /** Setup fields of a category (what a template or a copy carries over). */
@@ -30,6 +33,8 @@ export const SETUP_FIELDS = [
   'gender', 'min_age', 'max_age', 'min_grade', 'max_grade', 'team_same_dojo', 'position_rules',
   'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds', 'ko_hantei',
   'ko_template_code', 'ko_template', 'ko_template_edited', 'ranking_criteria', 'auto_hansoku_ippon',
+  'fight_system', 'pool_split', 'qf_fight_seconds', 'sf_fight_seconds',
+  'daihyosen_encho_seconds', 'daihyosen_hantei', 'third_place',
 ];
 
 /** A category's setup only (no ids, draw, status or courts) — for copying. */
