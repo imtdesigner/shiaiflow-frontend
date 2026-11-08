@@ -308,3 +308,13 @@
     font-size: 10pt;
   }
 }
+
+.tp-tournaments {
+  text-align: center;
+}
+
+.tp-tournaments .home-actions {
+  display: flex;
+  justify-content: center;
+  margin: 0.75rem 0;
+}

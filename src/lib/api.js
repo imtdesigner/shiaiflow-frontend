@@ -28,17 +28,19 @@ export async function updateTournament(id, fields) {
   return unwrap(await supabase.from('tournaments').update(fields).eq('id', id).select().single());
 }
 
-/** Published tournaments for the home page, upcoming first. */
-export async function listPublicTournaments() {
+/**
+ * Published tournaments. Active (default): signup open, signup closed or
+ * ongoing — soonest first. Past: finished, or over by date — latest first.
+ */
+export async function listPublicTournaments({ past = false } = {}) {
   const rows = unwrap(await supabase.from('tournaments')
     .select('id, name, start_date, end_date, venue, city, country, status, registration_open, registration_deadline')
     .eq('is_public', true)
     .order('start_date', { ascending: true, nullsFirst: false })
-    .limit(50));
+    .limit(200));
   const today = new Date().toISOString().slice(0, 10);
-  const upcoming = rows.filter((t) => !t.end_date || t.end_date >= today || t.status === 'running');
-  const past = rows.filter((t) => !upcoming.includes(t)).reverse();
-  return [...upcoming, ...past];
+  const isPast = (t) => t.status === 'finished' || (t.status !== 'running' && t.end_date && t.end_date < today);
+  return past ? rows.filter(isPast).reverse() : rows.filter((t) => !isPast(t));
 }
 
 /** Public registration (no account) — individual, or joining / naming a team. */

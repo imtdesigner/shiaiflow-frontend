@@ -33,32 +33,17 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
 import { listMyTournaments, listPublicTournaments } from './lib/api';
 import PublicTournament from './pages/PublicTournament';
+import Tournaments from './pages/Tournaments';
+import TournamentList from './components/TournamentList';
 import './pages/TournamentPages.css';
 
 
 
-const fmtDate = (d) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-
-function tournamentState(t) {
-  if (t.status === 'running') return { label: 'Live now', cls: 'ok' };
-  if (t.status === 'finished') return { label: 'Finished', cls: '' };
-  const closed = !t.registration_open || (t.registration_deadline && new Date(t.registration_deadline) < new Date());
-  if (closed) return { label: 'Registration closed', cls: 'warn' };
-  return {
-    label: t.registration_deadline
-      ? `Registration open until ${new Date(t.registration_deadline).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
-      : 'Registration open',
-    cls: 'ok',
-  };
-}
-
-/** Home (before login): published tournaments with the ways in — competitor, editor/table (PIN), owner. */
+/** Home (before login): active published tournaments with the ways in. */
 function Home () {
   const [tournaments, setTournaments] = useState(null);
   const [query, setQuery] = useState('');
   useEffect(() => { listPublicTournaments().then(setTournaments).catch(() => setTournaments([])); }, []);
-  const q = query.trim().toLowerCase();
-  const shown = (tournaments ?? []).filter((t) => !q || [t.name, t.city, t.country, t.venue].some((x) => x?.toLowerCase().includes(q)));
   return (
     <div className="app-container">
       <h1 className="home-logo">
@@ -77,45 +62,13 @@ function Home () {
           />
         </div>
       </div>
-      <div className="home-tournaments">
-        {tournaments === null && <p>Loading tournaments…</p>}
-        {tournaments?.length === 0 && <p>No published tournaments yet.</p>}
-        {shown.map((t) => {
-          const st = tournamentState(t);
-          return (
-            <div className="home-tournament" key={t.id}>
-              <div className="home-tournament-info">
-                <h3><Link to={`/t/${t.id}`}>{t.name}</Link></h3>
-                <p>
-                  {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
-                  {(t.venue || t.city) && ` · ${[t.venue, t.city, t.country].filter(Boolean).join(', ')}`}
-                </p>
-                <span className={`tp-badge ${st.cls}`}>{st.label}</span>
-              </div>
-              <div className="home-tournament-actions">
-                <Link className="tp-btn" to={`/t/${t.id}`}>{t.status === 'running' ? 'Live results' : 'Competitor'}</Link>
-                <Link className="tp-btn secondary" to={`/join/${t.id}?as=editor`}>Editor (PIN)</Link>
-                {t.status === 'running' && <Link className="tp-btn secondary" to={`/join/${t.id}?as=table`}>Table (PIN)</Link>}
-                <Link className="tp-btn secondary" to="/login">Owner</Link>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <TournamentList tournaments={tournaments} query={query} emptyText="No active tournaments right now." />
+      <p><Link to="/tournaments">Past tournaments →</Link></p>
       <p className="powered">Powered by Claude</p>
       <p className="app-version">Version {packageJson.version}</p>
     </div>
   );
 }
-
-function Explore() {
-  return <h2 className="page">Explore Tournaments</h2>;
-}
-
-function Attend() {
-  return <h2 className="page">Attend a Tournament</h2>;
-}
-
 
 function Dashboard() {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -300,8 +253,7 @@ function AppContent() {
         <Link to="/signup">Sign Up</Link>
       </>
     ))}
-    <Link to="/explore">Explore</Link>
-    <Link to="/attend">Attend a Tournament</Link>
+    <Link to="/tournaments">Tournaments</Link>
     <div className="nav-icon-wrapper">
       <a href="mailto:IMTdesigner@shiaiflow.com">
       <img src={contactIcon} alt="Contact Developer" className="contact-icon" />
@@ -324,8 +276,10 @@ function AppContent() {
           } 
         />
 
-        <Route path="/explore" element={<Explore />} />
-        <Route path="/attend" element={<Attend />} />
+        <Route path="/tournaments" element={<Tournaments />} />
+        {/* old links */}
+        <Route path="/explore" element={<Navigate to="/tournaments" replace />} />
+        <Route path="/attend" element={<Navigate to="/tournaments" replace />} />
         
         <Route 
   path="/create-tournament" 
