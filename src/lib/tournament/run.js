@@ -78,15 +78,17 @@ export function fightStatus(bout, rules, { encho = false, timeUp = false } = {},
 }
 
 /**
- * Order of fights on each court before the tournament starts: categories in
- * their order, fights in draw order; the end-of-tournament block last
- * (semifinals of all categories, then finals).
+ * Order of fights on each court before the tournament starts: by day, then
+ * categories in their order, fights in draw order; the end-of-tournament block
+ * last each day (semifinals of all categories, then finals).
  */
 export function planOrder(fights, categories) {
   const byId = new Map(categories.map((c) => [c.id, c]));
   const rounds = new Map(categories.map((c) => [c.id, matchRounds(c.ko_template ?? [])]));
   const order = (f) => byId.get(f.category_id)?.sort_order ?? 0;
+  const day = (f) => byId.get(f.category_id)?.day ?? 1;
   return [...fights].sort((a, b) => {
+    if (day(a) !== day(b)) return day(a) - day(b); // each day on its own, the end block closes each day
     if (!!a.end_block !== !!b.end_block) return a.end_block ? 1 : -1;
     if (a.end_block) {
       const ra = rounds.get(a.category_id)?.get(a.ko_no) ?? 0;

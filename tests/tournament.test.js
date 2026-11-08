@@ -781,3 +781,42 @@ test('ranking criteria chosen by the organizer (head-to-head first)', () => {
   const byLoss = rank({ members: ['A', 'B', 'C'], matches, expectedMatches: 3, advancing: 1, criteria: ['wins', 'conceded'] });
   assert.equal(byLoss.status, 'ipponshobu'); // all 1 win; conceded A 1, C 1, B 2 → A and C tie for 1st
 });
+
+import { tournamentDays, daysValue, dayCount, clockAt, courtSchedule, overrunsDay, suggestLink, linkProblem, addDays } from '../src/lib/tournament/days.js';
+import { planOrder } from '../src/lib/tournament/run.js';
+
+test('tournament days: dates, times, fallback to start_time', () => {
+  assert.equal(dayCount('2026-12-12', '2026-12-13'), 2);
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  const t = { start_date: '2026-12-12', end_date: '2026-12-13', start_time: '09:00:00', days: null };
+  assert.deepEqual(tournamentDays(t).map((d) => [d.date, d.start]), [['2026-12-12', '09:00'], ['2026-12-13', null]]);
+  const d2 = tournamentDays({ ...t, days: [{ start: '09:00', end: '18:00' }, { start: '09:30', end: '16:00' }] });
+  assert.equal(d2[1].start, '09:30');
+  assert.deepEqual(daysValue('2026-12-12', '2026-12-14', [{ start: '09:00', end: '18:00' }]).length, 3);
+  assert.equal(clockAt('09:00', 3600 + 300), '10:05');
+  assert.equal(overrunsDay({ start: '09:00', end: '10:00' }, 3700), true);
+});
+
+test('fight plan per day: clock restarts, end block closes each day', () => {
+  const cats = [{ id: 'a', sort_order: 0, day: 1 }, { id: 'b', sort_order: 1, day: 2 }];
+  const fights = [
+    { id: 'b1', category_id: 'b', shiaijo: 1, queue_order: 1 },
+    { id: 'a1', category_id: 'a', shiaijo: 1, queue_order: 1 },
+    { id: 'aF', category_id: 'a', shiaijo: 1, queue_order: 2, end_block: true },
+    { id: 'a2', category_id: 'a', shiaijo: 2, queue_order: 3 },
+    { id: 'a3', category_id: 'a', shiaijo: 2, queue_order: 4 },
+  ];
+  const q = new Map([[1, planOrder(fights.filter((f) => f.shiaijo === 1), cats)], [2, planOrder(fights.filter((f) => f.shiaijo === 2), cats)]]);
+  assert.deepEqual(q.get(1).map((f) => f.id), ['a1', 'aF', 'b1']);
+  const dayOf = (f) => cats.find((c) => c.id === f.category_id).day;
+  const s = courtSchedule(q, dayOf, () => 100);
+  const c1 = s.find((x) => x.court === 1);
+  assert.deepEqual(c1.days.map((d) => d.list.map((x) => [x.f.id, x.start])), [[['a1', 0], ['aF', 200]], [['b1', 0]]]);
+});
+
+test('link name: suggestion and rules', () => {
+  assert.equal(suggestLink('Državno kendo prvenstvo HKS 2026'), 'drzavno-kendo-prvenstvo-hks');
+  assert.equal(linkProblem('ab'), 'at least 3 characters');
+  assert.equal(linkProblem('-abc'), 'only small letters, digits and "-" (not at the start or end)');
+  assert.equal(linkProblem('croatian-open'), null);
+});

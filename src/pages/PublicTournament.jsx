@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Message, entryName } from '../components/TournamentShell';
 import KoBracket from '../components/KoBracket';
 import {
   getSavedDraw, getTournament, listCategories, listEntriesFor, listEventsFor, listTeams,
-  listTournamentFights, publicRegister, publicRegisterTeam, tournamentOrganizers,
+  listTournamentFights, publicRegister, publicRegisterTeam, resolveTournament, tournamentOrganizers,
 } from '../lib/api';
-import { OrganizerLine } from '../components/TournamentList';
+import { OrganizerLine, fmtDate } from '../components/TournamentList';
+import { clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { slotLabel, thirdPlaceFight } from '../lib/tournament/ko.js';
@@ -15,16 +16,6 @@ import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 import { GRADES, ineligibleReason, rulesText, teamPositions, teamProblems, teamReserves, teamMaxMembers, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
-const fmtHm = (seconds) => {
-  const m = Math.round(seconds / 60);
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-};
-const clock = (startTime, seconds) => {
-  if (!startTime) return `+${fmtHm(seconds)}`;
-  const [h, m] = startTime.split(':').map(Number);
-  const total = Math.round(h * 60 + m + seconds / 60);
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-};
 const mins = (fmin) => {
   const f = Math.round(fmin / 60);
   return f <= 0 ? 'now' : `in about ${f} min`;
@@ -36,8 +27,26 @@ const mins = (fmin) => {
  * schedule per shiaijo and live results. "Who am I" (no password, remembered
  * in this browser) shows that competitor's next fight.
  */
-function PublicTournament() {
-  const { tournamentId } = useParams();
+/**
+ * /t/<id> or /t/<link name>: a link name opens the newest published edition;
+ * when the link has several editions a menu switches between the years.
+ */
+export function PublicTournamentRoute() {
+  const { tournamentId: key } = useParams();
+  const [found, setFound] = useState(null);
+  useEffect(() => {
+    setFound(null);
+    resolveTournament(key, isUuid(key)).then(setFound).catch(() => setFound({ id: null, editions: [] }));
+  }, [key]);
+  if (!found) return <div className="tp-page">Loading…</div>;
+  if (!found.id) {
+    return <div className="tp-page"><Message type="error">No published tournament with this link.</Message><Link to="/">Back to the tournaments</Link></div>;
+  }
+  return <PublicTournament key={found.id} tournamentId={found.id} editions={found.editions} slug={found.slug} />;
+}
+
+function PublicTournament({ tournamentId, editions = [], slug = null }) {
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState(null);
   const [categories, setCategories] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -102,14 +111,16 @@ function PublicTournament() {
     return `${r.totals.red.ippons.join('') || '–'} : ${r.totals.white.ippons.join('') || '–'}`;
   };
 
-  // courts with planned starts
-  const schedule = useMemo(() => courts.map((n) => {
-    let t = 0;
-    return {
-      court: n,
-      list: courtQueue(fights, drawn, n).map((f) => { const start = t; t += secsOf(f); return { f, start }; }),
-    };
-  }), [fights, drawn, courts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // courts with planned starts (per day: the clock starts at each day's start)
+  const days = tournamentDays(tournament);
+  const dayStart = (n) => days[n - 1]?.start ?? null;
+  const dayOfFight = (f) => byCat[f.category_id]?.day ?? 1;
+  const schedule = useMemo(() => {
+    const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
+    return courtSchedule(queues, (f) => byCat[f.category_id]?.day ?? 1, secsOf)
+      .map(({ court, days: ds }) => ({ court, days: ds, list: ds.flatMap((d) => d.list) }));
+  }, [fights, drawn, courts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const clockOf = (f, start) => clockAt(dayStart(dayOfFight(f)), start);
 
   // "who am I": competitors, and their entries (own + teams)
   const competitors = useMemo(() => {
@@ -149,7 +160,20 @@ function PublicTournament() {
   return (
     <div className="tp-page">
       <Link to="/" className="tp-muted">← All tournaments</Link>
-      <h2>{tournament.name}</h2>
+      <div className="pt-title">
+        {tournament.logo_url && <img className="pt-logo" src={tournament.logo_url} alt="" />}
+        <h2>{tournament.name}</h2>
+      </div>
+      {editions.length > 1 && (
+        <label className="tp-field" style={{ maxWidth: 280, marginBottom: '0.75rem' }}>
+          Edition
+          <select value={tournamentId} onChange={(e) => navigate(e.target.value === editions[0].id && slug ? `/t/${slug}` : `/t/${e.target.value}`)}>
+            {editions.map((ed, i) => (
+              <option key={ed.id} value={ed.id}>{ed.start_date ? ed.start_date.slice(0, 4) : ed.name}{i === 0 ? ' (current)' : ''}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <p className="tp-subtitle">
         {[tournament.start_date, tournament.venue, tournament.city, tournament.country].filter(Boolean).join(' · ')}
         {running && <> · <span className="tp-badge ok">live</span></>}
@@ -172,7 +196,7 @@ function PublicTournament() {
               <span className="aka">{name(next.f, 'red')}</span> – <span className="shiro">{name(next.f, 'white')}</span><br />
               {next.f.status === 'running' ? 'Fighting now.'
                 : running ? `Expected ${mins(next.ahead)} (${next.ahead ? Math.round(next.ahead / 60) : 0} min of fights before it).`
-                  : `Planned at ${clock(tournament.start_time, next.start)}.`}
+                  : `Planned at ${clockOf(next.f, next.start)}${days.length > 1 ? ` on day ${dayOfFight(next.f)}` : ''}.`}
             </Message>
           ) : <p className="tp-muted">{drawn.length ? 'No more fights for you.' : 'Your fights appear here after the draw.'}</p>)}
         </div>
@@ -188,16 +212,20 @@ function PublicTournament() {
         <div className="tp-card">
           <h3>Setup</h3>
           <p>
-            {tournament.shiaijo_count} shiaijo{tournament.start_time ? ` · starts ${tournament.start_time.slice(0, 5)}` : ''}
+            {tournament.shiaijo_count} shiaijo
+            {days.length > 1
+              ? ` · ${days.map((d) => `day ${d.n}${d.start ? ` ${d.start}${d.end ? `–${d.end}` : ''}` : ''}`).join(', ')}`
+              : dayStart(1) ? ` · starts ${dayStart(1)}${days[0].end ? `, ends ${days[0].end}` : ''}` : ''}
             {' · '}registration {regOpen ? 'open' : 'closed'}
             {tournament.registration_deadline && ` (deadline ${new Date(tournament.registration_deadline).toLocaleString()})`}
           </p>
           <table className="tp-table">
-            <thead><tr><th>Category</th><th>Who</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
+            <thead><tr><th>Category</th>{days.length > 1 && <th>Day</th>}<th>Who</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
             <tbody>
               {categories.map((c) => (
                 <tr key={c.id}>
                   <td>{c.name}</td>
+                  {days.length > 1 && <td>Day {c.day ?? 1}</td>}
                   <td className="tp-muted">{rulesText(c)}</td>
                   <td>{c.kind === 'team' ? `Team of ${c.team_size}` : 'Individual'}</td>
                   <td>{c.pool_size === 1 ? 'Direct KO' : `Pools of ${c.pool_size}, ${c.advancing ? `${c.advancing} advance` : 'pools only'}`}</td>
@@ -277,16 +305,19 @@ function PublicTournament() {
         );
       })}
 
-      {tab === 'schedule' && schedule.map(({ court, list }) => (
+      {tab === 'schedule' && schedule.map(({ court, days: courtDays, list: allFights }) => (
         <div className="tp-card" key={court}>
-          <h3>Shiaijo {court} <span className="tp-muted">· {list.length} fights</span></h3>
-          {list.length === 0 ? <p className="tp-muted">No fights.</p> : (
+          <h3>Shiaijo {court} <span className="tp-muted">· {allFights.length} fights</span></h3>
+          {allFights.length === 0 && <p className="tp-muted">No fights.</p>}
+          {courtDays.map(({ day, list }) => (
+            <div key={day}>
+            {days.length > 1 && <h4>Day {day}{days[day - 1]?.date ? ` · ${fmtDate(days[day - 1].date)}` : ''}</h4>}
             <table className="tp-table">
               <thead><tr><th>Time</th><th>Fight</th><th>Category</th><th>Round</th><th>Red</th><th>White</th></tr></thead>
               <tbody>
                 {list.map(({ f, start }) => (
                   <tr key={f.id} className={myFights.includes(f) ? 'tp-end-block' : ''}>
-                    <td className="tp-muted">{clock(tournament.start_time, start)}</td>
+                    <td className="tp-muted">{clockOf(f, start)}</td>
                     <td><strong>{f.label}</strong></td>
                     <td>{byCat[f.category_id]?.name}</td>
                     <td className="tp-muted">{roundOf(f)}</td>
@@ -296,7 +327,8 @@ function PublicTournament() {
                 ))}
               </tbody>
             </table>
-          )}
+            </div>
+          ))}
         </div>
       ))}
 

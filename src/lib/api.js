@@ -28,13 +28,49 @@ export async function updateTournament(id, fields) {
   return unwrap(await supabase.from('tournaments').update(fields).eq('id', id).select().single());
 }
 
+/** Link name check: 'free', 'yours' (your earlier tournament uses it) or 'taken'. */
+export async function linkStatus(slug) {
+  return unwrap(await supabase.rpc('link_status', { s: slug }));
+}
+
+/** Upload a tournament logo (owner / organizers); returns its public URL. */
+export async function uploadLogo(tournamentId, file) {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const path = `${tournamentId}/logo-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('tournament-logos').upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+  const url = supabase.storage.from('tournament-logos').getPublicUrl(path).data.publicUrl;
+  await updateTournament(tournamentId, { logo_url: url });
+  return url;
+}
+
+/**
+ * Public page key → tournament id: an id, or a link name (the newest
+ * published edition). Also the published editions sharing the link (newest first).
+ */
+export async function resolveTournament(key, isId) {
+  if (isId) {
+    const t = unwrap(await supabase.from('tournaments').select('id, slug').eq('id', key).maybeSingle());
+    if (!t) return { id: key, editions: [] };
+    return { id: key, slug: t.slug, editions: t.slug ? await listEditions(t.slug) : [] };
+  }
+  const editions = await listEditions(key.toLowerCase());
+  return { id: editions[0]?.id ?? null, slug: key.toLowerCase(), editions };
+}
+
+async function listEditions(slug) {
+  return unwrap(await supabase.from('tournaments').select('id, name, start_date')
+    .eq('slug', slug).eq('is_public', true)
+    .order('start_date', { ascending: false, nullsFirst: false }));
+}
+
 /**
  * Published tournaments. Active (default): signup open, signup closed or
  * ongoing — soonest first. Past: finished, or over by date — latest first.
  */
 export async function listPublicTournaments({ past = false } = {}) {
   const rows = unwrap(await supabase.from('tournaments')
-    .select('id, name, start_date, end_date, venue, city, country, status, registration_open, registration_deadline, categories(name, kind, sort_order)')
+    .select('id, name, slug, logo_url, start_date, end_date, venue, city, country, status, registration_open, registration_deadline, categories(name, kind, sort_order)')
     .eq('is_public', true)
     .order('start_date', { ascending: true, nullsFirst: false })
     .limit(200));

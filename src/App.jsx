@@ -33,7 +33,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
 import { amIAdmin, listMyTournaments, listPublicTournaments } from './lib/api';
 import AdminAccounts from './pages/AdminAccounts';
-import PublicTournament from './pages/PublicTournament';
+import { PublicTournamentRoute } from './pages/PublicTournament';
 import Tournaments from './pages/Tournaments';
 import TournamentList from './components/TournamentList';
 import './pages/TournamentPages.css';
@@ -376,7 +376,7 @@ function AppContent() {
 />
 <Route path="/reset-password" element={<ResetPasswordPage />} />
 <Route path="/join/:tournamentId" element={<JoinCourt />} />
-<Route path="/t/:tournamentId" element={<PublicTournament />} />
+<Route path="/t/:tournamentId" element={<PublicTournamentRoute />} />
 
       </Routes>
     </>

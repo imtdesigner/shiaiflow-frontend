@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
-import { tournamentOrganizers, updateTournament } from '../lib/api';
+import { tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
+import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
+import { daysValue } from '../lib/tournament/days.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
 
@@ -41,8 +43,13 @@ function EditTournament() {
       city: tournament.city ?? '',
       country: tournament.country ?? '',
       registration_deadline: toLocalInput(tournament.registration_deadline),
+      days: tournament.days ?? (tournament.start_time ? [{ start: tournament.start_time.slice(0, 5), end: null }] : []),
+      slug: tournament.slug ?? '',
     });
+    setLinkConfirmed(false);
   }, [tournament]);
+  const [linkState, setLinkState] = useState(null);
+  const [linkConfirmed, setLinkConfirmed] = useState(false);
 
   useEffect(() => {
     getPin(tournamentId).then(setPinState).catch(() => {});
@@ -59,7 +66,15 @@ function EditTournament() {
   const save = (e) => {
     e.preventDefault();
     if (!form.name.trim()) { setMsg({ type: 'error', text: 'Enter the tournament name.' }); return; }
+    if (!linkReady(form.slug, tournament.slug ?? '', linkState, linkConfirmed)) {
+      setMsg({ type: 'error', text: 'Check the link name (taken, not allowed, or your earlier tournament uses it — tick to reuse it).' });
+      return;
+    }
+    const days = daysValue(form.start_date, form.end_date || form.start_date, form.days);
     run(() => updateTournament(tournamentId, {
+      days,
+      start_time: days[0]?.start || null,
+      slug: form.slug || null,
       name: form.name.trim(),
       start_date: form.start_date || null,
       end_date: form.end_date || form.start_date || null,
@@ -78,7 +93,7 @@ function EditTournament() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < new Date();
   const regOpen = tournament.registration_open && !deadlinePassed;
-  const publicUrl = `${window.location.origin}/t/${tournamentId}`;
+  const publicUrl = `${window.location.origin}/t/${tournament.slug || tournamentId}`;
   const joinUrl = `${window.location.origin}/join/${tournamentId}`;
 
   return (
@@ -182,13 +197,31 @@ function EditTournament() {
           <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
           <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
           <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
+          <LinkField value={form.slug} saved={tournament.slug ?? ''} name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
+            confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
         </div>
+        <h4>Days</h4>
+        {form.start_date
+          ? <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
+          : <p className="tp-muted">Set the dates to plan the days.</p>}
+        <p className="tp-muted">Each category's day is set in the Shiaijo plan. The fight plan starts each day at its start time.</p>
         <div className="tp-actions">
           <button type="submit" className="tp-btn" disabled={busy}>Save</button>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
         </div>
         </fieldset>
       </form>
+
+      <div className="tp-card">
+        <h3>Logo</h3>
+        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
+        {tournament.logo_url && (
+          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
+        )}
+        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
+      </div>
     </div>
   );
 }

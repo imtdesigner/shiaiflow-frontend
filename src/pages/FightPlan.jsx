@@ -6,20 +6,9 @@ import {
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
 import { matchRounds, slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
+import { clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
+import { fmtDate } from '../components/TournamentList';
 import './TournamentPages.css';
-
-const fmt = (seconds) => {
-  const m = Math.round(seconds / 60);
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-};
-
-/** Clock time from the tournament start ('09:00:00') plus seconds, or +h:mm without a start. */
-const clock = (startTime, seconds) => {
-  if (!startTime) return `+${fmt(seconds)}`;
-  const [h, m] = startTime.split(':').map(Number);
-  const total = Math.round((h * 60 + m) + seconds / 60);
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-};
 
 /** Seconds a fight takes (fight time of its category, phase and KO round). */
 const fightSecondsOf = (f, c) => fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no));
@@ -94,25 +83,16 @@ function FightPlan() {
   );
 
   // --- by shiaijo: whole tournament per court, in order -----------------------
+  const days = tournamentDays(tournament);
+  const multiDay = days.length > 1;
   const perCourt = useMemo(() => {
-    // same order as the scoretables: court_seq once the tournament started, plan order before
-    const sorted = courts.flatMap((n) => courtQueue(fights, drawn, n));
-    const secs = (f) => fightSecondsOf(f, byId[f.category_id]);
-    // regular fights first; the end-of-tournament block starts once every court is done
-    const regularEnd = Math.max(0, ...courts.map((n) => sorted
-      .filter((f) => f.shiaijo === n && !f.end_block).reduce((t, f) => t + secs(f), 0)));
-    return courts.map((n) => {
-      let t = 0;
-      let blockStarted = false;
-      const list = sorted.filter((f) => f.shiaijo === n).map((f) => {
-        if (f.end_block && !blockStarted) { t = Math.max(t, regularEnd); blockStarted = true; }
-        const start = t;
-        t += secs(f);
-        return { f, start };
-      });
-      return { court: n, list, total: t };
-    });
+    // same order as the scoretables: court_seq once the tournament started, plan order before;
+    // per day, the clock starts at the day's start; the end block closes each day
+    const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
+    const dayOf = (f) => byId[f.category_id]?.day ?? 1;
+    return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id]));
   }, [fights, byId, meta, courtCount, drawn]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dayStart = (n) => days[n - 1]?.start ?? (n === 1 ? tournament?.start_time?.slice(0, 5) : null);
 
   const category = byId[selectedId];
   const catFights = fights.filter((f) => f.category_id === selectedId);
@@ -131,7 +111,7 @@ function FightPlan() {
       <tbody>
         {list.map(({ f, start }) => (
           <tr key={f.id} className={f.end_block ? 'tp-end-block' : ''}>
-            {showStart && <td className="tp-muted">{clock(tournament?.start_time, start)}</td>}
+            {showStart && <td className="tp-muted">{clockAt(dayStart(byId[f.category_id]?.day ?? 1), start)}</td>}
             <td><strong>{f.label}</strong></td>
             {showCategory && <td>{byId[f.category_id]?.name}</td>}
             <td className="tp-muted">{roundOf(f)}{f.end_block ? ' · end' : ''}</td>
@@ -189,20 +169,30 @@ function FightPlan() {
         </>
       )}
 
-      {view === 'court' && drawn.length > 0 && perCourt.map(({ court, list, total }) => (
+      {view === 'court' && drawn.length > 0 && perCourt.map(({ court, days: courtDays }) => (
         <div className="tp-card tp-print-page" key={court}>
           <h3>
             Shiaijo {court}
             {tournament?.central_shiaijos?.includes(court) && <span className="tp-badge ok">central</span>}
-            {' '}<span className="tp-muted">· {list.length} fights · ends ≈ {clock(tournament?.start_time, total)}</span>
+            {' '}<span className="tp-muted">· {courtDays.reduce((n, d) => n + d.list.length, 0)} fights</span>
           </h3>
-          {list.length === 0 ? <p className="tp-muted">No fights.</p> : <FightRows list={list} showCategory showStart />}
+          {courtDays.length === 0 && <p className="tp-muted">No fights.</p>}
+          {courtDays.map(({ day, list, total }) => (
+            <div key={day}>
+              <h4>
+                {multiDay ? `Day ${day}${days[day - 1]?.date ? ` · ${fmtDate(days[day - 1].date)}` : ''} · ` : ''}
+                {list.length} fights · {dayStart(day) ? `${dayStart(day)} – ` : ''}ends ≈ {clockAt(dayStart(day), total)}
+                {overrunsDay(days[day - 1], total) && <span className="tp-badge warn">after {days[day - 1].end}</span>}
+              </h4>
+              <FightRows list={list} showCategory showStart />
+            </div>
+          ))}
         </div>
       ))}
 
       <p className="tp-muted">
-        Start = {tournament?.start_time ? `from ${tournament.start_time.slice(0, 5)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times only (no breaks or changeovers); the end-of-tournament block starts once
-        every shiaijo has finished its other fights. ✎ = court changed by hand.
+        Start = {dayStart(1) ? `from ${multiDay ? 'each day\'s start' : dayStart(1)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times only (no breaks or changeovers); the end-of-tournament block starts once
+        every shiaijo has finished its other fights{multiDay ? ' of that day' : ''}. ✎ = court changed by hand.
       </p>
       <div className="tp-actions tp-no-print">
         <button type="button" className="tp-btn" onClick={() => window.print()}>Print</button>

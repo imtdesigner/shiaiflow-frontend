@@ -347,3 +347,15 @@
 .fr-criteria li { margin-bottom: 0.25rem; }
 .fr-criteria li span { display: inline-block; min-width: 13rem; }
 .fr-criteria .tp-btn { margin-left: 0.25rem; padding: 0.1rem 0.45rem; }
+
+/* Tournament days / link (TournamentFields.jsx) */
+.td-days { max-width: 32rem; }
+.td-days input[type='time'] { width: 8rem; }
+.tp-error-text { color: #a12020; font-size: 0.9em; }
+.tp-ok-text { color: #1d5e12; font-size: 0.9em; }
+.tp-logo-preview { max-height: 4rem; max-width: 10rem; object-fit: contain; display: block; margin: 0.4rem 0; }
+
+.pt-title { display: flex; align-items: center; gap: 0.9rem; }
+.pt-title h2 { margin: 0.4rem 0; }
+.pt-logo { max-height: 3.5rem; max-width: 7rem; object-fit: contain; }
+.home-tournament-logo { max-height: 3rem; max-width: 5rem; object-fit: contain; float: right; margin-left: 0.75rem; }

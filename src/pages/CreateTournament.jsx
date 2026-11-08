@@ -6,6 +6,8 @@ import FightRules from '../components/FightRules';
 import { createTournament, listCategorySources } from '../lib/api';
 import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, categoryRow, categorySetup } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
+import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
+import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 
 let nextKey = 1;
@@ -21,8 +23,10 @@ function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Croatia',
-    shiaijo_count: 2, age_basis: 'birth_year', single_category: false,
+    shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '',
   });
+  const [linkState, setLinkState] = useState(null);
+  const [linkConfirmed, setLinkConfirmed] = useState(false);
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState(null); // copy dialog: null = closed
   const [sourceQuery, setSourceQuery] = useState('');
@@ -54,6 +58,9 @@ function CreateTournament() {
     setError('');
     if (!form.name.trim()) { setError('Enter the tournament name.'); return; }
     if (categories.some((c) => !c.name.trim())) { setError('Every category needs a name.'); return; }
+    if (!linkReady(form.slug, '', linkState, linkConfirmed)) { setError('Check the link name.'); return; }
+    const days = form.start_date ? daysValue(form.start_date, form.end_date || form.start_date, form.days) : null;
+    const lastDay = days ? days.length : 1;
     setSaving(true);
     try {
       const t = await createTournament({
@@ -65,10 +72,13 @@ function CreateTournament() {
         country: form.country.trim() || null,
         shiaijo_count: Number(form.shiaijo_count),
         age_basis: form.age_basis,
+        days,
+        start_time: days?.[0]?.start || null,
+        slug: form.slug || null,
         single_category: form.single_category,
         is_public: false,
         status: 'registration',
-      }, categories.map(categoryRow));
+      }, categories.map((c) => ({ ...categoryRow(c), day: Math.min(Number(c.day) || 1, lastDay) })));
       navigate(`/tournament/${t.id}/registration`);
     } catch (err) {
       setError(err.message);
@@ -77,6 +87,7 @@ function CreateTournament() {
   };
 
   const q = sourceQuery.trim().toLowerCase();
+  const days = dayCount(form.start_date, form.end_date);
   const shownSources = (sources ?? []).filter((t) => !q || `${t.name} ${t.city ?? ''} ${t.start_date ?? ''}`.toLowerCase().includes(q));
 
   return (
@@ -99,6 +110,8 @@ function CreateTournament() {
             <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
             <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
+            <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
+              confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
             <label className="tp-field">
               Number of courts (shiaijo)
               <select value={form.shiaijo_count} onChange={set('shiaijo_count')}>
@@ -106,6 +119,12 @@ function CreateTournament() {
               </select>
             </label>
           </div>
+          {form.start_date && (
+            <>
+              <h4>Days</h4>
+              <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
+            </>
+          )}
           <h4>Signup</h4>
           <div className="tp-grid">
             <label className="tp-field">
@@ -162,6 +181,11 @@ function CreateTournament() {
                   <option value="individual">Individual</option>
                   <option value="team">Team</option>
                 </select>
+                {days > 1 && (
+                  <select value={c.day ?? 1} onChange={(e) => updateCategory(c._key, 'day', Number(e.target.value))} title="Day of the category">
+                    {Array.from({ length: days }, (_, i) => <option key={i} value={i + 1}>Day {i + 1}</option>)}
+                  </select>
+                )}
                 <span className="tp-muted">{rulesText(c)}</span>
                 <button type="button" className="tp-btn danger small" style={{ marginLeft: 'auto' }} onClick={() => removeCategory(c._key)}>Remove</button>
               </div>

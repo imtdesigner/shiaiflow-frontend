@@ -5,6 +5,7 @@ import {
   checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
 } from '../lib/api';
 import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts.js';
+import { dayCount, tournamentDays } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 
 const MAX_COURTS = 6;
@@ -78,6 +79,7 @@ function ShiaijoPlan() {
   };
 
   const central = tournament?.central_shiaijos ?? [];
+  const dayTotal = dayCount(tournament?.start_date, tournament?.end_date);
   const endBlock = tournament?.end_block ?? 'none';
 
   const changeTournament = (fields) => run(() => setTournamentCourts(tournament, fields, active));
@@ -133,11 +135,22 @@ function ShiaijoPlan() {
           </select>
         </label>
         <div className="tp-grid">
-          <label className="tp-field">
-            Start time
-            <input type="time" value={tournament?.start_time?.slice(0, 5) ?? ''} disabled={busy}
-              onChange={(e) => run(() => updateTournament(tournamentId, { start_time: e.target.value || null }))} />
-          </label>
+          {dayTotal > 1 ? (
+            <div className="tp-field">
+              Days
+              <span>{tournamentDays(tournament).map((d) => `Day ${d.n}: ${d.start ?? '—'}–${d.end ?? '—'}`).join(' · ')}</span>
+              <Link className="tp-muted" to={`/tournament/${tournamentId}/edit`}>Change in Edit tournament</Link>
+            </div>
+          ) : (
+            <label className="tp-field">
+              Start time
+              <input type="time" value={tournament?.start_time?.slice(0, 5) ?? ''} disabled={busy}
+                onChange={(e) => run(() => updateTournament(tournamentId, {
+                  start_time: e.target.value || null,
+                  ...(tournament?.days?.length ? { days: [{ ...tournament.days[0], start: e.target.value || null }, ...tournament.days.slice(1)] } : {}),
+                }))} />
+            </label>
+          )}
           <label className="tp-field tp-check">
             <input type="checkbox" checked={tournament?.use_timer ?? true} disabled={busy}
               onChange={(e) => run(() => updateTournament(tournamentId, { use_timer: e.target.checked }))} />
@@ -179,7 +192,7 @@ function ShiaijoPlan() {
           <table className="tp-table">
             <thead>
               <tr>
-                <th>Order</th><th>Category</th><th>Checked in</th><th>Fights</th>
+                <th>Order</th><th>Category</th>{dayTotal > 1 && <th>Day</th>}<th>Checked in</th><th>Fights</th>
                 {courts.map((n) => <th key={n} style={{ textAlign: 'center' }}>Shiaijo {n}</th>)}
                 <th>Fight time</th><th />
               </tr>
@@ -214,6 +227,13 @@ function ShiaijoPlan() {
                       {c.status === 'cancelled' && <span className="tp-muted"> (cancelled)</span>}
                       {c.status !== 'registration' && c.status !== 'cancelled' && <> <span className="tp-badge ok">drawn</span></>}
                     </td>
+                    {dayTotal > 1 && (
+                      <td>
+                        <select value={c.day ?? 1} disabled={disabledRow} onChange={(e) => run(() => updateCategory(c.id, { day: Number(e.target.value) }))}>
+                          {Array.from({ length: dayTotal }, (_, d) => <option key={d} value={d + 1}>Day {d + 1}</option>)}
+                        </select>
+                      </td>
+                    )}
                     <td>{counts[c.id] ?? 0}</td>
                     <td>{row?.fights.length ?? '—'}</td>
                     {courtBoxes('shiaijos')}
@@ -229,7 +249,7 @@ function ShiaijoPlan() {
                   {c.ko_shiaijos && (
                     <tr>
                       <td />
-                      <td colSpan={3} className="tp-muted">↳ KO courts</td>
+                      <td colSpan={dayTotal > 1 ? 4 : 3} className="tp-muted">↳ KO courts</td>
                       {courtBoxes('ko_shiaijos')}
                       <td />
                       <td>

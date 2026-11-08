@@ -23,7 +23,7 @@ export const EMPTY_CATEGORY = {
   team_same_dojo: false, position_rules: null,
   fight_system: 'sanbon', pool_split: 'even', qf_fight_seconds: null, sf_fight_seconds: null,
   pool_tie: 'hikiwake', pool_encho_seconds: null, pool_hantei: false, ko_encho_seconds: null, ko_hantei: false,
-  daihyosen_encho_seconds: null, daihyosen_hantei: false, third_place: 'shared',
+  daihyosen_encho_seconds: null, daihyosen_hantei: false, third_place: 'shared', day: 1,
 };
 
 /** Setup fields of a category (what a template or a copy carries over). */

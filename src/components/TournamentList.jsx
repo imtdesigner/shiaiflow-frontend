@@ -55,6 +55,7 @@ export default function TournamentList({ tournaments, query = '', past = false, 
         return (
           <div className="home-tournament" key={t.id}>
             <div className="home-tournament-info">
+              {t.logo_url && <img className="home-tournament-logo" src={t.logo_url} alt="" />}
               <h3><Link to={`/t/${t.id}`}>{t.name}</Link></h3>
               <p>
                 {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
