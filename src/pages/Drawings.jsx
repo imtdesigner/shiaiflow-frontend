@@ -419,6 +419,8 @@ function Drawings() {
               Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
               {' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
               {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
+              {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
+                ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
               {category.third_place === 'fight' ? ' · fight for 3rd' : ''}
             </summary>
             <div style={{ marginTop: '0.75rem' }}>
@@ -428,7 +430,7 @@ function Drawings() {
                   <button type="button" className="tp-btn small" onClick={async () => {
                     const keys = ['pool_split', 'fight_system', 'third_place', 'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds',
                       'sf_fight_seconds', 'final_fight_seconds', 'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds',
-                      'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria'];
+                      'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria', 'no_hantei_from'];
                     await changeSettings(Object.fromEntries(keys.map((k) => [k, fightDraft[k] ?? null]).filter(([k, v]) => v !== null || !['pool_split', 'fight_system', 'third_place', 'pool_tie', 'pool_hantei', 'ko_hantei', 'daihyosen_hantei'].includes(k))));
                     setFightDraft(null);
                   }}>Save fight rules</button>

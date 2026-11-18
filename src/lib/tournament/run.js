@@ -8,16 +8,22 @@ import { isLoserRef, isWinnerRef, loserRefNo, matchRounds, poolCode, roundShort,
  * Rules for a fight of this category:
  *   pools: a tie at time is hikiwake or goes to encho (category.pool_tie);
  *   KO (and ipponshobu): no draws — encho;
- *   encho length (null = until the first point) and hantei after encho.
+ *   encho length (null = until the first point) and hantei after encho;
+ *   `round` (koRound): with no_hantei_from the final, or semifinals + final,
+ *   go to encho until the first point (ippon-shobu) whatever the KO setting.
  */
-export function fightRules(category, phase) {
+export function fightRules(category, phase, round = null) {
   const ko = phase !== 'pool';
   const daihyosen = phase === 'daihyosen';
+  // no hantei in the final (or semifinals + final): tie → encho until the first point
+  const noHantei = phase === 'ko' && round != null
+    && ((category.no_hantei_from === 'final' && round === 1) || (category.no_hantei_from === 'semifinal' && round <= 2));
   return {
     seconds: phase === 'pool' ? category.pool_fight_seconds : category.ko_fight_seconds,
     tie: ko ? 'encho' : category.pool_tie ?? 'hikiwake',
-    enchoSeconds: (daihyosen ? category.daihyosen_encho_seconds : ko ? category.ko_encho_seconds : category.pool_encho_seconds) ?? null,
-    hantei: !!(daihyosen ? category.daihyosen_hantei : ko ? category.ko_hantei : category.pool_hantei),
+    enchoSeconds: noHantei ? null
+      : (daihyosen ? category.daihyosen_encho_seconds : ko ? category.ko_encho_seconds : category.pool_encho_seconds) ?? null,
+    hantei: !noHantei && !!(daihyosen ? category.daihyosen_hantei : ko ? category.ko_hantei : category.pool_hantei),
     ipponshobu: phase === 'ipponshobu', // first point wins, no time limit
     ipponSystem: category.fight_system === 'ippon', // ippon-shobu category: first point wins within the time
   };

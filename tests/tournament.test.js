@@ -833,3 +833,16 @@ test('signup setup: defaults, required fields and consents', () => {
   assert.equal(askedConsents(s).length, 2);
   assert.equal(consentLetters({ data_use: true, photos: false }), 'D ·');
 });
+
+test('no hantei in the final / semifinals + final: encho until the first point', () => {
+  const c = { ko_template: getKo('K041'), ko_encho_seconds: 120, ko_hantei: true, no_hantei_from: 'final' };
+  assert.deepEqual([fightRules(c, 'ko', 1).hantei, fightRules(c, 'ko', 1).enchoSeconds], [false, null]); // final
+  assert.equal(fightRules(c, 'ko', 2).hantei, true); // semifinal keeps the KO setting
+  const s = { ...c, no_hantei_from: 'semifinal' };
+  assert.equal(fightRules(s, 'ko', koRound(s, 1)).hantei, false); // semifinal
+  assert.equal(fightRules(s, 'ko', koRound(s, 4)).hantei, false); // fight for 3rd place counts as a semifinal
+  assert.equal(fightRules(s, 'ko', 3).hantei, true); // quarterfinal
+  assert.equal(fightRules({ ...c, no_hantei_from: null }, 'ko', 1).hantei, true);
+  const st = fightStatus({ events: [] }, fightRules(c, 'ko', 1), { encho: true, timeUp: true });
+  assert.equal(st.next, 'encho');
+});

@@ -94,7 +94,7 @@ function ScoreInput() {
   }, []);
 
   const category = fight ? byId[fight.category_id] : null;
-  const rules = category ? fightRules(category, fight.phase) : null;
+  const rules = category ? fightRules(category, fight.phase, koRound(category, fight.ko_no)) : null;
   const useTimer = tournament?.use_timer ?? true;
   const limitSec = !fight || !rules ? null
     : fight.is_encho ? rules.enchoSeconds

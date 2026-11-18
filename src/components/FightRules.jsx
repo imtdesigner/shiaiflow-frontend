@@ -12,11 +12,11 @@ const CRITERIA = {
 const min = (s) => (s ? String(s / 60) : '');
 const sec = (v, fallback = null) => (v === '' || v == null ? fallback : Math.max(30, Math.round(Number(v) * 60) || 0));
 
-function Minutes({ label, value, onChange, optional = false, placeholder }) {
+function Minutes({ label, value, onChange, optional = false, placeholder, disabled = false, title }) {
   return (
-    <label className="tp-field">
+    <label className="tp-field" title={title} style={disabled ? { opacity: 0.5 } : undefined}>
       {label}
-      <input type="number" step="0.5" min="0.5" value={min(value)} placeholder={placeholder}
+      <input type="number" step="0.5" min="0.5" value={min(value)} placeholder={placeholder} disabled={disabled}
         onChange={(e) => onChange(sec(e.target.value, optional ? null : value))} />
     </label>
   );
@@ -114,7 +114,8 @@ export default function FightRules({ category, onChange, hidePools = false }) {
 
       <h5 className="fr-h">Fight time (min)</h5>
       <div className="tp-grid">
-        <Minutes label="Pool" value={c.pool_fight_seconds} onChange={(v) => set({ pool_fight_seconds: v })} />
+        <Minutes label="Pool" value={c.pool_fight_seconds} onChange={(v) => set({ pool_fight_seconds: v })}
+          disabled={direct} title={direct ? 'No pools in a direct KO' : undefined} />
         <Minutes label="KO" value={c.ko_fight_seconds} onChange={(v) => set({ ko_fight_seconds: v })} />
         <Minutes label="Quarterfinal" optional placeholder="= KO" value={c.qf_fight_seconds} onChange={(v) => set({ qf_fight_seconds: v })} />
         <Minutes label="Semifinal" optional placeholder="= KO" value={c.sf_fight_seconds} onChange={(v) => set({ sf_fight_seconds: v })} />
@@ -124,17 +125,27 @@ export default function FightRules({ category, onChange, hidePools = false }) {
       <h5 className="fr-h">Tie at time</h5>
       <div className="fr-tie">
         <span className="fr-tie-title">Pools</span>
-        <select value={c.pool_tie ?? 'hikiwake'} onChange={(e) => set({ pool_tie: e.target.value })}>
+        <select value={c.pool_tie ?? 'hikiwake'} disabled={direct} onChange={(e) => set({ pool_tie: e.target.value })}>
           <option value="hikiwake">hikiwake (draw)</option>
           <option value="encho">encho</option>
         </select>
       </div>
-      {c.pool_tie === 'encho' && (
+      {c.pool_tie === 'encho' && !direct && (
         <TieRule title="Pool encho" seconds={c.pool_encho_seconds} hantei={c.pool_hantei}
           onChange={({ seconds, hantei }) => set({ pool_encho_seconds: seconds, pool_hantei: hantei })} />
       )}
       <TieRule title="KO" seconds={c.ko_encho_seconds} hantei={c.ko_hantei}
         onChange={({ seconds, hantei }) => set({ ko_encho_seconds: seconds, ko_hantei: hantei })} />
+      {c.ko_encho_seconds && c.ko_hantei ? (
+        <div className="fr-tie">
+          <span className="fr-tie-title">Last rounds</span>
+          <select value={c.no_hantei_from ?? ''} onChange={(e) => set({ no_hantei_from: e.target.value || null })}>
+            <option value="">hantei as in the KO</option>
+            <option value="final">no hantei in the final — ippon-shobu (encho until the first point)</option>
+            <option value="semifinal">no hantei in the semifinals and final — ippon-shobu</option>
+          </select>
+        </div>
+      ) : null}
       {c.kind === 'team' && (
         <TieRule title="Daihyosen" seconds={c.daihyosen_encho_seconds} hantei={c.daihyosen_hantei}
           onChange={({ seconds, hantei }) => set({ daihyosen_encho_seconds: seconds, daihyosen_hantei: hantei })} />
