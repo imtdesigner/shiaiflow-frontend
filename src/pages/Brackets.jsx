@@ -54,14 +54,14 @@ function Brackets() {
 
   useEffect(() => { setDraft(null); setSaved(null); reload(); }, [reload]);
 
-  // Which KO system applies: from the saved draw, or from who is checked in now.
+  // Which KO system applies: from the saved draw, or from who is registered now.
   const system = useMemo(() => {
     if (!category) return null;
     const directKo = category.pool_size === 1;
     const adv = directKo ? 1 : category.advancing;
     const poolCount = saved
       ? saved.pools.length
-      : splitPools(entries.filter((e) => e.checked_in), category.pool_size, category.pool_split).length;
+      : splitPools(entries, category.pool_size, category.pool_split).length;
     if (adv < 1 || poolCount * adv < 2) return { directKo, adv, poolCount, code: null };
     return { directKo, adv, poolCount, code: systemCode(poolCount, adv) };
   }, [category, saved, entries]);

@@ -377,10 +377,10 @@ export async function saveDraw(category, draw, tournament) {
 
 // --- shiaijo plan -----------------------------------------------------------------
 
-/** Checked-in entry count per category id. */
+/** Registered entry count per category id (the draw and the time estimate use every entry). */
 export async function checkedInCounts(categoryIds) {
   if (!categoryIds.length) return {};
-  const rows = unwrap(await supabase.from('entries').select('category_id').in('category_id', categoryIds).eq('checked_in', true));
+  const rows = unwrap(await supabase.from('entries').select('category_id').in('category_id', categoryIds));
   return rows.reduce((acc, r) => ({ ...acc, [r.category_id]: (acc[r.category_id] ?? 0) + 1 }), {});
 }
 

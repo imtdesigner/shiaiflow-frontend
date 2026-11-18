@@ -5,7 +5,7 @@ import {
 } from '../components/TournamentShell';
 import {
   addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
-  saveDraw, setDrawsConfirmed, updateCategory, withdrawFromPool,
+  saveDraw, setCheckedIn, setDrawsConfirmed, updateCategory, withdrawFromPool,
 } from '../lib/api';
 import { afterFight, myRole } from '../lib/runApi';
 import {
@@ -86,16 +86,24 @@ function PoolsView({ pools, nameOf, clubOf, tierOf, onSwap, onMove, directKo }) 
 function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run }) {
   const [replace, setReplace] = useState({});
   const placed = new Set((savedPools ?? []).flat());
-  const unplaced = entries.filter((e) => e.checked_in && !placed.has(e.id));
+  const unplaced = entries.filter((e) => !placed.has(e.id)); // late entries and walk-ins (added in Registration)
   const direct = category.pool_size === 1;
+  const present = new Map(entries.map((e) => [e.id, e.checked_in]));
+  const absent = [...placed].filter((id) => !present.get(id));
   if (!saved) return null;
   return (
     <details style={{ marginTop: '1rem' }} open={unplaced.length > 0}>
       <summary className="tp-muted">
-        Adjust the draw{unplaced.length ? ` — ${unplaced.length} checked-in not in the draw: ${unplaced.map((e) => nameOf(e.id)).join(', ')}` : ''}
+        Adjust the draw — presence on the day
+        {absent.length ? ` · ${absent.length} not marked present` : ' · everyone present'}
+        {unplaced.length ? ` · ${unplaced.length} not in the draw: ${unplaced.map((e) => nameOf(e.id)).join(', ')}` : ''}
       </summary>
+      <p className="tp-muted" style={{ marginTop: '0.5rem' }}>
+        Tick who came. Someone did not come → replace them with a late entry, or withdraw them. Someone came who is not
+        registered → add them in Registration first; they then show up here to replace a no-show or fill a short pool.
+      </p>
       <table className="tp-table" style={{ marginTop: '0.5rem' }}>
-        <thead><tr><th>{direct ? '#' : 'Pool'}</th><th>Competitor</th><th>Replace with</th><th /></tr></thead>
+        <thead><tr><th>{direct ? '#' : 'Pool'}</th><th>Present</th><th>Competitor</th><th>Replace with</th><th /></tr></thead>
         <tbody>
           {saved.pools.map((p, pi) => {
             const members = savedPools[pi] ?? [];
@@ -104,7 +112,11 @@ function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run })
               ...members.map((id) => (
                 <tr key={id}>
                   <td>{direct ? `#${pi + 1}` : p.number}</td>
-                  <td>{nameOf(id)}</td>
+                  <td>
+                    <input type="checkbox" checked={!!present.get(id)} disabled={busy}
+                      onChange={(e) => run(() => setCheckedIn(id, e.target.checked), `${nameOf(id)} ${e.target.checked ? 'is present' : 'is not marked present'}.`)} />
+                  </td>
+                  <td>{nameOf(id)}{!present.get(id) && <span className="tp-badge warn">not present</span>}</td>
                   <td>
                     <select value={replace[id] ?? ''} disabled={busy || unplaced.length === 0} onChange={(e) => setReplace({ ...replace, [id]: e.target.value })}>
                       <option value="">{unplaced.length ? '—' : 'nobody waiting'}</option>
@@ -136,6 +148,7 @@ function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run })
               short && unplaced.length > 0 && (
                 <tr key={`add-${p.id}`}>
                   <td>{p.number}</td>
+                  <td />
                   <td className="tp-muted">pool is short of {category.pool_size - members.length}</td>
                   <td colSpan={2}>
                     {unplaced.map((e) => (
@@ -178,7 +191,9 @@ function Drawings() {
   const isCancelled = category?.status === 'cancelled';
   const isDrawn = category && !isOpen && !isCancelled;
   const moveTargets = categories.filter((c) => c.id !== category?.id && c.kind === category?.kind && c.status === 'registration');
-  const checkedIn = entries.filter((e) => e.checked_in);
+  // the draw takes every registered entry (it is usually made days before);
+  // presence is checked on the day and absentees withdrawn or replaced then
+  const drawEntries = entries;
   // entries that no longer meet the rules (exact age uses the private date of birth)
   const [birthDates, setBirthDates] = useState(new Map());
   useEffect(() => {
@@ -192,7 +207,7 @@ function Drawings() {
     entries.map((e) => (e.competitor ? { ...e, competitor: { ...e.competitor, birth_date: birthDates.get(e.competitor.id) ?? null } } : e)),
     tournamentAgeCtx(tournament ?? {}),
   ) : [];
-  const smallFormats = smallCategoryFormats(checkedIn.length);
+  const smallFormats = smallCategoryFormats(drawEntries.length);
   const nameOf = useCallback((id) => entryName(entries.find((e) => e.id === id)), [entries]);
   const tierOf = useCallback((id) => entries.find((x) => x.id === id)?.tier ?? null, [entries]);
   const clubOf = useCallback((id) => {
@@ -280,7 +295,7 @@ function Drawings() {
 
   const makePreview = () => {
     setMsg({ type: '', text: '' });
-    setPreview(buildDraw(checkedIn.map((e) => ({
+    setPreview(buildDraw(drawEntries.map((e) => ({
       id: e.id, club: e.team?.club ?? e.competitor?.club ?? '', tier: e.tier,
     })), {
       poolSize: category.pool_size, advancing: category.advancing, split: category.pool_split, custom,
@@ -422,9 +437,9 @@ function Drawings() {
           <h3>Settings</h3>
           <div className="tp-grid">
             <div className="tp-field">
-              Checked-in competitors
-              <strong style={{ fontSize: '1.4rem' }}>{checkedIn.length}</strong>
-              <span className="tp-muted">of {entries.length} registered</span>
+              Registered
+              <strong style={{ fontSize: '1.4rem' }}>{drawEntries.length}</strong>
+              <span className="tp-muted">{entries.filter((e) => e.checked_in).length} marked present so far — presence is checked on the day</span>
             </div>
             <label className="tp-field">
               Per pool
@@ -480,7 +495,7 @@ function Drawings() {
           {fightRulesBlock(false)}
           {smallFormats && (
             <Message type="info">
-              {checkedIn.length === 3
+              {drawEntries.length === 3
                 ? 'No KO is possible with 3 entries. Options: round robin, move everyone to a stronger category, or cancel the category.'
                 : 'With 4 entries: round robin or direct KO.'}
               <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
@@ -499,7 +514,7 @@ function Drawings() {
                   );
                 })}
               </div>
-              {checkedIn.length === 3 && (
+              {drawEntries.length === 3 && (
                 <div className="tp-actions" style={{ marginTop: '0.5rem' }}>
                   <select value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)} disabled={busy || !moveTargets.length}>
                     <option value="">{moveTargets.length ? 'Stronger category…' : 'No other category in registration'}</option>
@@ -516,12 +531,12 @@ function Drawings() {
             </Message>
           )}
           <div className="tp-actions">
-            <button type="button" className="tp-btn" onClick={makePreview} disabled={checkedIn.length < 2 || busy}>
+            <button type="button" className="tp-btn" onClick={makePreview} disabled={drawEntries.length < 2 || busy}>
               {preview ? 'New draw' : 'Make draw'}
             </button>
-            {checkedIn.length < 2 && (
+            {drawEntries.length < 2 && (
               <span className="tp-muted">
-                At least 2 must be checked in. <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>
+                A draw needs at least 2 entries. <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>
               </span>
             )}
           </div>

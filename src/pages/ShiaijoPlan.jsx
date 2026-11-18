@@ -202,7 +202,7 @@ function ShiaijoPlan() {
           <table className="tp-table">
             <thead>
               <tr>
-                <th>Order</th><th>Category</th>{dayTotal > 1 && <th>Day</th>}<th>Checked in</th><th>Fights</th>
+                <th>Order</th><th>Category</th>{dayTotal > 1 && <th>Day</th>}<th>Registered</th><th>Fights</th>
                 {courts.map((n) => <th key={n} style={{ textAlign: 'center' }}>Shiaijo {n}</th>)}
                 <th>Fight time</th><th />
               </tr>
