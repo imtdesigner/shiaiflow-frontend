@@ -48,7 +48,7 @@ function TieRule({ title, seconds, hantei, onChange }) {
  * ranking criteria. `hidePools` leaves out pool size / advancing (Drawings
  * has them with the small-category options).
  */
-export default function FightRules({ category, onChange, hidePools = false }) {
+export default function FightRules({ category, onChange, hidePools = false, structureLocked = false }) {
   const c = category;
   const set = (patch) => onChange({ ...c, ...patch });
   const criteria = c.ranking_criteria?.length ? c.ranking_criteria : DEFAULT_CRITERIA;
@@ -84,7 +84,7 @@ export default function FightRules({ category, onChange, hidePools = false }) {
         )}
         <label className="tp-field">
           Uneven number of entries
-          <select value={c.pool_split ?? 'even'} disabled={direct} onChange={(e) => set({ pool_split: e.target.value })}>
+          <select value={c.pool_split ?? 'even'} disabled={direct || structureLocked} onChange={(e) => set({ pool_split: e.target.value })}>
             <option value="even">even pools (7 by 3 → 3+2+2)</option>
             <option value="bigger">bigger pools (7 by 3 → 4+3)</option>
           </select>
@@ -105,13 +105,14 @@ export default function FightRules({ category, onChange, hidePools = false }) {
         </label>
         <label className="tp-field">
           3rd place
-          <select value={c.third_place ?? 'shared'} disabled={Number(c.advancing) === 0 && !direct} onChange={(e) => set({ third_place: e.target.value })}>
+          <select value={c.third_place ?? 'shared'} disabled={(Number(c.advancing) === 0 && !direct) || structureLocked} onChange={(e) => set({ third_place: e.target.value })}>
             <option value="shared">shared (both semifinal losers)</option>
             <option value="fight">fight for 3rd place</option>
           </select>
         </label>
       </div>
 
+      {structureLocked && <p className="tp-muted">Pools and bracket are drawn: uneven pools and the 3rd place fight change only after Undo draw. Times, ties and ranking can still change.</p>}
       <h5 className="fr-h">Fight time (min)</h5>
       <div className="tp-grid">
         <Minutes label="Pool" value={c.pool_fight_seconds} onChange={(v) => set({ pool_fight_seconds: v })}

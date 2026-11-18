@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { matchesQuery } from '../lib/tournament/search.js';
+import { publicPath } from '../lib/tournament/days.js';
 
 export const fmtDate = (d) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
@@ -56,7 +57,7 @@ export default function TournamentList({ tournaments, query = '', past = false, 
           <div className="home-tournament" key={t.id}>
             <div className="home-tournament-info">
               {t.logo_url && <img className="home-tournament-logo" src={t.logo_url} alt="" />}
-              <h3><Link to={`/t/${t.id}`}>{t.name}</Link></h3>
+              <h3><Link to={past ? `/t/${t.id}` : publicPath(t)}>{t.name}</Link></h3>
               <p>
                 {fmtDate(t.start_date)}{t.end_date && t.end_date !== t.start_date ? ` – ${fmtDate(t.end_date)}` : ''}
                 {(t.venue || t.city) && ` · ${[t.venue, t.city, t.country].filter(Boolean).join(', ')}`}
@@ -70,7 +71,7 @@ export default function TournamentList({ tournaments, query = '', past = false, 
                 <Link className="tp-btn" to={`/t/${t.id}`}>Results &amp; setup</Link>
               ) : (
                 <>
-                  <Link className="tp-btn" to={`/t/${t.id}`}>{t.status === 'running' ? 'Live results' : 'Competitor'}</Link>
+                  <Link className="tp-btn" to={publicPath(t)}>{t.status === 'running' ? 'Live results' : 'Competitor'}</Link>
                   <Link className="tp-btn secondary" to={`/join/${t.id}?as=editor`}>Editor (PIN)</Link>
                   {t.status === 'running' && <Link className="tp-btn secondary" to={`/join/${t.id}?as=table`}>Table (PIN)</Link>}
                   <Link className="tp-btn secondary" to="/login">Owner</Link>

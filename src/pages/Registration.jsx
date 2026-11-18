@@ -8,7 +8,7 @@ import {
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
-import { GRADES, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
+import { GRADES, entriesOutsideRules, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 
 const EMPTY_PERSON = {
@@ -28,6 +28,14 @@ function Registration() {
   const [selectedId, setSelectedId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [contacts, setContacts] = useState(new Map());
+  // entries that no longer meet the category's rules (warning only, never removed)
+  const outsideById = useMemo(() => {
+    const c = categories.find((x) => x.id === selectedId);
+    if (!c) return new Map();
+    const withDates = entries.map((e) => (e.competitor
+      ? { ...e, competitor: { ...e.competitor, birth_date: contacts.get(e.competitor.id)?.birth_date ?? null } } : e));
+    return new Map(entriesOutsideRules(c, withDates, tournamentAgeCtx(tournament ?? {})).map((x) => [x.entry.id, x.reason]));
+  }, [categories, selectedId, entries, contacts, tournament]);
   const [person, setPerson] = useState(EMPTY_PERSON);
   const [bulk, setBulk] = useState('');
   const [team, setTeam] = useState({ name: '', club: '', members: [] });
@@ -241,7 +249,12 @@ function Registration() {
                     {entries.map((en, i) => (
                       <tr key={en.id}>
                         <td className="tp-muted">{i + 1}</td>
-                        <td>{entryName(en)}</td>
+                        <td>
+                          {entryName(en)}
+                          {outsideById.has(en.id) && (
+                            <span className="tp-badge warn" title="Registered before the rules changed, or added by an organizer">⚠ {outsideById.get(en.id)}</span>
+                          )}
+                        </td>
                         <td>{en.team?.club ?? en.competitor?.club ?? ''}</td>
                         {!isTeam && <td>{en.competitor?.grade ?? ''}</td>}
                         {!isTeam && contacts.size > 0 && (() => {

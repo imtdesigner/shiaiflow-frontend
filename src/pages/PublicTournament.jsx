@@ -7,7 +7,7 @@ import {
   listTournamentFights, publicRegister, publicRegisterTeam, resolveTournament, tournamentOrganizers,
 } from '../lib/api';
 import { OrganizerLine, fmtDate } from '../components/TournamentList';
-import { clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
+import { breakSeconds, clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
 import { askedConsents, signupProblems, signupSettings } from '../lib/tournament/signup.js';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
@@ -118,9 +118,11 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
   const dayOfFight = (f) => byCat[f.category_id]?.day ?? 1;
   const schedule = useMemo(() => {
     const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
-    return courtSchedule(queues, (f) => byCat[f.category_id]?.day ?? 1, secsOf)
-      .map(({ court, days: ds }) => ({ court, days: ds, list: ds.flatMap((d) => d.list) }));
-  }, [fights, drawn, courts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    return courtSchedule(queues, (f) => byCat[f.category_id]?.day ?? 1, secsOf, {
+      changeover: tournament?.changeover_seconds ?? 15,
+      breaksOf: (d) => breakSeconds(days[d - 1]),
+    }).map(({ court, days: ds }) => ({ court, days: ds, list: ds.flatMap((d) => d.list) }));
+  }, [fights, drawn, courts.length, tournament]); // eslint-disable-line react-hooks/exhaustive-deps
   const clockOf = (f, start) => clockAt(dayStart(dayOfFight(f)), start);
 
   // "who am I": competitors, and their entries (own + teams)
@@ -168,7 +170,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
       {editions.length > 1 && (
         <label className="tp-field" style={{ maxWidth: 280, marginBottom: '0.75rem' }}>
           Edition
-          <select value={tournamentId} onChange={(e) => navigate(e.target.value === editions[0].id && slug ? `/t/${slug}` : `/t/${e.target.value}`)}>
+          <select value={tournamentId} onChange={(e) => navigate(e.target.value === editions[0].id && slug ? `/${slug}` : `/t/${e.target.value}`)}>
             {editions.map((ed, i) => (
               <option key={ed.id} value={ed.id}>{ed.start_date ? ed.start_date.slice(0, 4) : ed.name}{i === 0 ? ' (current)' : ''}</option>
             ))}

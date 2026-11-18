@@ -549,3 +549,9 @@ html, body {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+/* number of accounts waiting for the admins, next to the Admin link */
+.nav-count {
+  display: inline-block; min-width: 1.2em; margin-left: 0.3em; padding: 0 0.35em;
+  border-radius: 999px; background: #c62828; color: #fff; font-size: 0.75em; line-height: 1.4em; text-align: center;
+}

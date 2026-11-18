@@ -31,7 +31,7 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
-import { amIAdmin, listMyTournaments, listPublicTournaments } from './lib/api';
+import { amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTournaments } from './lib/api';
 import AdminAccounts from './pages/AdminAccounts';
 import { PublicTournamentRoute } from './pages/PublicTournament';
 import Tournaments from './pages/Tournaments';
@@ -186,6 +186,15 @@ function AppContent() {
   const [session, setSession] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { if (session) amIAdmin().then(setIsAdmin); else setIsAdmin(false); }, [session]);
+  // accounts waiting for the admins (new dojo / federation, or one turned individual)
+  const [pendingAccounts, setPendingAccounts] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) { setPendingAccounts(0); return undefined; }
+    const load = () => listOrganizationAccounts().then((a) => setPendingAccounts(a.filter((x) => !x.verified_at).length)).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [isAdmin]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -246,7 +255,11 @@ function AppContent() {
       <>
         <Link to="/dashboard">Dashboard</Link>
         <Link to="/profile">Profile</Link>
-        {isAdmin && <Link to="/admin/accounts">Admin</Link>}
+        {isAdmin && (
+          <Link to="/admin/accounts" title={pendingAccounts ? `${pendingAccounts} account(s) waiting for verification` : 'Admin'}>
+            Admin{pendingAccounts > 0 && <span className="nav-count">{pendingAccounts}</span>}
+          </Link>
+        )}
         <button type="button" className="nav-link-button" onClick={handleLogout}>
           Log Out
         </button>
@@ -377,6 +390,7 @@ function AppContent() {
 <Route path="/reset-password" element={<ResetPasswordPage />} />
 <Route path="/join/:tournamentId" element={<JoinCourt />} />
 <Route path="/t/:tournamentId" element={<PublicTournamentRoute />} />
+<Route path="/:tournamentId" element={<PublicTournamentRoute />} />
 
       </Routes>
     </>

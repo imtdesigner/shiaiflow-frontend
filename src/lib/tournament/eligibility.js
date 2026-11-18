@@ -92,6 +92,19 @@ export function eligibleCategories(categories, person, ctx) {
   return categories.map((c) => ({ category: c, reason: ineligibleReason(c, person, ctx) }));
 }
 
+/**
+ * Individual entries that no longer meet the category's rules (e.g. after the
+ * organizer changed them): [{ entry, reason }]. Never removed automatically —
+ * shown as a warning. Data the person never gave counts as missing.
+ */
+export function entriesOutsideRules(category, entries, ctx) {
+  if (category.kind === 'team') return [];
+  return entries
+    .filter((e) => e.competitor)
+    .map((e) => ({ entry: e, reason: ineligibleReason(category, e.competitor, ctx) }))
+    .filter((x) => x.reason);
+}
+
 // --- teams --------------------------------------------------------------------
 // Kendo teams: 3 + 1 reserve or 5 + 2 reserves. Positions in fighting order.
 

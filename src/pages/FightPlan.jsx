@@ -6,7 +6,7 @@ import {
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
 import { matchRounds, slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
-import { clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
+import { breakSeconds, clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
 import { fmtDate } from '../components/TournamentList';
 import './TournamentPages.css';
 
@@ -90,8 +90,11 @@ function FightPlan() {
     // per day, the clock starts at the day's start; the end block closes each day
     const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
     const dayOf = (f) => byId[f.category_id]?.day ?? 1;
-    return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id]));
-  }, [fights, byId, meta, courtCount, drawn]); // eslint-disable-line react-hooks/exhaustive-deps
+    return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id]), {
+      changeover: tournament?.changeover_seconds ?? 15,
+      breaksOf: (d) => breakSeconds(days[d - 1]),
+    });
+  }, [fights, byId, meta, courtCount, drawn, tournament]); // eslint-disable-line react-hooks/exhaustive-deps
   const dayStart = (n) => days[n - 1]?.start ?? (n === 1 ? tournament?.start_time?.slice(0, 5) : null);
 
   const category = byId[selectedId];
@@ -182,6 +185,9 @@ function FightPlan() {
               <h4>
                 {multiDay ? `Day ${day}${days[day - 1]?.date ? ` · ${fmtDate(days[day - 1].date)}` : ''} · ` : ''}
                 {list.length} fights · {dayStart(day) ? `${dayStart(day)} – ` : ''}ends ≈ {clockAt(dayStart(day), total)}
+                {(days[day - 1]?.breaks ?? []).filter((b) => b.from && b.to).map((b) => (
+                  <span key={b.from} className="tp-muted"> · break {b.from}–{b.to}</span>
+                ))}
                 {overrunsDay(days[day - 1], total) && <span className="tp-badge warn">after {days[day - 1].end}</span>}
               </h4>
               <FightRows list={list} showCategory showStart />
@@ -191,7 +197,7 @@ function FightPlan() {
       ))}
 
       <p className="tp-muted">
-        Start = {dayStart(1) ? `from ${multiDay ? 'each day\'s start' : dayStart(1)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times only (no breaks or changeovers); the end-of-tournament block starts once
+        Start = {dayStart(1) ? `from ${multiDay ? 'each day\'s start' : dayStart(1)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times plus {tournament?.changeover_seconds ?? 15} s between fights, no fight starts in or runs into a break; the end-of-tournament block starts once
         every shiaijo has finished its other fights{multiDay ? ' of that day' : ''}. ✎ = court changed by hand.
       </p>
       <div className="tp-actions tp-no-print">

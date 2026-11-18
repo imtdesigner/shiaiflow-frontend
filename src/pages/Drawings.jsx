@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addToPool, cancelCategory, clearDraw, getSavedDraw, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
+  addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
   saveDraw, setDrawsConfirmed, updateCategory, withdrawFromPool,
 } from '../lib/api';
 import { afterFight, myRole } from '../lib/runApi';
@@ -12,7 +12,7 @@ import {
   buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
 import KoBracket from '../components/KoBracket';
-import { rulesText, teamReserves } from '../lib/tournament/eligibility.js';
+import { entriesOutsideRules, rulesText, teamReserves, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import { categoryRow } from '../lib/tournament/categoryTemplates.js';
 import CategoryRules from '../components/CategoryRules';
 import FightRules from '../components/FightRules';
@@ -179,6 +179,19 @@ function Drawings() {
   const isDrawn = category && !isOpen && !isCancelled;
   const moveTargets = categories.filter((c) => c.id !== category?.id && c.kind === category?.kind && c.status === 'registration');
   const checkedIn = entries.filter((e) => e.checked_in);
+  // entries that no longer meet the rules (exact age uses the private date of birth)
+  const [birthDates, setBirthDates] = useState(new Map());
+  useEffect(() => {
+    if (tournament?.age_basis !== 'birth_date') return;
+    listContacts(entries.map((e) => e.competitor?.id).filter(Boolean))
+      .then((m) => setBirthDates(new Map([...m].map(([id, c]) => [id, c.birth_date]))))
+      .catch(() => {});
+  }, [entries, tournament?.age_basis]);
+  const outside = category ? entriesOutsideRules(
+    category,
+    entries.map((e) => (e.competitor ? { ...e, competitor: { ...e.competitor, birth_date: birthDates.get(e.competitor.id) ?? null } } : e)),
+    tournamentAgeCtx(tournament ?? {}),
+  ) : [];
   const smallFormats = smallCategoryFormats(checkedIn.length);
   const nameOf = useCallback((id) => entryName(entries.find((e) => e.id === id)), [entries]);
   const tierOf = useCallback((id) => entries.find((x) => x.id === id)?.tier ?? null, [entries]);
@@ -209,6 +222,36 @@ function Drawings() {
   const [rulesDraft, setRulesDraft] = useState(null);
   const [fightDraft, setFightDraft] = useState(null);
   useEffect(() => { setRulesDraft(null); setFightDraft(null); }, [category?.id]);
+  // fight rules: before the draw everything; after it only what doesn't change the
+  // pools or the bracket (times, ties, system, ranking) — also on the day
+  const fightRulesBlock = (afterDraw) => (
+            <details style={{ marginTop: '0.75rem' }}>
+              <summary className="tp-muted">
+                Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
+                {category.pool_size !== 1 && <>{' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie</>} · KO: encho
+                {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
+                {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
+                  ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
+                {category.third_place === 'fight' ? ' · fight for 3rd' : ''}
+              </summary>
+              <div style={{ marginTop: '0.75rem' }}>
+                <FightRules hidePools structureLocked={afterDraw} category={fightDraft ?? category} onChange={(next) => (afterDraw || !locked) && setFightDraft(next)} />
+                {fightDraft && (
+                  <div className="tp-actions">
+                    <button type="button" className="tp-btn small" onClick={async () => {
+                      const keys = [...(afterDraw ? [] : ['pool_split', 'third_place']), 'fight_system', 'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds',
+                        'sf_fight_seconds', 'final_fight_seconds', 'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds',
+                        'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria', 'no_hantei_from'];
+                      await changeSettings(Object.fromEntries(keys.map((k) => [k, fightDraft[k] ?? null]).filter(([k, v]) => v !== null || !['pool_split', 'fight_system', 'third_place', 'pool_tie', 'pool_hantei', 'ko_hantei', 'daihyosen_hantei'].includes(k))));
+                      setFightDraft(null);
+                    }}>Save fight rules</button>
+                    <button type="button" className="tp-btn secondary small" onClick={() => setFightDraft(null)}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            </details>
+  );
+
   const changeSetting = (field, value) => changeSettings({ [field]: value });
 
   const changeSettings = async (fields) => {
@@ -414,31 +457,14 @@ function Drawings() {
               )}
             </div>
           </details>
-          <details style={{ marginTop: '0.75rem' }}>
-            <summary className="tp-muted">
-              Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
-              {category.pool_size !== 1 && <>{' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie</>} · KO: encho
-              {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
-              {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
-                ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
-              {category.third_place === 'fight' ? ' · fight for 3rd' : ''}
-            </summary>
-            <div style={{ marginTop: '0.75rem' }}>
-              <FightRules hidePools category={fightDraft ?? category} onChange={(next) => !locked && setFightDraft(next)} />
-              {fightDraft && (
-                <div className="tp-actions">
-                  <button type="button" className="tp-btn small" onClick={async () => {
-                    const keys = ['pool_split', 'fight_system', 'third_place', 'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds',
-                      'sf_fight_seconds', 'final_fight_seconds', 'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds',
-                      'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria', 'no_hantei_from'];
-                    await changeSettings(Object.fromEntries(keys.map((k) => [k, fightDraft[k] ?? null]).filter(([k, v]) => v !== null || !['pool_split', 'fight_system', 'third_place', 'pool_tie', 'pool_hantei', 'ko_hantei', 'daihyosen_hantei'].includes(k))));
-                    setFightDraft(null);
-                  }}>Save fight rules</button>
-                  <button type="button" className="tp-btn secondary small" onClick={() => setFightDraft(null)}>Cancel</button>
-                </div>
-              )}
-            </div>
-          </details>
+          {outside.length > 0 && (
+            <Message type="error">
+              {outside.length} registered {outside.length === 1 ? 'entry does' : 'entries do'} not meet the rules of {category.name}:{' '}
+              {outside.map((x) => `${entryName(x.entry)} (${x.reason})`).join(', ')}. They stay registered — move or remove them in{' '}
+              <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link> if needed.
+            </Message>
+          )}
+          {fightRulesBlock(false)}
           {smallFormats && (
             <Message type="info">
               {checkedIn.length === 3
@@ -578,6 +604,7 @@ function Drawings() {
               <KoBracket template={category.ko_template} nameOf={nameOf} resolved={savedResolved} directKo={category.pool_size === 1} thirdPlace={category.third_place === 'fight' ? thirdPlaceFight(category.ko_template) : null} />
             </>
           )}
+          {fightRulesBlock(true)}
           <div className="tp-actions">
             <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
             {!locked && <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/brackets`}>Edit bracket</Link>}

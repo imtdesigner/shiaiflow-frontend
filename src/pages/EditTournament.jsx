@@ -96,7 +96,7 @@ function EditTournament() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < new Date();
   const regOpen = tournament.registration_open && !deadlinePassed;
-  const publicUrl = `${window.location.origin}/t/${tournament.slug || tournamentId}`;
+  const publicUrl = `${window.location.origin}${tournament.slug ? `/${tournament.slug}` : `/t/${tournamentId}`}`;
   const joinUrl = `${window.location.origin}/join/${tournamentId}`;
 
   return (

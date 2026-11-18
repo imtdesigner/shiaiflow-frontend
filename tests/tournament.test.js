@@ -846,3 +846,42 @@ test('no hantei in the final / semifinals + final: encho until the first point',
   const st = fightStatus({ events: [] }, fightRules(c, 'ko', 1), { encho: true, timeUp: true });
   assert.equal(st.next, 'encho');
 });
+
+import { linkProblem as lp, publicPath, RESERVED_LINKS } from '../src/lib/tournament/days.js';
+
+test('link without /t/: app pages are reserved', () => {
+  assert.equal(lp('login'), 'used by the app itself');
+  assert.equal(lp('tournaments'), 'used by the app itself');
+  assert.equal(lp('croatian-open'), null);
+  assert.equal(publicPath({ id: 'x', slug: 'croatian-open' }), '/croatian-open');
+  assert.equal(publicPath({ id: 'x' }), '/t/x');
+  assert.ok(RESERVED_LINKS.has('create-tournament'));
+});
+
+import { entriesOutsideRules } from '../src/lib/tournament/eligibility.js';
+
+test('entries outside the rules after a rule change are listed, not removed', () => {
+  const cat = { kind: 'individual', max_age: 14 };
+  const entries = [
+    { id: 1, competitor: { last_name: 'A', birth_year: 2013 } },
+    { id: 2, competitor: { last_name: 'B', birth_year: 2010 } },
+    { id: 3, competitor: { last_name: 'C' } },
+  ];
+  assert.deepEqual(entriesOutsideRules(cat, entries, 2026).map((x) => [x.entry.id, x.reason]), [[2, 'up to 14 years'], [3, 'birth year needed']]);
+  assert.deepEqual(entriesOutsideRules({ kind: 'team', max_age: 14 }, entries, 2026), []);
+});
+
+import { courtSchedule as cs2, breakSeconds } from '../src/lib/tournament/days.js';
+
+test('schedule: changeover between fights and breaks', () => {
+  const fights = [1, 2, 3].map((n) => ({ id: `f${n}` }));
+  const q = new Map([[1, fights]]);
+  const plain = cs2(q, () => 1, () => 180, { changeover: 15 });
+  assert.deepEqual(plain[0].days[0].list.map((x) => x.start), [0, 195, 390]);
+  assert.equal(plain[0].days[0].total, 570);
+  const day = { start: '09:00', breaks: [{ from: '09:05', to: '09:30' }] };
+  assert.deepEqual(breakSeconds(day), [[300, 1800]]);
+  const withBreak = cs2(q, () => 1, () => 180, { changeover: 15, breaksOf: () => breakSeconds(day) });
+  // f1 0–180; f2 would start 195 and run into the 300 break → after it at 1800
+  assert.deepEqual(withBreak[0].days[0].list.map((x) => x.start), [0, 1800, 1995]);
+});

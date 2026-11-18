@@ -32,13 +32,16 @@ export function tournamentDays(t) {
     date: t?.start_date ? addDays(t.start_date, i) : null,
     start: saved[i]?.start ?? (i === 0 ? t?.start_time?.slice(0, 5) ?? null : null),
     end: saved[i]?.end ?? null,
+    breaks: saved[i]?.breaks ?? [],
   }));
 }
 
 /** days column value for a date range, keeping the times already set. */
 export function daysValue(startDate, endDate, current = []) {
   const count = dayCount(startDate, endDate);
-  return Array.from({ length: count }, (_, i) => ({ start: current[i]?.start ?? null, end: current[i]?.end ?? null }));
+  return Array.from({ length: count }, (_, i) => ({
+    start: current[i]?.start ?? null, end: current[i]?.end ?? null, breaks: current[i]?.breaks ?? [],
+  }));
 }
 
 /** Clock time: 'HH:MM' + seconds → 'HH:MM' ('+1h 05' without a start). */
@@ -59,31 +62,61 @@ const minutesBetween = (a, b) => {
   return (bh * 60 + bm) - (ah * 60 + am);
 };
 
+/** Breaks of a day as [fromSec, toSec] from the day's start ('HH:MM' times). */
+export function breakSeconds(day) {
+  if (!day?.start) return [];
+  return (day.breaks ?? [])
+    .filter((b) => b?.from && b?.to)
+    .map((b) => [minutesBetween(day.start, b.from) * 60, minutesBetween(day.start, b.to) * 60])
+    .filter(([a, z]) => z > a)
+    .sort((x, y) => x[0] - y[0]);
+}
+
+/** Start of a fight at or after t: not inside a break, and not running into one. */
+function placeFight(t, secs, breaks) {
+  let start = t;
+  for (const [from, to] of breaks) {
+    if (start >= to) continue;
+    if (start + secs > from) start = Math.max(start, to);
+  }
+  return start;
+}
+
 /**
  * Schedule of every court, per day. `queues`: Map(court → fights in running
  * order); `dayOf(f)` → day number; `secsOf(f)` → fight seconds.
+ * Options: `changeover` seconds between fights (bow-in, changeover), `breaksOf(day)`
+ * → [[fromSec, toSec]] from that day's start (no fight starts in, or runs into, a break).
  * Returns [{ court, days: [{ day, list: [{ f, start }], total }] }] — start and
  * total in seconds from that day's start. Each day the end-block fights start
  * once every court has finished that day's other fights.
  */
-export function courtSchedule(queues, dayOf, secsOf) {
+export function courtSchedule(queues, dayOf, secsOf, { changeover = 0, breaksOf = () => [] } = {}) {
   const courts = [...queues.keys()];
   const all = courts.flatMap((c) => queues.get(c));
   const dayNos = [...new Set(all.map(dayOf))].sort((a, b) => a - b);
-  const regularEnd = new Map(dayNos.map((d) => [d, Math.max(0, ...courts.map((c) => queues.get(c)
-    .filter((f) => dayOf(f) === d && !f.end_block).reduce((t, f) => t + secsOf(f), 0)))]));
+  const run = (list, day, from = 0) => {
+    let t = from;
+    const placed = list.map((f) => {
+      const start = placeFight(t === from ? t : t + changeover, secsOf(f), breaksOf(day));
+      t = start + secsOf(f);
+      return { f, start };
+    });
+    return { placed, end: t };
+  };
+  const regularEnd = new Map(dayNos.map((d) => [d, Math.max(0, ...courts.map((c) => run(
+    queues.get(c).filter((f) => dayOf(f) === d && !f.end_block), d,
+  ).end))]));
   return courts.map((court) => ({
     court,
     days: dayNos.map((day) => {
-      let t = 0;
-      let block = false;
-      const list = queues.get(court).filter((f) => dayOf(f) === day).map((f) => {
-        if (f.end_block && !block) { t = Math.max(t, regularEnd.get(day)); block = true; }
-        const start = t;
-        t += secsOf(f);
-        return { f, start };
-      });
-      return { day, list, total: t };
+      const mine = queues.get(court).filter((f) => dayOf(f) === day);
+      const regular = run(mine.filter((f) => !f.end_block), day);
+      const blockFights = mine.filter((f) => f.end_block);
+      const block = blockFights.length
+        ? run(blockFights, day, Math.max(regular.end + (regular.placed.length ? changeover : 0), regularEnd.get(day) + changeover))
+        : { placed: [], end: regular.end };
+      return { day, list: [...regular.placed, ...block.placed], total: block.end };
     }).filter((d) => d.list.length),
   }));
 }
@@ -110,9 +143,21 @@ export function suggestLink(name) {
     .replace(/-+$/g, '');
 }
 
-/** Why a link name is not allowed (null = ok): 3–60 of a–z, 0–9, '-', not at the ends. */
+/** Names the app uses itself (same list as SQL private.reserved_link). */
+export const RESERVED_LINKS = new Set([
+  'about', 'account', 'accounts', 'admin', 'api', 'app', 'assets', 'attend', 'contact', 'create-tournament',
+  'dashboard', 'explore', 'help', 'home', 'join', 'login', 'logout', 'new', 'policy', 'pricing', 'privacy',
+  'profile', 'register', 'reset-password', 'search', 'settings', 'signup', 'static', 'support', 'terms',
+  'tournament', 'tournaments', 'www',
+]);
+
+/** Public address of a tournament: /<link name> when it has one, else /t/<id>. */
+export const publicPath = (t) => (t?.slug ? `/${t.slug}` : `/t/${t?.id}`);
+
+/** Why a link name is not allowed (null = ok): 3–60 of a–z, 0–9, '-', not at the ends, not an app page. */
 export function linkProblem(slug) {
   if (!slug) return null;
+  if (RESERVED_LINKS.has(slug)) return 'used by the app itself';
   if (slug.length < 3) return 'at least 3 characters';
   if (slug.length > 60) return 'at most 60 characters';
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])$/.test(slug)) return 'only small letters, digits and "-" (not at the start or end)';

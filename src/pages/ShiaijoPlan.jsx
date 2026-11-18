@@ -151,6 +151,15 @@ function ShiaijoPlan() {
                 }))} />
             </label>
           )}
+          <label className="tp-field">
+            Time between fights (s) <span className="tp-muted">bow-in, changeover — for the time estimate</span>
+            <input type="number" min="0" max="600" step="5" defaultValue={tournament?.changeover_seconds ?? 15} disabled={busy}
+              key={tournament?.changeover_seconds}
+              onBlur={(e) => {
+                const v = Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0)));
+                if (v !== (tournament?.changeover_seconds ?? 15)) run(() => updateTournament(tournamentId, { changeover_seconds: v }));
+              }} />
+          </label>
           <label className="tp-field tp-check">
             <input type="checkbox" checked={tournament?.use_timer ?? true} disabled={busy}
               onChange={(e) => run(() => updateTournament(tournamentId, { use_timer: e.target.checked }))} />

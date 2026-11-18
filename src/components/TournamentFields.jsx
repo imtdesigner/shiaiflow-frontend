@@ -14,15 +14,29 @@ export function DaysEditor({ startDate, endDate, value, onChange, disabled }) {
   const days = tournamentDays({ start_date: startDate, end_date: endDate || startDate, days: value });
   const current = daysValue(startDate, endDate || startDate, value ?? []);
   const set = (i, k, v) => onChange(current.map((d, j) => (j === i ? { ...d, [k]: v || null } : d)));
+  const setBreak = (i, k, v) => onChange(current.map((d, j) => {
+    if (j !== i) return d;
+    const b = { ...(d.breaks?.[0] ?? {}), [k]: v || null };
+    return { ...d, breaks: b.from || b.to ? [b] : [] };
+  }));
   return (
     <table className="tp-table td-days">
-      <thead><tr><th>Day</th><th>Starts</th><th>Ends</th></tr></thead>
+      <thead><tr><th>Day</th><th>Starts</th><th>Ends</th><th>Break <span className="tp-muted">(optional)</span></th></tr></thead>
       <tbody>
         {days.map((d, i) => (
           <tr key={d.n}>
             <td>Day {d.n} <span className="tp-muted">{fmtDay(d.date)}</span></td>
             <td><input type="time" value={current[i].start ?? ''} disabled={disabled} onChange={(e) => set(i, 'start', e.target.value)} /></td>
             <td><input type="time" value={current[i].end ?? ''} disabled={disabled} onChange={(e) => set(i, 'end', e.target.value)} /></td>
+            <td>
+              <span className="cr-range">
+                <input type="time" value={current[i].breaks?.[0]?.from ?? ''} disabled={disabled}
+                  onChange={(e) => setBreak(i, 'from', e.target.value)} />
+                –
+                <input type="time" value={current[i].breaks?.[0]?.to ?? ''} disabled={disabled}
+                  onChange={(e) => setBreak(i, 'to', e.target.value)} />
+              </span>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -45,7 +59,7 @@ export function LinkField({ value, onChange, name, saved, confirmed, onConfirm, 
     const t = setTimeout(() => { linkStatus(value).then(setStatus).catch(() => setStatus(null)); }, 350);
     return () => clearTimeout(t);
   }, [value, problem, saved]); // eslint-disable-line react-hooks/exhaustive-deps
-  const url = `${window.location.host}/t/${value || '…'}`;
+  const url = `${window.location.host}/${value || '…'}`;
   return (
     <div className="tp-field" style={{ gridColumn: '1 / -1' }}>
       Link name <span className="tp-muted">(optional — {url})</span>
