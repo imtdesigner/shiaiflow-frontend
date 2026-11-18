@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { matchesQuery } from '../lib/tournament/search.js';
 import { publicPath } from '../lib/tournament/days.js';
+import { fmtDate, fmtShortDateTime } from '../lib/format.js';
 
-export const fmtDate = (d) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+export { fmtDate };
 
 /** Status of a published tournament for the lists: signup open / closed, ongoing, finished. */
 export function tournamentState(t) {
@@ -14,7 +15,7 @@ export function tournamentState(t) {
   if (closed) return { label: 'Signup closed', cls: 'warn' };
   return {
     label: t.registration_deadline
-      ? `Signup open until ${new Date(t.registration_deadline).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+      ? `Signup open until ${fmtShortDateTime(t.registration_deadline)}`
       : 'Signup open',
     cls: 'ok',
   };

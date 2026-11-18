@@ -4,11 +4,12 @@ import { BackToDashboard, Message } from '../components/TournamentShell';
 import CategoryRules from '../components/CategoryRules';
 import FightRules from '../components/FightRules';
 import { createTournament, listCategorySources } from '../lib/api';
-import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, categoryRow, categorySetup } from '../lib/tournament/categoryTemplates.js';
+import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
 import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
+import { DateInput } from '../components/EuInputs';
 
 let nextKey = 1;
 const withKey = (c) => ({ ...c, _key: nextKey++ });
@@ -35,7 +36,13 @@ function CreateTournament() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
-  const addCategories = (list) => setCategories((cur) => [...cur, ...list.map((c) => withKey({ ...EMPTY_CATEGORY, ...categorySetup(c) }))]);
+  // a new category (template or empty) takes the fight rules of the first category of its kind;
+  // copies from another tournament keep their own
+  const addCategories = (list, inherit = true) => setCategories((cur) => [...cur, ...list.map((c) => {
+    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(c) };
+    const first = inherit && cur.find((x) => x.kind === fresh.kind);
+    return withKey(first ? copyFields(fresh, first, RULE_FIELDS) : fresh);
+  })]);
   const replaceCategory = (key, next) => setCategories((cur) => cur.map((c) => (c._key === key ? { ...next, _key: key } : c)));
   const updateCategory = (key, k, v) => setCategories((cur) => cur.map((c) => {
     if (c._key !== key) return c;
@@ -105,8 +112,8 @@ function CreateTournament() {
               Name
               <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
             </label>
-            <label className="tp-field">Start date<input type="date" value={form.start_date} onChange={set('start_date')} /></label>
-            <label className="tp-field">End date<input type="date" value={form.end_date} onChange={set('end_date')} /></label>
+            <label className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
+            <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
             <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
             <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
@@ -164,7 +171,7 @@ function CreateTournament() {
                     <strong>{t.name}</strong>{t.own && <span className="tp-badge ok">yours</span>}
                     <div className="tp-muted">{[t.start_date, t.city].filter(Boolean).join(' · ')} — {t.categories.map((c) => c.name).join(', ')}</div>
                   </div>
-                  <button type="button" className="tp-btn small" onClick={() => { addCategories(t.categories); setSources(null); }}>
+                  <button type="button" className="tp-btn small" onClick={() => { addCategories(t.categories, false); setSources(null); }}>
                     Copy {t.categories.length} categor{t.categories.length === 1 ? 'y' : 'ies'}
                   </button>
                 </div>
@@ -194,7 +201,8 @@ function CreateTournament() {
               <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
 
               <h4>2 · Fights</h4>
-              <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)} />
+              <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)}
+                others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
               <p className="tp-muted">The KO bracket can be adjusted per category in the bracket editor.</p>
             </div>
           ))}

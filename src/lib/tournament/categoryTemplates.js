@@ -37,6 +37,25 @@ export const SETUP_FIELDS = [
   'daihyosen_encho_seconds', 'daihyosen_hantei', 'third_place', 'no_hantei_from',
 ];
 
+/** Fight rules a new category takes over from the first one (not its times or pools). */
+export const RULE_FIELDS = [
+  'fight_system', 'pool_split', 'pool_tie', 'pool_encho_seconds', 'pool_hantei', 'ko_encho_seconds', 'ko_hantei',
+  'no_hantei_from', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'third_place', 'ranking_criteria',
+];
+
+/** Everything of "2 · Fights" ("Same as" copies it): rules, times, pools. */
+export const FIGHT_FIELDS = [
+  ...RULE_FIELDS, 'pool_size', 'advancing',
+  'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds', 'sf_fight_seconds', 'final_fight_seconds',
+];
+
+/** Copy fields from one category to another (keeps the target's identity). */
+export function copyFields(target, source, fields) {
+  const out = { ...target };
+  for (const k of fields) if (source[k] !== undefined) out[k] = Array.isArray(source[k]) ? [...source[k]] : source[k];
+  return out;
+}
+
 /** A category's setup only (no ids, draw, status or courts) — for copying. */
 export function categorySetup(c) {
   const out = {};

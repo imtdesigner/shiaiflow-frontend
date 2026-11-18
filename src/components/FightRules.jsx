@@ -1,4 +1,5 @@
 import { DEFAULT_CRITERIA } from '../lib/tournament/standings.js';
+import { FIGHT_FIELDS, copyFields } from '../lib/tournament/categoryTemplates.js';
 
 const CRITERIA = {
   wins: 'Wins (more)',
@@ -48,7 +49,7 @@ function TieRule({ title, seconds, hantei, onChange }) {
  * ranking criteria. `hidePools` leaves out pool size / advancing (Drawings
  * has them with the small-category options).
  */
-export default function FightRules({ category, onChange, hidePools = false, structureLocked = false }) {
+export default function FightRules({ category, onChange, hidePools = false, structureLocked = false, others = [] }) {
   const c = category;
   const set = (patch) => onChange({ ...c, ...patch });
   const criteria = c.ranking_criteria?.length ? c.ranking_criteria : DEFAULT_CRITERIA;
@@ -59,9 +60,39 @@ export default function FightRules({ category, onChange, hidePools = false, stru
     set({ ranking_criteria: next });
   };
   const direct = Number(c.pool_size) === 1;
+  const team = c.kind === 'team';
+  // final (or semifinals + final) decided ippon-shobu: encho until the first point
+  const lastRounds = (sameLabel) => (
+    <div className="fr-tie">
+      <span className="fr-tie-title">Last rounds</span>
+      <select value={c.no_hantei_from ?? ''} onChange={(e) => set({ no_hantei_from: e.target.value || null })}>
+        <option value="">{sameLabel}</option>
+        <option value="final">no hantei in the final — ippon-shobu (encho until the first point)</option>
+        <option value="semifinal">no hantei in the semifinals and final — ippon-shobu</option>
+      </select>
+    </div>
+  );
+
+  // "Same as": copy everything of this part from another category of the same kind
+  const sameAs = (id) => {
+    const src = others.find((o) => String(o.id ?? o._key) === id);
+    if (!src) return;
+    const fields = FIGHT_FIELDS.filter((k) => !(hidePools && (k === 'pool_size' || k === 'advancing'))
+      && !(structureLocked && (k === 'pool_split' || k === 'third_place')));
+    onChange(copyFields(c, src, fields));
+  };
 
   return (
     <div className="fr">
+      {others.length > 0 && (
+        <div className="fr-same">
+          <span className="tp-muted">Same as</span>
+          <select value="" onChange={(e) => sameAs(e.target.value)}>
+            <option value="">— copy the fight settings of… —</option>
+            {others.map((o) => <option key={o.id ?? o._key} value={String(o.id ?? o._key)}>{o.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="tp-grid">
         {!hidePools && (
           <>
@@ -124,32 +155,45 @@ export default function FightRules({ category, onChange, hidePools = false, stru
       </div>
 
       <h5 className="fr-h">Tie at time</h5>
-      <div className="fr-tie">
-        <span className="fr-tie-title">Pools</span>
-        <select value={c.pool_tie ?? 'hikiwake'} disabled={direct} onChange={(e) => set({ pool_tie: e.target.value })}>
-          <option value="hikiwake">hikiwake (draw)</option>
-          <option value="encho">encho</option>
-        </select>
-      </div>
-      {c.pool_tie === 'encho' && !direct && (
-        <TieRule title="Pool encho" seconds={c.pool_encho_seconds} hantei={c.pool_hantei}
-          onChange={({ seconds, hantei }) => set({ pool_encho_seconds: seconds, pool_hantei: hantei })} />
-      )}
-      <TieRule title="KO" seconds={c.ko_encho_seconds} hantei={c.ko_hantei}
-        onChange={({ seconds, hantei }) => set({ ko_encho_seconds: seconds, ko_hantei: hantei })} />
-      {c.ko_encho_seconds && c.ko_hantei ? (
-        <div className="fr-tie">
-          <span className="fr-tie-title">Last rounds</span>
-          <select value={c.no_hantei_from ?? ''} onChange={(e) => set({ no_hantei_from: e.target.value || null })}>
-            <option value="">hantei as in the KO</option>
-            <option value="final">no hantei in the final — ippon-shobu (encho until the first point)</option>
-            <option value="semifinal">no hantei in the semifinals and final — ippon-shobu</option>
-          </select>
-        </div>
-      ) : null}
-      {c.kind === 'team' && (
-        <TieRule title="Daihyosen" seconds={c.daihyosen_encho_seconds} hantei={c.daihyosen_hantei}
-          onChange={({ seconds, hantei }) => set({ daihyosen_encho_seconds: seconds, daihyosen_hantei: hantei })} />
+      {team ? (
+        <>
+          <p className="tp-muted fr-note">
+            In a team match each bout may end in a draw (hikiwake). The team with more bout wins wins the match; equal wins → more
+            ippons. Still equal → the match is tied: in pools a draw or a daihyosen, in the KO always a daihyosen.
+            <br /><strong>Daihyosen</strong> = one deciding bout: each team sends one of its members (its choice), and that bout decides the team match.
+          </p>
+          <div className="fr-tie">
+            <span className="fr-tie-title">Pools</span>
+            <select value={c.pool_tie ?? 'hikiwake'} disabled={direct} onChange={(e) => set({ pool_tie: e.target.value })}>
+              <option value="hikiwake">tied team match stays a draw (hikiwake)</option>
+              <option value="encho">tied team match → daihyosen</option>
+            </select>
+          </div>
+          <div className="fr-tie">
+            <span className="fr-tie-title">KO</span>
+            <span className="tp-muted">tied team match → daihyosen</span>
+          </div>
+          <TieRule title="Daihyosen" seconds={c.daihyosen_encho_seconds} hantei={c.daihyosen_hantei}
+            onChange={({ seconds, hantei }) => set({ daihyosen_encho_seconds: seconds, daihyosen_hantei: hantei })} />
+          {c.daihyosen_encho_seconds && c.daihyosen_hantei ? lastRounds('hantei as set for the daihyosen') : null}
+        </>
+      ) : (
+        <>
+          <div className="fr-tie">
+            <span className="fr-tie-title">Pools</span>
+            <select value={c.pool_tie ?? 'hikiwake'} disabled={direct} onChange={(e) => set({ pool_tie: e.target.value })}>
+              <option value="hikiwake">hikiwake (draw)</option>
+              <option value="encho">encho</option>
+            </select>
+          </div>
+          {c.pool_tie === 'encho' && !direct && (
+            <TieRule title="Pool encho" seconds={c.pool_encho_seconds} hantei={c.pool_hantei}
+              onChange={({ seconds, hantei }) => set({ pool_encho_seconds: seconds, pool_hantei: hantei })} />
+          )}
+          <TieRule title="KO" seconds={c.ko_encho_seconds} hantei={c.ko_hantei}
+            onChange={({ seconds, hantei }) => set({ ko_encho_seconds: seconds, ko_hantei: hantei })} />
+          {c.ko_encho_seconds && c.ko_hantei ? lastRounds('hantei as in the KO') : null}
+        </>
       )}
 
       {!direct && (
@@ -171,7 +215,7 @@ export default function FightRules({ category, onChange, hidePools = false, stru
                 <button key={k} type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...criteria, k] })}>+ {CRITERIA[k]}</button>
               ))}
               {criteria.join() !== DEFAULT_CRITERIA.join() && (
-                <button type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...DEFAULT_CRITERIA] })}>Back to the Excel order</button>
+                <button type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...DEFAULT_CRITERIA] })}>Back to default</button>
               )}
             </div>
           )}

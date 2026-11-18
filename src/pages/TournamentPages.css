@@ -365,3 +365,15 @@
 .pt-person-head { display: flex; justify-content: space-between; align-items: center; }
 .pt-person h4 { margin: 0.9rem 0 0.3rem; }
 .pt-consents { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; align-items: center; margin-top: 0.6rem; }
+
+/* European date / time fields (EuInputs.jsx) */
+.eu-time { width: 5.2rem; text-align: center; }
+.eu-date { display: inline-flex; align-items: center; gap: 0.3rem; position: relative; }
+.eu-date input[type='text'] { width: 7.5rem; }
+.eu-cal { background: none; border: 0; cursor: pointer; font-size: 1.1rem; padding: 0 0.2rem; }
+.eu-picker { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.eu-datetime { display: inline-flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.eu-bad { outline: 2px solid #c62828; }
+
+.fr-note { margin: 0 0 0.5rem; max-width: 46rem; }
+.fr-same { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; }

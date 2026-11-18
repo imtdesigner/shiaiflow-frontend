@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { countryOptions } from '../lib/countries';
 import { changeAccountKind } from '../lib/api';
 import './SignupPage.css';
+import { fmtDate } from '../lib/format.js';
 
 const ORG = ['dojo', 'regional', 'continental'];
 const KIND_LABEL = {
@@ -14,7 +15,7 @@ const KIND_LABEL = {
 
 /** Verification status of the account, in words. */
 function accountStatus(p) {
-  if (p.verified_at) return { cls: 'success', text: `Verified by the app admins on ${new Date(p.verified_at).toLocaleDateString()}.` };
+  if (p.verified_at) return { cls: 'success', text: `Verified by the app admins on ${fmtDate(p.verified_at)}.` };
   if (ORG.includes(p.role)) {
     return { cls: 'info', text: 'Waiting for verification by the app admins. Until then you can set up tournaments, but not publish the signup or start them.' };
   }

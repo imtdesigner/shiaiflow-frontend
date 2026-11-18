@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Message } from '../components/TournamentShell';
 import { amIAdmin, listOrganizationAccounts, setAccountVerified } from '../lib/api';
 import './TournamentPages.css';
+import { fmtDate } from '../lib/format.js';
 
 const KIND = { dojo: 'Dojo', regional: 'National / regional federation', continental: 'Continental federation', person: 'Former dojo / federation, now individual' };
 
@@ -57,7 +58,7 @@ function AdminAccounts() {
                   <td>{a.contact_name || '—'}{a.contact_email && <div className="tp-muted">{a.contact_email}</div>}</td>
                   <td>
                     {a.verified_at
-                      ? <span className="tp-badge ok">verified {new Date(a.verified_at).toLocaleDateString()}</span>
+                      ? <span className="tp-badge ok">verified {fmtDate(a.verified_at)}</span>
                       : <span className="tp-badge warn">waiting</span>}
                   </td>
                   <td>

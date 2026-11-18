@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { linkStatus } from '../lib/api';
 import { daysValue, linkProblem, suggestLink, tournamentDays } from '../lib/tournament/days.js';
+import { TimeInput } from './EuInputs';
+import { fmtDay as fmtDayEu } from '../lib/format.js';
 
-const fmtDay = (date) => (date
-  ? new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-  : '');
+const fmtDay = (date) => fmtDayEu(date);
 
 /**
  * Start and end time of every tournament day (one row per date between the
@@ -26,15 +26,15 @@ export function DaysEditor({ startDate, endDate, value, onChange, disabled }) {
         {days.map((d, i) => (
           <tr key={d.n}>
             <td>Day {d.n} <span className="tp-muted">{fmtDay(d.date)}</span></td>
-            <td><input type="time" value={current[i].start ?? ''} disabled={disabled} onChange={(e) => set(i, 'start', e.target.value)} /></td>
-            <td><input type="time" value={current[i].end ?? ''} disabled={disabled} onChange={(e) => set(i, 'end', e.target.value)} /></td>
+            <td><TimeInput value={current[i].start} disabled={disabled} onChange={(v) => set(i, 'start', v)} /></td>
+            <td><TimeInput value={current[i].end} disabled={disabled} onChange={(v) => set(i, 'end', v)} /></td>
             <td>
               <span className="cr-range">
-                <input type="time" value={current[i].breaks?.[0]?.from ?? ''} disabled={disabled}
-                  onChange={(e) => setBreak(i, 'from', e.target.value)} />
+                <TimeInput value={current[i].breaks?.[0]?.from ?? null} disabled={disabled}
+                  onChange={(v) => setBreak(i, 'from', v)} />
                 –
-                <input type="time" value={current[i].breaks?.[0]?.to ?? ''} disabled={disabled}
-                  onChange={(e) => setBreak(i, 'to', e.target.value)} />
+                <TimeInput value={current[i].breaks?.[0]?.to ?? null} disabled={disabled}
+                  onChange={(v) => setBreak(i, 'to', v)} />
               </span>
             </td>
           </tr>

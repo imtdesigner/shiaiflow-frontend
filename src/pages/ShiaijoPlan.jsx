@@ -7,6 +7,7 @@ import {
 import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts.js';
 import { dayCount, tournamentDays } from '../lib/tournament/days.js';
 import './TournamentPages.css';
+import { TimeInput } from '../components/EuInputs';
 
 const MAX_COURTS = 6;
 
@@ -144,10 +145,10 @@ function ShiaijoPlan() {
           ) : (
             <label className="tp-field">
               Start time
-              <input type="time" value={tournament?.start_time?.slice(0, 5) ?? ''} disabled={busy}
-                onChange={(e) => run(() => updateTournament(tournamentId, {
-                  start_time: e.target.value || null,
-                  ...(tournament?.days?.length ? { days: [{ ...tournament.days[0], start: e.target.value || null }, ...tournament.days.slice(1)] } : {}),
+              <TimeInput value={tournament?.start_time?.slice(0, 5) ?? null} disabled={busy}
+                onChange={(v) => run(() => updateTournament(tournamentId, {
+                  start_time: v,
+                  ...(tournament?.days?.length ? { days: [{ ...tournament.days[0], start: v }, ...tournament.days.slice(1)] } : {}),
                 }))} />
             </label>
           )}

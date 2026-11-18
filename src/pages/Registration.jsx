@@ -10,6 +10,7 @@ import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
 import { GRADES, entriesOutsideRules, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
+import { DateInput } from '../components/EuInputs';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
@@ -167,7 +168,7 @@ function Registration() {
                     </select>
                   </label>
                   {tournament?.age_basis === 'birth_date'
-                    ? <label className="tp-field">Date of birth<input type="date" value={person.birth_date} onChange={(e) => setPerson({ ...person, birth_date: e.target.value })} /></label>
+                    ? <label className="tp-field">Date of birth<DateInput value={person.birth_date || null} onChange={(v) => setPerson({ ...person, birth_date: v ?? '' })} /></label>
                     : <label className="tp-field">Birth year<input type="number" value={person.birth_year} onChange={(e) => setPerson({ ...person, birth_year: e.target.value })} /></label>}
                   <label className="tp-field">
                     Grade

@@ -7,6 +7,7 @@ import { daysValue } from '../lib/tournament/days.js';
 import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
+import { DateInput, DateTimeInput } from '../components/EuInputs';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -137,7 +138,11 @@ function EditTournament() {
           </label>
           <label className="tp-field">
             Deadline (closes by itself)
-            <input type="datetime-local" value={form.registration_deadline} onChange={set('registration_deadline')} onBlur={save} />
+            <DateTimeInput value={form.registration_deadline || null} disabled={busy}
+              onChange={(v) => {
+                setForm({ ...form, registration_deadline: v ?? '' });
+                run(() => updateTournament(tournamentId, { registration_deadline: v ? new Date(v).toISOString() : null }), 'Deadline saved.');
+              }} />
           </label>
         </div>
         <h3 style={{ marginTop: '1rem' }}>Rules for entering</h3>
@@ -227,8 +232,8 @@ function EditTournament() {
         <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
         <div className="tp-grid">
           <label className="tp-field" style={{ gridColumn: '1 / -1' }}>Name<input value={form.name} onChange={set('name')} required /></label>
-          <label className="tp-field">Start date<input type="date" value={form.start_date} onChange={set('start_date')} /></label>
-          <label className="tp-field">End date<input type="date" value={form.end_date} onChange={set('end_date')} /></label>
+          <label className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
+          <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
           <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
           <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
           <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>

@@ -16,7 +16,7 @@ export function fightRules(category, phase, round = null) {
   const ko = phase !== 'pool';
   const daihyosen = phase === 'daihyosen';
   // no hantei in the final (or semifinals + final): tie → encho until the first point
-  const noHantei = phase === 'ko' && round != null
+  const noHantei = (phase === 'ko' || daihyosen) && round != null
     && ((category.no_hantei_from === 'final' && round === 1) || (category.no_hantei_from === 'semifinal' && round <= 2));
   return {
     seconds: phase === 'pool' ? category.pool_fight_seconds : category.ko_fight_seconds,

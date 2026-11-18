@@ -228,14 +228,27 @@ function Drawings() {
             <details style={{ marginTop: '0.75rem' }}>
               <summary className="tp-muted">
                 Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
-                {category.pool_size !== 1 && <>{' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie</>} · KO: encho
-                {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
-                {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
-                  ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
+                {category.kind === 'team' ? (
+                  <>
+                    {category.pool_size !== 1 && <>{' · pools: tied match = '}{category.pool_tie === 'encho' ? 'daihyosen' : 'draw'}</>}
+                    {' · daihyosen: encho'}{category.daihyosen_encho_seconds ? ` ${category.daihyosen_encho_seconds / 60} min` : ' until a point'}
+                    {category.daihyosen_hantei ? ' then hantei' : ''}
+                    {category.daihyosen_hantei && category.daihyosen_encho_seconds && category.no_hantei_from
+                      ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
+                  </>
+                ) : (
+                  <>
+                  {category.pool_size !== 1 && <>{' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie</>} · KO: encho
+                  {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
+                  {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
+                    ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
+                  </>
+                )}
                 {category.third_place === 'fight' ? ' · fight for 3rd' : ''}
               </summary>
               <div style={{ marginTop: '0.75rem' }}>
-                <FightRules hidePools structureLocked={afterDraw} category={fightDraft ?? category} onChange={(next) => (afterDraw || !locked) && setFightDraft(next)} />
+                <FightRules hidePools structureLocked={afterDraw} category={fightDraft ?? category} onChange={(next) => (afterDraw || !locked) && setFightDraft(next)}
+                  others={categories.filter((x) => x.id !== category.id && x.kind === category.kind && x.status !== 'cancelled')} />
                 {fightDraft && (
                   <div className="tp-actions">
                     <button type="button" className="tp-btn small" onClick={async () => {

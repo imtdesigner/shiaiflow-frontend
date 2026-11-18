@@ -16,6 +16,8 @@ import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tourname
 import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 import { GRADES, ineligibleReason, rulesText, teamPositions, teamProblems, teamReserves, teamMaxMembers, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
+import { DateInput } from '../components/EuInputs';
+import { fmtDateTime } from '../lib/format.js';
 
 const mins = (fmin) => {
   const f = Math.round(fmin / 60);
@@ -178,7 +180,11 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         </label>
       )}
       <p className="tp-subtitle">
-        {[tournament.start_date, tournament.venue, tournament.city, tournament.country].filter(Boolean).join(' · ')}
+        {[
+          tournament.start_date && (tournament.end_date && tournament.end_date !== tournament.start_date
+            ? `${fmtDate(tournament.start_date)} – ${fmtDate(tournament.end_date)}` : fmtDate(tournament.start_date)),
+          tournament.venue, tournament.city, tournament.country,
+        ].filter(Boolean).join(' · ')}
         {running && <> · <span className="tp-badge ok">live</span></>}
       </p>
       {organizer && <p className="tp-muted" style={{ marginTop: '-1rem' }}><OrganizerLine organizer={organizer} /></p>}
@@ -220,7 +226,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
               ? ` · ${days.map((d) => `day ${d.n}${d.start ? ` ${d.start}${d.end ? `–${d.end}` : ''}` : ''}`).join(', ')}`
               : dayStart(1) ? ` · starts ${dayStart(1)}${days[0].end ? `, ends ${days[0].end}` : ''}` : ''}
             {' · '}registration {regOpen ? 'open' : 'closed'}
-            {tournament.registration_deadline && ` (deadline ${new Date(tournament.registration_deadline).toLocaleString()})`}
+            {tournament.registration_deadline && ` (deadline ${fmtDateTime(tournament.registration_deadline)})`}
           </p>
           <table className="tp-table">
             <thead><tr><th>Category</th>{days.length > 1 && <th>Day</th>}<th>Who</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
@@ -443,7 +449,7 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
           </select>
         </label>
         {byDate
-          ? <label className="tp-field">Date of birth <span className="tp-muted">(seen by the organizers only)</span><input type="date" value={p.birth_date} onChange={set('birth_date')} /></label>
+          ? <label className="tp-field">Date of birth <span className="tp-muted">(seen by the organizers only)</span><DateInput value={p.birth_date || null} max={new Date().toISOString().slice(0, 10)} onChange={(v) => onChange({ ...p, birth_date: v ?? '' })} /></label>
           : <label className="tp-field">Birth year<input type="number" min="1920" max={year} value={p.birth_year} onChange={set('birth_year')} placeholder="e.g. 2008" /></label>}
         <label className="tp-field">
           Grade

@@ -885,3 +885,34 @@ test('schedule: changeover between fights and breaks', () => {
   // f1 0–180; f2 would start 195 and run into the 300 break → after it at 1800
   assert.deepEqual(withBreak[0].days[0].list.map((x) => x.start), [0, 1800, 1995]);
 });
+
+import { parseTime, parseDate, showDate, fmtDateTime } from '../src/lib/format.js';
+
+test('European formats: 24-hour time and DD.MM.YYYY', () => {
+  assert.equal(parseTime('930'), '09:30');
+  assert.equal(parseTime('9'), '09:00');
+  assert.equal(parseTime('18.05'), '18:05');
+  assert.equal(parseTime('24:00'), null);
+  assert.equal(parseTime('9pm'), null);
+  assert.equal(parseDate('12.12.2026'), '2026-12-12');
+  assert.equal(parseDate('1/2/26'), '2026-02-01');
+  assert.equal(parseDate('31.02.2026'), null);
+  assert.equal(showDate('2026-12-05'), '05.12.2026');
+  assert.match(fmtDateTime('2026-12-12T18:00:00'), /18:00/);
+  assert.doesNotMatch(fmtDateTime('2026-12-12T18:00:00'), /PM|AM/i);
+});
+
+import { RULE_FIELDS, FIGHT_FIELDS, copyFields } from '../src/lib/tournament/categoryTemplates.js';
+
+test('"Same as" copies the fight settings, new categories inherit the rules', () => {
+  const first = { name: 'Dan M', fight_system: 'ippon', ko_encho_seconds: 120, ko_hantei: true, ranking_criteria: ['wins', 'scored'], pool_fight_seconds: 240 };
+  const fresh = { name: 'Dan W', fight_system: 'sanbon', pool_fight_seconds: 180 };
+  const inherited = copyFields(fresh, first, RULE_FIELDS);
+  assert.equal(inherited.name, 'Dan W');
+  assert.equal(inherited.fight_system, 'ippon');
+  assert.equal(inherited.pool_fight_seconds, 180); // times stay the template's
+  const same = copyFields(fresh, first, FIGHT_FIELDS);
+  assert.equal(same.pool_fight_seconds, 240);
+  same.ranking_criteria.push('x');
+  assert.equal(first.ranking_criteria.length, 2); // a copy, not shared
+});
