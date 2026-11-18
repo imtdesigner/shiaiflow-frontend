@@ -417,7 +417,7 @@ function Drawings() {
           <details style={{ marginTop: '0.75rem' }}>
             <summary className="tp-muted">
               Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
-              {' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie · KO: encho
+              {category.pool_size !== 1 && <>{' · pools: '}{category.pool_tie === 'encho' ? 'encho' : 'hikiwake'} on a tie</>} · KO: encho
               {category.ko_encho_seconds ? ` ${category.ko_encho_seconds / 60} min` : ' until a point'}{category.ko_hantei ? ' then hantei' : ''}
               {category.ko_hantei && category.ko_encho_seconds && category.no_hantei_from
                 ? ` · ${category.no_hantei_from === 'final' ? 'final' : 'semifinals + final'}: ippon-shobu` : ''}
