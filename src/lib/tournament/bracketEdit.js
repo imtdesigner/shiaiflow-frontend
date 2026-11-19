@@ -110,3 +110,22 @@ export function checkTemplate(template, poolCount, advancing) {
 
 /** Exact equality of two templates (same fights, same numbering). */
 export const sameTemplate = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * Move a fight so its winner feeds another fight: the winner ref W<no> goes
+ * into `slot` ({ no, side }), and whatever stood there takes the old place of
+ * W<no> (a swap). With `side` null the target fight's slot is picked: the
+ * shiro slot unless only the aka slot holds a pool place. Returns the template
+ * unchanged when the move makes no sense (onto itself or the final's winner).
+ */
+export function moveFight(template, no, slot) {
+  if (!slot || slot.no === no) return template;
+  const target = template.find((m) => m.no === slot.no);
+  if (!target) return template;
+  const ref = `W${pad(no)}`;
+  if (!template.some((m) => m.red === ref || m.white === ref)) return template; // the final feeds nothing
+  let side = slot.side;
+  if (!side) side = isWinnerRef(target.white) && !isWinnerRef(target.red) ? 'red' : 'white';
+  if (target[side] === ref) return template;
+  return setSlot(template, { no: slot.no, side }, ref);
+}

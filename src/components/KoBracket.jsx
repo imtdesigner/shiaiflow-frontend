@@ -85,6 +85,13 @@ const slotAt = (x, y) => {
   return { no: Number(no), side };
 };
 const sameSlot = (a, b) => a && b && a.no === b.no && a.side === b.side;
+/** Drop target of a dragged fight: a slot, or a fight box (side null). */
+const fightTargetAt = (x, y) => {
+  const slot = slotAt(x, y);
+  if (slot) return slot;
+  const el = document.elementFromPoint(x, y)?.closest('[data-fight]');
+  return el ? { no: Number(el.dataset.fight), side: null } : null;
+};
 
 /**
  * Graphical KO bracket. `resolved` maps slot codes to entry ids once known
@@ -92,10 +99,11 @@ const sameSlot = (a, b) => a && b && a.no === b.no && a.side === b.side;
  * With `onSwap` / `onSet` the slots can be edited (bracket editor).
  */
 export default function KoBracket({
-  template, nameOf, resolved = {}, directKo = false, onSwap, onSet, thirdPlace = null,
+  template, nameOf, resolved = {}, directKo = false, onSwap, onSet, onMoveFight, thirdPlace = null,
 }) {
   const [editing, setEditing] = useState(null);
   const [drag, setDrag] = useState(null); // { from, over, moved }
+  const [fightDrag, setFightDrag] = useState(null); // { no, over, moved }
   if (!template?.length) return null;
   const editable = !!onSwap;
 
@@ -120,7 +128,30 @@ export default function KoBracket({
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
+  // drag a whole fight (its head) onto a slot or another fight: its winner goes there
+  const pressFight = (e, no) => {
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    let state = { no, over: null, moved: false };
+    setFightDrag(state);
+    const move = (ev) => {
+      const moved = state.moved || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 6;
+      const over = moved ? fightTargetAt(ev.clientX, ev.clientY) : null;
+      state = { ...state, moved, over: over && over.no !== no ? over : null };
+      setFightDrag(state);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setFightDrag(null);
+      if (state.moved && state.over) onMoveFight(no, state.over);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   const { pos, maxRound, height, width } = layout(template);
+  const finalNo = template[template.length - 1].no;
+  const fightOver = (no, side) => fightDrag?.moved && fightDrag.over?.no === no && (fightDrag.over.side ?? null) === side;
 
   const lines = [];
   for (const m of template) {
@@ -150,8 +181,12 @@ export default function KoBracket({
         {template.map((m) => {
           const p = pos.get(m.no);
           return (
-            <div key={m.no} className="ko-match" style={{ left: p.x, top: p.y, width: BOX_W, height: BOX_H }}>
-              <div className="ko-match-head">
+            <div key={m.no} data-fight={m.no}
+              className={`ko-match ${fightOver(m.no, null) ? 'over' : ''} ${fightDrag?.moved && fightDrag.no === m.no ? 'dragging' : ''}`}
+              style={{ left: p.x, top: p.y, width: BOX_W, height: BOX_H }}>
+              <div className={`ko-match-head ${onMoveFight && m.no !== finalNo ? 'movable' : ''}`}
+                title={onMoveFight && m.no !== finalNo ? `Drag F-${m.no} onto another fight or slot: its winner goes there` : undefined}
+                onPointerDown={onMoveFight && m.no !== finalNo ? (e) => pressFight(e, m.no) : undefined}>
                 <strong>F-{m.no}</strong>
                 <span>{roundShort(p.round)}</span>
               </div>
@@ -165,7 +200,8 @@ export default function KoBracket({
                   name={resolved[code] ? nameOf(resolved[code]) : ''}
                   editable={editable}
                   editing={sameSlot(editing, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
-                  over={drag?.moved && sameSlot(drag.over, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
+                  over={(drag?.moved && sameSlot(drag.over, { no: m.no, side: side === 'aka' ? 'red' : 'white' }))
+                    || fightOver(m.no, side === 'aka' ? 'red' : 'white')}
                   dragging={drag?.moved && sameSlot(drag.from, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
                   onPress={press}
                   onTyped={(slot, text) => { setEditing(null); if (slot) onSet(slot, text); }}

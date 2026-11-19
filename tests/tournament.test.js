@@ -489,7 +489,7 @@ test('courts: finals / semifinals and finals at the end on the central courts', 
 });
 
 // --- bracket editor ----------------------------------------------------------
-import { parseSlotInput, swapSlots, setSlot, normalizeTemplate, checkTemplate } from '../src/lib/tournament/bracketEdit.js';
+import { parseSlotInput, swapSlots, setSlot, normalizeTemplate, checkTemplate, moveFight } from '../src/lib/tournament/bracketEdit.js';
 
 test('bracket editor: typed slot codes', () => {
   assert.equal(parseSlotInput('P2.1'), '021');
@@ -915,4 +915,23 @@ test('"Same as" copies the fight settings, new categories inherit the rules', ()
   assert.equal(same.pool_fight_seconds, 240);
   same.ranking_criteria.push('x');
   assert.equal(first.ranking_criteria.length, 2); // a copy, not shared
+});
+
+test('bracket editor: a preliminary fight can feed another fight', () => {
+  const t = getTemplate('K052'); // F-1 feeds F-4 (031 vs W01)
+  const moved = normalizeTemplate(moveFight(t, 1, { no: 3, side: 'white' }));
+  assert.equal(moved.error, null);
+  const f3 = moved.template.find((m) => m.no === 3);
+  const f4 = moved.template.find((m) => m.no === 4);
+  assert.deepEqual([f3.red, f3.white], ['011', 'W01']);
+  assert.deepEqual([f4.red, f4.white], ['031', '021']); // the displaced place takes the old spot
+  assert.deepEqual(checkTemplate(moved.template, 5, 2).errors, []);
+  // dropped on the fight head: the pool slot is taken (shiro first)
+  const head = moveFight(t, 1, { no: 3, side: null });
+  assert.equal(head.find((m) => m.no === 3).white, 'W01');
+  // no-ops: onto itself, the final
+  assert.equal(moveFight(t, 1, { no: 1, side: 'red' }), t);
+  assert.equal(moveFight(t, 9, { no: 3, side: 'red' }), t);
+  // onto its own path → a cycle, refused by normalize
+  assert.ok(normalizeTemplate(moveFight(t, 4, { no: 1, side: 'red' })).error);
 });

@@ -7,7 +7,7 @@ import KoBracket from '../components/KoBracket';
 import { getSavedDraw, listEntries, saveKoTemplate } from '../lib/api';
 import { myRole } from '../lib/runApi';
 import {
-  checkTemplate, normalizeTemplate, parseSlotInput, sameTemplate, setSlot, swapSlots,
+  checkTemplate, moveFight, normalizeTemplate, parseSlotInput, sameTemplate, setSlot, swapSlots,
 } from '../lib/tournament/bracketEdit.js';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { getTemplate, parseTemplate } from '../lib/tournament/ko.js';
@@ -151,7 +151,8 @@ function Brackets() {
           </h3>
           <p className="tp-muted" style={{ marginTop: 0 }}>
             Drag a slot onto another to swap them, or click a slot and type a code: P2.1 = pool 2, 1st place;
-            W03 = winner of F-3{system.directKo ? '; #5 = entry 5' : ''}. Moving a W slot moves that fight.
+            W03 = winner of F-3{system.directKo ? '; #5 = entry 5' : ''}. To move a whole fight (e.g. F-1 into F-3
+            instead of F-4), drag it by its head ⠿ onto a slot of the other fight — the place it takes moves to the old spot of F-1.
           </p>
           {locked && <Message type="info">The draws are confirmed — only the owner can change brackets now.</Message>}
           {check.errors.length > 0 && <Message type="error">{check.errors.map((e) => <div key={e}>{e}</div>)}</Message>}
@@ -165,6 +166,7 @@ function Brackets() {
             directKo={system.directKo}
             onSwap={locked ? undefined : (a, b) => apply(swapSlots(draft, a, b))}
             onSet={onSet}
+            onMoveFight={locked ? undefined : (no, slot) => apply(moveFight(draft, no, slot))}
           />
           <div className="tp-actions">
             <button type="button" className="tp-btn" onClick={save} disabled={locked || busy || !dirty || check.errors.length > 0}>

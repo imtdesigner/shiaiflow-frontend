@@ -114,3 +114,22 @@
   outline: 2px dashed #711921;
   outline-offset: -2px;
 }
+
+/* whole fight dragged by its head onto another fight or slot */
+.ko-match-head.movable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.ko-match-head.movable::before {
+  content: '⠿ ';
+}
+
+.ko-match.dragging {
+  opacity: 0.45;
+}
+
+.ko-match.over {
+  box-shadow: 0 0 0 3px #e0a800;
+}
