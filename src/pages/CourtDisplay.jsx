@@ -113,9 +113,14 @@ export default function CourtDisplay() {
   /** One fighter in one row: name, hansoku right by it, then the points towards the middle (mirrored on the right). */
   const fighter = (f, s, right) => {
     const h = totalsOf(f)[s].hansoku;
+    const n = name(f, s);
+    // name on one line next to its points: font from the room left (vw); very long names wrap per word
+    const room = 39 - marks(f, s).length * 8.7 - (h ? 3.5 : 0);
+    const size = Math.min(4.4, room / (0.62 * Math.max(n.length, 1)));
+    const style = size >= 3 ? { fontSize: `${size}vw`, whiteSpace: 'nowrap' } : { fontSize: '3.6vw', width: 'min-content' };
     return (
       <div className={`cd-fighter ${s} ${right ? 'right' : ''}`}>
-        <span className="cd-name">{name(f, s)}</span>
+        <span className="cd-name" style={style}>{n}</span>
         {h > 0 && <span className="cd-hansoku">{'▲'.repeat(h)}</span>}
         <span className="cd-marks">{markList(f, s, true)}</span>
       </div>
@@ -123,7 +128,10 @@ export default function CourtDisplay() {
   };
 
   const fightInfo = (f) => (
-    <span className="cd-info"><span className="cd-label">{f.label}</span> {byCat[f.category_id]?.name} · {roundOf(f)}</span>
+    <>
+      <span className="cd-label">{f.label}</span>
+      <span className="cd-info">{byCat[f.category_id]?.name} · {roundOf(f)}</span>
+    </>
   );
 
   return (
@@ -162,10 +170,10 @@ export default function CourtDisplay() {
             </div>
             <div className="cd-fighters">
               {fighter(current, order[0], false)}
-              <div className="cd-middle">
-                {hikiwake(current) ? <span className="cd-mid x">X</span> : current.is_encho ? <span className="cd-mid e">E</span> : null}
-              </div>
               {fighter(current, order[1], true)}
+              {(hikiwake(current) || current.is_encho) && (
+                <span className="cd-mid">{hikiwake(current) ? 'X' : 'E'}</span>
+              )}
             </div>
           </>
         ) : (
