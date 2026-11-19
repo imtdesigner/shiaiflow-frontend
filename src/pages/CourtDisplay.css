@@ -63,8 +63,7 @@
 .cd-who.white { color: #f4f1ea; }
 .cd-who.won::after { content: ' ✓'; color: #e0a800; }
 .cd-vs { color: #8a8577; margin: 0 0.5em; }
-.cd-score { font-weight: 800; color: #e0a800; white-space: nowrap; }
-.cd-draw { margin-left: 0.6em; font-size: 0.6em; font-weight: 600; color: #b9b4a8; }
+.cd-score { display: inline-flex; align-items: center; font-weight: 800; color: #e0a800; white-space: nowrap; }
 .cd-muted { color: #8a8577; margin: 0; }
 
 .cd-board { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2vh; min-height: 0; }
@@ -72,42 +71,56 @@
 .cd-fight .cd-info { font-size: 1em; color: #d8d2c4; }
 .cd-wait { text-align: center; font-size: 3vw; color: #b9b4a8; }
 
-.cd-encho, .cd-soon {
+.cd-soon {
   padding: 0.1em 0.6em;
   border-radius: 0.3em;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
-.cd-encho { background: #e0a800; color: #14161a; }
 .cd-soon { border: 2px solid #8a8577; color: #b9b4a8; font-weight: 600; font-size: 0.7em; }
 
-.cd-fighters { display: grid; grid-template-columns: 1fr 1fr; border-radius: 1vw; overflow: hidden; }
+.cd-fighters { display: grid; grid-template-columns: 1fr 7vw 1fr; border-radius: 1vw; overflow: hidden; background: #0d0e11; }
 .cd-fighter {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 2vw;
+  gap: 1.5vw;
   padding: 4vh 2.5vw;
   min-height: 16vw;
+  min-width: 0;
 }
 .cd-fighter.right { flex-direction: row-reverse; }
 .cd-fighter.red { background: linear-gradient(180deg, #a3121f 0%, #6e0b14 100%); }
 .cd-fighter.white { background: linear-gradient(180deg, #f4f1ea 0%, #d9d4c8 100%); color: #14161a; }
 
-.cd-name { font-size: 4.2vw; font-weight: 800; line-height: 1.05; overflow-wrap: anywhere; }
+.cd-name { font-size: 3.6vw; font-weight: 800; line-height: 1.05; overflow-wrap: anywhere; }
 .cd-fighter.right .cd-name { text-align: right; }
-.cd-marks { display: flex; align-items: center; gap: 1vw; flex-shrink: 0; }
-.cd-fighter.right .cd-marks { flex-direction: row-reverse; }
+.cd-hansoku { font-size: 3vw; color: #e0a800; flex-shrink: 0; }
+.cd-fighter.white .cd-hansoku { color: #b07d00; }
+.cd-marks { display: flex; align-items: center; gap: 1.2vw; flex-shrink: 0; margin-left: 1vw; }
+.cd-fighter.right .cd-marks { flex-direction: row-reverse; margin-left: 0; margin-right: 1vw; }
+
+/* points: letters; the first point of the fight in a circle */
 .cd-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 8vw;
-  height: 8vw;
-  border-radius: 50%;
-  border: 0.45vw solid currentColor;
+  width: 7.5vw;
+  height: 7.5vw;
   font-size: 5.2vw;
   font-weight: 800;
+  border-radius: 50%;
+  box-sizing: border-box;
 }
-.cd-hansoku { font-size: 3.6vw; color: #e0a800; letter-spacing: 0.1em; }
-.cd-fighter.white .cd-hansoku { color: #b07d00; }
+.cd-mark.first { border: 0.45vw solid currentColor; }
+.cd-mark.small { width: 1.6em; height: 1.6em; font-size: 1em; }
+.cd-mark.small.first { border-width: 2px; }
+
+/* middle column: X = hikiwake, E = encho */
+.cd-middle { display: flex; align-items: center; justify-content: center; }
+.cd-mid { font-size: 6vw; font-weight: 800; line-height: 1; }
+.cd-mid.x { color: #f4f1ea; }
+.cd-mid.e { color: #e0a800; }
+
+.cd-score-side { display: inline-flex; gap: 0.2em; min-width: 1.6em; flex-direction: row-reverse; justify-content: flex-end; }
+/* left fighter: points read from the name towards the middle */
+.cd-score-side.left { flex-direction: row; justify-content: flex-end; }

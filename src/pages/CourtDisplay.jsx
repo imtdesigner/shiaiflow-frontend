@@ -8,7 +8,7 @@ import { listRunFights, subscribeFights } from '../lib/runApi';
 import { isUuid } from '../lib/tournament/days.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight, koRoundLabel } from '../lib/tournament/run.js';
-import { boutTotals, scoringOptions } from '../lib/tournament/scoring.js';
+import { boutTotals, firstPointSide, scoringOptions } from '../lib/tournament/scoring.js';
 import './CourtDisplay.css';
 
 /**
@@ -94,6 +94,13 @@ export default function CourtDisplay() {
     if (f.decision === side && t.red.ippons.length === t.white.ippons.length) return scoringOptions(byCat[f.category_id]).ipponShobu ? ['H'] : ['H', 'H'];
     return t[side].ippons;
   };
+  // the first point of the fight is circled (only the scorer's first ippon), the rest are letters
+  const firstSide = (f) => (f.fusen || f.decision ? null
+    : firstPointSide({ events: events.filter((e) => e.match_id === f.id) }, scoringOptions(byCat[f.category_id])));
+  const markList = (f, s, big) => marks(f, s).map((m, i) => (
+    <span key={i} className={`cd-mark ${i === 0 && firstSide(f) === s ? 'first' : ''} ${big ? '' : 'small'}`}>{m}</span>
+  ));
+  const hikiwake = (f) => f.status === 'finished' && !f.winner_entry_id;
   const won = (f, s) => f.status === 'finished' && !!f.winner_entry_id
     && f.winner_entry_id === (s === 'red' ? f.red_entry_id : f.white_entry_id);
 
@@ -103,16 +110,14 @@ export default function CourtDisplay() {
   if (error) return <div className="cd-page cd-empty"><p>{error}</p><Link to="/">ShiaiFlow</Link></div>;
   if (!tournament) return <div className="cd-page cd-empty"><p>Loading…</p></div>;
 
-  /** One fighter in one row: name, then points and hansoku towards the middle (mirrored on the right). */
+  /** One fighter in one row: name, hansoku right by it, then the points towards the middle (mirrored on the right). */
   const fighter = (f, s, right) => {
     const h = totalsOf(f)[s].hansoku;
     return (
       <div className={`cd-fighter ${s} ${right ? 'right' : ''}`}>
         <span className="cd-name">{name(f, s)}</span>
-        <span className="cd-marks">
-          {marks(f, s).map((m, i) => <span key={i} className="cd-mark">{m}</span>)}
-          {h > 0 && <span className="cd-hansoku">{'▲'.repeat(h)}</span>}
-        </span>
+        {h > 0 && <span className="cd-hansoku">{'▲'.repeat(h)}</span>}
+        <span className="cd-marks">{markList(f, s, true)}</span>
       </div>
     );
   };
@@ -139,8 +144,9 @@ export default function CourtDisplay() {
             {fightInfo(last)}
             <span className={`cd-who left ${order[0]} ${won(last, order[0]) ? 'won' : ''}`}>{name(last, order[0])}</span>
             <span className="cd-score">
-              {marks(last, order[0]).join(' ') || '–'}<span className="cd-vs">:</span>{marks(last, order[1]).join(' ') || '–'}
-              {!last.winner_entry_id && <span className="cd-draw">hikiwake</span>}
+              <span className="cd-score-side left">{markList(last, order[0], false)}</span>
+              <span className="cd-vs">{hikiwake(last) ? 'X' : last.is_encho ? 'E' : ':'}</span>
+              <span className="cd-score-side">{markList(last, order[1], false)}</span>
             </span>
             <span className={`cd-who ${order[1]} ${won(last, order[1]) ? 'won' : ''}`}>{name(last, order[1])}</span>
           </div>
@@ -152,11 +158,13 @@ export default function CourtDisplay() {
           <>
             <div className="cd-fight">
               {fightInfo(current)}
-              {current.is_encho && <span className="cd-encho">ENCHO</span>}
               {current.status === 'scheduled' && <span className="cd-soon">next fight</span>}
             </div>
             <div className="cd-fighters">
               {fighter(current, order[0], false)}
+              <div className="cd-middle">
+                {hikiwake(current) ? <span className="cd-mid x">X</span> : current.is_encho ? <span className="cd-mid e">E</span> : null}
+              </div>
               {fighter(current, order[1], true)}
             </div>
           </>

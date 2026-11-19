@@ -36,6 +36,22 @@ export function boutTotals(bout, { autoHansokuIppon = true } = {}) {
 }
 
 /**
+ * Side that scored the first point of the bout (shown circled on score
+ * sheets and displays), or null. A 2nd hansoku counts as the opponent's point.
+ */
+export function firstPointSide(bout, { autoHansokuIppon = true } = {}) {
+  const hansoku = { red: 0, white: 0 };
+  for (const e of bout.events ?? []) {
+    if (IPPON_TYPES.includes(e.type)) return e.side;
+    if (e.type === 'hansoku') {
+      hansoku[e.side] += 1;
+      if (autoHansokuIppon && hansoku[e.side] % 2 === 0) return e.side === 'red' ? 'white' : 'red';
+    }
+  }
+  return null;
+}
+
+/**
  * Result of a bout: { winner: 'red'|'white'|null, draw, redIppons, whiteIppons }.
  * More ippons wins (Excel: LEN(E) > LEN(G)). Fusen-gachi (OO) and hantei (HH)
  * on a tie are a 2–0 win. In KO a tie leaves winner null until encho decides.

@@ -935,3 +935,12 @@ test('bracket editor: a preliminary fight can feed another fight', () => {
   // onto its own path → a cycle, refused by normalize
   assert.ok(normalizeTemplate(moveFight(t, 4, { no: 1, side: 'red' })).error);
 });
+
+import { firstPointSide } from '../src/lib/tournament/scoring.js';
+test('first point of a bout (circled on the court display)', () => {
+  assert.equal(firstPointSide({ events: [] }), null);
+  assert.equal(firstPointSide({ events: [{ side: 'red', type: 'hansoku' }, { side: 'white', type: 'K' }, { side: 'red', type: 'M' }] }), 'white');
+  // 2nd hansoku of red = white's ippon, before any strike
+  assert.equal(firstPointSide({ events: [{ side: 'red', type: 'hansoku' }, { side: 'red', type: 'hansoku' }, { side: 'red', type: 'M' }] }), 'white');
+  assert.equal(firstPointSide({ events: [{ side: 'red', type: 'hansoku' }, { side: 'red', type: 'hansoku' }] }, { autoHansokuIppon: false }), null);
+});
