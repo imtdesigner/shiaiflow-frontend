@@ -9,6 +9,7 @@ import {
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
+import { publicPath } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
@@ -131,6 +132,22 @@ function Manage() {
           </button>
           {courts.map((n) => (
             <Link key={n} className="tp-btn small" to={`/tournament/${tournamentId}/score?court=${n}`}>Scoretable {n}</Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="tp-card">
+        <h3>Court display screens</h3>
+        <p className="tp-muted" style={{ marginTop: 0 }}>
+          For the monitor next to each shiaijo: the fight in progress, the last result and the next fights — no timer.
+          Anyone with the link can open it (no login); the tournament must be published. Shiro is left, aka right;
+          the ⇄ Sides button on the screen swaps them for that monitor.
+        </p>
+        <div className="tp-actions">
+          {courts.map((n) => (
+            <a key={n} className="tp-btn secondary small" href={`${publicPath(tournament)}/court/${n}`} target="_blank" rel="noreferrer">
+              Display {n} ↗
+            </a>
           ))}
         </div>
       </div>

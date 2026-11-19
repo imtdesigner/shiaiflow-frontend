@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import contactIcon from './assets/icons/contact.png';
@@ -34,6 +34,7 @@ import { supabase } from './supabaseClient';
 import { amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTournaments } from './lib/api';
 import AdminAccounts from './pages/AdminAccounts';
 import { PublicTournamentRoute } from './pages/PublicTournament';
+import CourtDisplay from './pages/CourtDisplay';
 import Tournaments from './pages/Tournaments';
 import TournamentList from './components/TournamentList';
 import './pages/TournamentPages.css';
@@ -183,6 +184,7 @@ function Dashboard() {
 }
 
 function AppContent() {
+  const location = useLocation();
   const [session, setSession] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { if (session) amIAdmin().then(setIsAdmin); else setIsAdmin(false); }, [session]);
@@ -242,9 +244,12 @@ function AppContent() {
     return session ? <Navigate to="/dashboard" replace /> : page;
   };
 
+  // court display screens are full screen, without the app's navigation
+  const display = /\/court\/\d+\/?$/.test(location.pathname);
+
   return (
     <>
-  <nav className="navbar">
+  {!display && <nav className="navbar">
   <div className="nav-logo">
     <Link to={session ? '/dashboard' : '/'} className="nav-logo-text">
       Shiai<span className="flow">Flow</span>
@@ -277,7 +282,7 @@ function AppContent() {
     </a>
   </div>
   </div>
-</nav>
+</nav>}
       <Routes>
         <Route path="/" element={publicOnly(<Home />)} />
         <Route path="/login" element={publicOnly(<LoginPage />)} />
@@ -389,6 +394,8 @@ function AppContent() {
 />
 <Route path="/reset-password" element={<ResetPasswordPage />} />
 <Route path="/join/:tournamentId" element={<JoinCourt />} />
+<Route path="/t/:tournamentId/court/:court" element={<CourtDisplay />} />
+<Route path="/:tournamentId/court/:court" element={<CourtDisplay />} />
 <Route path="/t/:tournamentId" element={<PublicTournamentRoute />} />
 <Route path="/:tournamentId" element={<PublicTournamentRoute />} />
 
