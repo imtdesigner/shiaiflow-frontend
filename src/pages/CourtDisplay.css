@@ -99,6 +99,7 @@
 
 .cd-name { font-size: 4.4vw; font-weight: 800; line-height: 1.05; overflow-wrap: anywhere; }
 .cd-fighter.right .cd-name { text-align: right; }
+.cd-name-line { display: block; white-space: nowrap; }
 .cd-hansoku { font-size: 3vw; color: #e0a800; flex-shrink: 0; }
 .cd-fighter.white .cd-hansoku { color: #b07d00; }
 .cd-marks { display: flex; align-items: center; gap: 1.2vw; flex-shrink: 0; margin-left: 1vw; }

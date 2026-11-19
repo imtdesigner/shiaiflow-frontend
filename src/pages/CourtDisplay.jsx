@@ -113,14 +113,17 @@ export default function CourtDisplay() {
   /** One fighter in one row: name, hansoku right by it, then the points towards the middle (mirrored on the right). */
   const fighter = (f, s, right) => {
     const h = totalsOf(f)[s].hansoku;
-    const n = name(f, s);
-    // name on one line next to its points: font from the room left (vw); very long names wrap per word
+    // two lines: surname, then first name (a team: its name); font from the room left next to the points (vw)
+    const c = entryOf(f, s)?.competitor;
+    const lines = c && !c.display_name && c.first_name ? [c.last_name, c.first_name] : [name(f, s)];
     const room = 39 - marks(f, s).length * 8.7 - (h ? 3.5 : 0);
-    const size = Math.min(4.4, room / (0.62 * Math.max(n.length, 1)));
-    const style = size >= 3 ? { fontSize: `${size}vw`, whiteSpace: 'nowrap' } : { fontSize: '3.6vw', width: 'min-content' };
+    const longest = Math.max(...lines.map((l) => l.length), 1);
+    const size = Math.max(3, Math.min(5, room / (0.62 * longest)));
     return (
       <div className={`cd-fighter ${s} ${right ? 'right' : ''}`}>
-        <span className="cd-name" style={style}>{n}</span>
+        <span className="cd-name" style={{ fontSize: `${size}vw` }}>
+          {lines.map((l) => <span key={l} className="cd-name-line">{l}</span>)}
+        </span>
         {h > 0 && <span className="cd-hansoku">{'▲'.repeat(h)}</span>}
         <span className="cd-marks">{markList(f, s, true)}</span>
       </div>
