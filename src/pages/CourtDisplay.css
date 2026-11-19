@@ -200,3 +200,8 @@
 .cd-pos.score small { font-size: 0.45em; font-weight: 600; color: #6b665b; }
 .cd-ippons { margin-left: 0.5em; font-size: 0.6em; color: #b9b4a8; font-weight: 600; }
 .cd-note { margin: 0; font-size: 2vw; color: #b9b4a8; text-align: center; }
+
+/* pointer hidden after 3 s without movement; buttons fade out with it */
+.cd-page.idle, .cd-page.idle * { cursor: none !important; }
+.cd-page.idle .cd-tools { opacity: 0; }
+.cd-tools { transition: opacity 0.3s; }

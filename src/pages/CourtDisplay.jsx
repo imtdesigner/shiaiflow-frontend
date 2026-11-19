@@ -76,6 +76,32 @@ export default function CourtDisplay() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => (tid ? subscribeFights(`display-${tid}-${court}`, load) : undefined), [tid, court, load]);
+  // safety net: if the realtime connection drops (venue wifi), still refresh every 30 s
+  useEffect(() => {
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  // keep the TV / laptop screen on (Screen Wake Lock; asked again when the page is shown again)
+  useEffect(() => {
+    let lock = null;
+    const ask = async () => {
+      if (document.visibilityState !== 'visible' || !navigator.wakeLock) return;
+      try { lock = await navigator.wakeLock.request('screen'); } catch { /* not allowed: battery saver etc. */ }
+    };
+    ask();
+    document.addEventListener('visibilitychange', ask);
+    return () => { document.removeEventListener('visibilitychange', ask); lock?.release().catch(() => {}); };
+  }, []);
+
+  // hide the mouse pointer after 3 s without movement
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    let t = setTimeout(() => setIdle(true), 3000);
+    const move = () => { setIdle(false); clearTimeout(t); t = setTimeout(() => setIdle(true), 3000); };
+    window.addEventListener('pointermove', move);
+    return () => { clearTimeout(t); window.removeEventListener('pointermove', move); };
+  }, []);
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
   const current = currentFight(queue);
@@ -186,7 +212,7 @@ export default function CourtDisplay() {
   );
 
   return (
-    <div className="cd-page">
+    <div className={`cd-page ${idle ? 'idle' : ''}`}>
       <header className="cd-head">
         <span className="cd-court">SHIAIJO {court}</span>
         <span className="cd-tournament">{tournament.name}</span>
