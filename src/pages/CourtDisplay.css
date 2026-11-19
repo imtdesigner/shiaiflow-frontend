@@ -195,7 +195,16 @@
   font-weight: 800;
   white-space: nowrap;
 }
-.cd-pos b { font-size: 1.3em; }
+/* hikiwake / encho of that bout: a white circle with X / E on the seam, in place of the position name */
+.cd-pos.mark {
+  justify-content: center;
+  padding: 0;
+  width: 1.8em;
+  height: 1.8em;
+  border-radius: 50%;
+  font-size: 2.8vw;
+  line-height: 1;
+}
 .cd-pos.score { flex-direction: column; gap: 0; font-size: 3vw; line-height: 1.05; }
 .cd-pos.score small { font-size: 0.45em; font-weight: 600; color: #6b665b; }
 .cd-ippons { margin-left: 0.5em; font-size: 0.6em; color: #b9b4a8; font-weight: 600; }

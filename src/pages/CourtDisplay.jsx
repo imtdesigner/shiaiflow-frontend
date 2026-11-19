@@ -194,10 +194,9 @@ export default function CourtDisplay() {
                 </div>
               );
             })}
-            <span className="cd-pos">
-              {POSITION_LABELS[row.position]}
-              {(draw || (row.bout?.is_encho && row.position !== 'daihyosen')) && <b>{draw ? 'X' : 'E'}</b>}
-            </span>
+            {draw || (row.bout?.is_encho && row.position !== 'daihyosen')
+              ? <span className="cd-pos mark">{draw ? 'X' : 'E'}</span>
+              : <span className="cd-pos">{POSITION_LABELS[row.position]}</span>}
           </div>
         );
       })}
