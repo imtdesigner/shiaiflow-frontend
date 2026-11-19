@@ -965,3 +965,58 @@ test('team match board: lineups, current bout, totals', () => {
   assert.equal(five.ready, false);
   assert.deepEqual(five.rows.map((r) => r.position), ['senpo', 'jiho', 'chuken', 'fukusho', 'taisho', 'daihyosen']);
 });
+
+import { defaultLineup, lineupProblems, boutRows, lineupOf, teamMatchStep, teamMatchSummary } from '../src/lib/tournament/team.js';
+import { rankPool as rankPoolT } from '../src/lib/tournament/standings.js';
+test('team lineups: default order, empty positions, bout rows', () => {
+  const m = [{ competitor_id: 'c', sort_order: 3 }, { competitor_id: 'a', sort_order: 1 }, { competitor_id: 'b', sort_order: 2 }, { competitor_id: 'd', sort_order: 4 }];
+  assert.deepEqual(defaultLineup(3, m), { senpo: 'a', chuken: 'b', taisho: 'c' });
+  assert.deepEqual(defaultLineup(3, m, { senpo: 'd', chuken: null, taisho: 'a' }), { senpo: 'd', chuken: null, taisho: 'a' });
+  assert.deepEqual(defaultLineup(3, m, { senpo: 'x', chuken: 'b', taisho: 'a' }), { senpo: 'a', chuken: 'b', taisho: 'c' }); // x left the team
+  assert.deepEqual(lineupProblems(3, { senpo: 'a', chuken: null, taisho: 'c' }, ['a', 'b', 'c']), []);
+  assert.equal(lineupProblems(3, { senpo: null, chuken: 'b', taisho: 'c' }).length, 1); // senpo may not be empty
+  assert.equal(lineupProblems(3, { senpo: 'a', chuken: 'a', taisho: 'c' }).length, 1); // twice
+  assert.deepEqual(lineupProblems(5, { senpo: 'a', jiho: null, chuken: 'b', fukusho: null, taisho: 'c' }), []);
+  const rows = boutRows(3, { senpo: 'a', chuken: null, taisho: 'c' }, { senpo: 'x', chuken: 'y', taisho: 'z' });
+  assert.deepEqual(rows.map((r) => [r.position, r.status, r.fusen]), [['senpo', 'scheduled', null], ['chuken', 'finished', 'white'], ['taisho', 'scheduled', null]]);
+  assert.deepEqual(lineupOf([{ position: 'senpo', red_competitor_id: 'a', white_competitor_id: 'x' }, { position: 'daihyosen', red_competitor_id: 'a' }], 'white'), { senpo: 'x' });
+});
+
+test('team match steps: lineup → bouts in order → finish or daihyosen', () => {
+  const cat = { team_size: 3, pool_tie: 'hikiwake' };
+  assert.equal(teamMatchStep(cat, 'pool', [], []).step, 'lineup');
+  assert.equal(teamMatchStep(cat, 'ipponshobu', [], []).step, 'daihyosen'); // a pool ipponshobu between teams = one deciding bout
+  const b = (id, position, status, extra = {}) => ({ id, position, status, decision: null, fusen: null, ...extra });
+  let bouts = [b(1, 'senpo', 'finished'), b(2, 'chuken', 'scheduled'), b(3, 'taisho', 'scheduled')];
+  assert.equal(teamMatchStep(cat, 'pool', bouts, []).bout.position, 'chuken');
+  // 1 win each + a draw, ippons equal → pool: draw; KO: daihyosen
+  bouts = [b(1, 'senpo', 'finished'), b(2, 'chuken', 'finished'), b(3, 'taisho', 'finished')];
+  const ev = [{ bout_id: 1, side: 'red', type: 'M' }, { bout_id: 3, side: 'white', type: 'K' }];
+  assert.deepEqual([teamMatchStep(cat, 'pool', bouts, ev).step, teamMatchStep(cat, 'pool', bouts, ev).winner], ['finish', null]);
+  assert.equal(teamMatchStep(cat, 'ko', bouts, ev).step, 'daihyosen');
+  assert.equal(teamMatchStep({ ...cat, pool_tie: 'encho' }, 'pool', bouts, ev).step, 'daihyosen');
+  // daihyosen open, then decided
+  const withD = [...bouts, b(4, 'daihyosen', 'scheduled')];
+  assert.equal(teamMatchStep(cat, 'ko', withD, ev).bout.position, 'daihyosen');
+  withD[3].status = 'finished';
+  assert.deepEqual([teamMatchStep(cat, 'ko', withD, [...ev, { bout_id: 4, side: 'white', type: 'D' }]).step, teamMatchStep(cat, 'ko', withD, [...ev, { bout_id: 4, side: 'white', type: 'D' }]).winner], ['finish', 'white']);
+  // more bout wins wins
+  assert.equal(teamMatchStep(cat, 'pool', bouts, [...ev, { bout_id: 2, side: 'red', type: 'D' }]).winner, 'red');
+});
+
+test('team pool ranking uses team match results', () => {
+  const sum = teamMatchSummary({ fusen: null }, 3, [{ id: 1, position: 'senpo' }, { id: 2, position: 'chuken' }, { id: 3, position: 'taisho' }],
+    [{ bout_id: 1, side: 'red', type: 'M' }, { bout_id: 2, side: 'red', type: 'K' }, { bout_id: 3, side: 'white', type: 'M' }, { bout_id: 3, side: 'white', type: 'K' }, { bout_id: 3, side: 'white', type: 'D' }]);
+  assert.deepEqual(sum, { winner: 'red', redIppons: 2, whiteIppons: 3 }); // red: 2 bout wins beats 3 ippons
+  assert.deepEqual(teamMatchSummary({ fusen: 'white' }, 5, [], []), { winner: 'white', redIppons: 0, whiteIppons: 10 });
+  const res = rankPoolT({ members: ['A', 'B'], matches: [{ red: 'A', white: 'B', result: { ...sum, draw: false } }], expectedMatches: 1, advancing: 1 });
+  assert.deepEqual(res.ranking, ['A', 'B']);
+});
+
+test('short team: the proposed lineup leaves only allowed positions empty', () => {
+  const m = (n) => Array.from({ length: n }, (_, i) => ({ competitor_id: `m${i + 1}`, sort_order: i + 1 }));
+  assert.deepEqual(defaultLineup(5, m(4)), { senpo: 'm1', jiho: 'm2', chuken: 'm3', fukusho: null, taisho: 'm4' });
+  assert.deepEqual(defaultLineup(5, m(3)), { senpo: 'm1', jiho: null, chuken: 'm2', fukusho: null, taisho: 'm3' });
+  assert.deepEqual(defaultLineup(3, m(2)), { senpo: 'm1', chuken: null, taisho: 'm2' });
+  assert.deepEqual(lineupProblems(5, defaultLineup(5, m(4))), []);
+});

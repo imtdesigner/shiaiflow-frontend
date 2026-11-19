@@ -196,7 +196,7 @@ export default function CourtDisplay() {
             })}
             <span className="cd-pos">
               {POSITION_LABELS[row.position]}
-              {(draw || row.bout?.is_encho) && <b>{draw ? 'X' : 'E'}</b>}
+              {(draw || (row.bout?.is_encho && row.position !== 'daihyosen')) && <b>{draw ? 'X' : 'E'}</b>}
             </span>
           </div>
         );

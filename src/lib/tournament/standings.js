@@ -8,6 +8,9 @@
 
 import { boutResult } from './scoring.js';
 
+// a match may carry its result already (team matches: team winner, ippons of all bouts)
+const resultOf = (m, scoringOptions) => m.result ?? boutResult(m.bout, scoringOptions);
+
 export const DEFAULT_CRITERIA = ['wins', 'losses', 'draws', 'scored', 'conceded'];
 const DIRECTION = { wins: -1, losses: 1, draws: -1, scored: -1, conceded: 1 };
 
@@ -22,7 +25,7 @@ export function poolTable(members, matches, scoringOptions) {
   }]));
   for (const m of matches) {
     if (m.kind === 'ipponshobu') continue; // decides a place, not the table
-    const res = boutResult(m.bout, scoringOptions);
+    const res = resultOf(m, scoringOptions);
     const red = rows.get(m.red);
     const white = rows.get(m.white);
     if (!red || !white) continue;
@@ -42,7 +45,7 @@ function headToHead(a, b, matches, scoringOptions) {
     if (m.kind === 'ipponshobu') continue;
     const pair = (m.red === a.id && m.white === b.id) || (m.red === b.id && m.white === a.id);
     if (!pair) continue;
-    const res = boutResult(m.bout, scoringOptions);
+    const res = resultOf(m, scoringOptions);
     const winnerId = res.winner === 'red' ? m.red : res.winner === 'white' ? m.white : null;
     if (winnerId === a.id) score -= 1;
     if (winnerId === b.id) score += 1;
@@ -85,7 +88,7 @@ export function rankPool({
 
   // Apply finished ippon-shobu bouts: the winner goes above the loser.
   for (const m of matches.filter((x) => x.kind === 'ipponshobu')) {
-    const res = boutResult(m.bout, scoringOptions);
+    const res = resultOf(m, scoringOptions);
     if (!res.winner) continue;
     const win = res.winner === 'red' ? m.red : m.white;
     const lose = res.winner === 'red' ? m.white : m.red;

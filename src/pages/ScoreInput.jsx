@@ -5,9 +5,12 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
-  addEvent, boutOf, deleteEvent, finishFight, listEvents, listRunFights, myRole, reopenFight,
-  setFightFields, startEncho, startFight, subscribeFights, timerStart, timerStop,
+  addDaihyosen, addEvent, boutOf, confirmLineups, deleteEvent, finishBout, finishFight, listEvents, listMatchBouts,
+  listRunFights, listTeamMembers, myRole, previousLineup, reopenBout, reopenFight,
+  setFightFields, startBout, startEncho, startFight, subscribeFights, timerStart, timerStop,
 } from '../lib/runApi';
+import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
+import { POSITION_LABELS, boutRows, defaultLineup, teamMatchStep } from '../lib/tournament/team.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
@@ -17,6 +20,7 @@ import './TournamentPages.css';
 import './Scoreinput.css';
 
 const POINTS = ['M', 'K', 'D', 'T'];
+const ORDER = ['senpo', 'jiho', 'chuken', 'fukusho', 'taisho', 'daihyosen'];
 const mmss = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -35,6 +39,9 @@ function ScoreInput() {
   const [fights, setFights] = useState([]);
   const [entries, setEntries] = useState([]);
   const [events, setEvents] = useState([]);
+  const [bouts, setBouts] = useState([]); // team match: position bouts of the current match
+  const [loadedFor, setLoadedFor] = useState(null); // fight whose events / bouts are loaded
+  const [teamInfo, setTeamInfo] = useState(null); // team match: { red, white: { name, members } } + lineup defaults
   const [pickedId, setPickedId] = useState(null);
   const [manualTimeUp, setManualTimeUp] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,11 +80,50 @@ function ScoreInput() {
     return currentFight(queue);
   }, [queue, pickedId]);
 
+  const isTeamFight = !!fight && byId[fight.category_id]?.kind === 'team';
+  // the fight on screen now: answers for an earlier fight (a slow request) are dropped
+  const shownId = useRef(null);
+  shownId.current = fight?.id ?? null;
   const reloadEvents = useCallback(async () => {
-    if (!fight) { setEvents([]); return; }
+    if (!fight) { setEvents([]); setBouts([]); return; }
     if (pendingRef.current > 0) return; // local clicks not saved yet — refresh after the queue
-    try { setEvents(await listEvents(fight.id)); } catch (e) { setMsg({ type: 'error', text: e.message }); }
-  }, [fight?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const id = fight.id;
+    try {
+      const [evs, bs] = await Promise.all([listEvents(id), isTeamFight ? listMatchBouts(id) : []]);
+      if (shownId.current !== id) return;
+      setEvents(evs); setBouts(bs); setLoadedFor(id);
+    } catch (e) { setMsg({ type: 'error', text: e.message }); }
+  }, [fight?.id, isTeamFight]); // eslint-disable-line react-hooks/exhaustive-deps
+  // another fight on screen: start empty, never with the previous fight's score
+  useEffect(() => { setEvents([]); setBouts([]); }, [fight?.id]);
+
+  // team match: both teams' members (lineup choices, names) and the proposed lineups
+  useEffect(() => {
+    setTeamInfo(null);
+    if (!isTeamFight || !fight) return;
+    const teamOf = (id) => entries.find((e) => e.id === id)?.team;
+    const red = teamOf(fight.red_entry_id);
+    const white = teamOf(fight.white_entry_id);
+    if (!red || !white) return;
+    let gone = false;
+    (async () => {
+      try {
+        const [ms, prevRed, prevWhite] = await Promise.all([
+          listTeamMembers([red.id, white.id]),
+          previousLineup(fight, fight.red_entry_id), previousLineup(fight, fight.white_entry_id),
+        ]);
+        const size = byId[fight.category_id]?.team_size;
+        const of = (t) => ms.filter((m) => m.team_id === t.id).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        if (gone) return;
+        setTeamInfo({
+          red: { name: red.name, members: of(red) },
+          white: { name: white.name, members: of(white) },
+          defaults: { red: defaultLineup(size, of(red), prevRed), white: defaultLineup(size, of(white), prevWhite) },
+        });
+      } catch (e) { setMsg({ type: 'error', text: e.message }); }
+    })();
+    return () => { gone = true; };
+  }, [fight?.id, isTeamFight, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { reloadEvents(); setManualTimeUp(false); }, [reloadEvents]);
 
@@ -94,19 +140,34 @@ function ScoreInput() {
   }, []);
 
   const category = fight ? byId[fight.category_id] : null;
-  const rules = category ? fightRules(category, fight.phase, koRound(category, fight.ko_no)) : null;
+  const opts = scoringOptions(category);
+  const round = category ? koRound(category, fight.ko_no) : null;
+  // A team match is scored bout by bout: `unit` is what the score buttons act on —
+  // the fight itself, or the current position bout / daihyosen of a team match.
+  const team = isTeamFight;
+  const step = !team ? null
+    : loadedFor !== fight.id ? { step: 'loading' }
+      : teamMatchStep(category, fight.phase, bouts, events, opts);
+  const teamBout = step?.step === 'bout' ? step.bout : null;
+  const unit = !fight ? null : !team ? fight
+    : teamBout ? { ...fight, status: teamBout.status, is_encho: teamBout.is_encho, decision: teamBout.decision, fusen: teamBout.fusen } : null;
+  const unitEvents = team ? events.filter((e) => e.bout_id === teamBout?.id) : events;
+  const rules = !category ? null
+    : !team ? fightRules(category, fight.phase, round)
+      : teamBout?.position === 'daihyosen' ? fightRules(category, 'daihyosen', round)
+        : { ...fightRules(category, fight.phase === 'ko' ? 'ko' : 'pool', round), tie: 'hikiwake', hantei: false, ipponshobu: false }; // a bout in a team match may end hikiwake
   const useTimer = tournament?.use_timer ?? true;
-  const limitSec = !fight || !rules ? null
-    : fight.is_encho ? rules.enchoSeconds
+  const limitSec = !unit || !rules ? null
+    : unit.is_encho ? rules.enchoSeconds
       : rules.ipponshobu ? null
-        : fightSeconds(category, fight.phase, koRound(category, fight.ko_no));
+        : fightSeconds(category, fight.phase === 'ipponshobu' ? 'pool' : fight.phase, round);
   const elapsed = fight ? fight.timer_elapsed_ms + (fight.timer_started_at ? now - new Date(fight.timer_started_at).getTime() : 0) : 0;
   const remaining = limitSec == null ? null : limitSec * 1000 - elapsed;
   const timeUp = useTimer ? remaining != null && remaining <= 0 : manualTimeUp;
-  const bout = fight ? boutOf(fight, events) : { events: [] };
-  const opts = scoringOptions(category);
-  const status = fight && rules ? fightStatus(bout, rules, { encho: fight.is_encho, timeUp }, opts) : null;
-  const totals = fight ? boutTotals({ events }, opts) : null;
+  const bout = unit ? boutOf(unit, unitEvents) : { events: [] };
+  const status = unit && rules ? fightStatus(bout, rules, { encho: unit.is_encho, timeUp }, opts) : null;
+  const totals = unit ? boutTotals({ events: unitEvents }, opts) : null;
+  useEffect(() => { setManualTimeUp(false); }, [teamBout?.id]);
 
   const run = async (fn) => {
     setBusy(true); setMsg({ type: '', text: '' });
@@ -144,11 +205,12 @@ function ScoreInput() {
 
   const point = (side, type) => {
     const f = fight;
+    const boutId = teamBout?.id ?? null;
     stopClock(f); // yame on every point
-    setEvents((ev) => [...ev, { id: `local-${Date.now()}-${ev.length}`, side, type }]);
+    setEvents((ev) => [...ev, { id: `local-${Date.now()}-${ev.length}`, bout_id: boutId, side, type }]);
     enqueue(async () => {
       if (f.timer_started_at) await timerStop(f);
-      await addEvent(f.id, side, type);
+      await addEvent(f.id, side, type, boutId);
     });
   };
 
@@ -167,15 +229,21 @@ function ScoreInput() {
 
   const undo = () => {
     const id = fight.id;
-    setEvents((ev) => ev.slice(0, -1));
+    const boutId = teamBout?.id ?? null;
+    const mine = (e) => (e.bout_id ?? null) === boutId;
+    setEvents((ev) => {
+      const i = ev.map(mine).lastIndexOf(true);
+      return i < 0 ? ev : [...ev.slice(0, i), ...ev.slice(i + 1)];
+    });
     enqueue(async () => {
-      const saved = await listEvents(id);
+      const saved = (await listEvents(id)).filter(mine);
       const last = saved[saved.length - 1];
       if (last) await deleteEvent(last.id);
     });
   };
 
   const finish = (extra = {}) => run(async () => {
+    if (teamBout) { await finishBout(fight, teamBout, extra); return; } // next bout follows
     if (Object.keys(extra).length) await setFightFields(fight, extra);
     const res = fightStatus({ ...bout, ...extra }, rules, { encho: fight.is_encho, timeUp: true }, opts);
     const out = await finishFight(fight, res, category);
@@ -200,6 +268,32 @@ function ScoreInput() {
     return koRoundLabel(byId[f.category_id], f.ko_no);
   };
 
+  // team match: last bout that can be reopened by a manager (not an empty-position fusen)
+  const lastBout = team ? [...bouts].filter((b) => b.status === 'finished' && b.red_competitor_id && b.white_competitor_id)
+    .sort((a, b) => ORDER.indexOf(a.position) - ORDER.indexOf(b.position)).at(-1) ?? null : null;
+  /** Team match so far: every position with its fighters and result, the current one marked. */
+  const TeamProgress = () => {
+    if (!bouts.length) return null;
+    return (
+      <table className="tp-table st-team">
+        <tbody>
+          {[...bouts].sort((a, b) => ORDER.indexOf(a.position) - ORDER.indexOf(b.position)).map((b) => {
+            const t = boutTotals({ events: events.filter((e) => e.bout_id === b.id) }, opts);
+            const mark = (side) => (b.fusen === side ? 'OO' : b.decision === side ? 'HH' : t[side].ippons.join(' '));
+            return (
+              <tr key={b.id} className={b.id === teamBout?.id ? 'current' : b.status}>
+                <td>{POSITION_LABELS[b.position]}</td>
+                <td className="st-team-red">{memberName(b.red_competitor_id) ?? '—'}</td>
+                <td className="st-team-score">{mark('red') || '·'} : {mark('white') || '·'}{b.status === 'finished' && !b.fusen && !b.decision && t.red.ippons.length === t.white.ippons.length ? ' (X)' : ''}</td>
+                <td>{memberName(b.white_competitor_id) ?? '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  };
+
   const upcoming = queue.filter((f) => f.status !== 'finished' && f.id !== fight?.id);
   const finished = queue.filter((f) => f.status === 'finished').slice(-6).reverse();
   const courts = Array.from({ length: tournament?.shiaijo_count ?? 2 }, (_, i) => i + 1);
@@ -207,15 +301,21 @@ function ScoreInput() {
   if (loading) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
+  // team match: the fighter of this bout (club line = the team)
+  const memberName = (id) => personName([...(teamInfo?.red.members ?? []), ...(teamInfo?.white.members ?? [])]
+    .find((m) => m.competitor_id === id)?.competitor);
+  const unitName = (side) => (teamBout ? memberName(side === 'red' ? teamBout.red_competitor_id : teamBout.white_competitor_id) : name(fight, side));
+  const unitClub = (side) => (teamBout ? name(fight, side) : club(fight, side));
+
   const sideBlock = (side) => (
     <div className={`st-side ${side}`}>
-      <div className="st-name">{name(fight, side)}</div>
-      <div className="st-club">{club(fight, side)}</div>
+      <div className="st-name">{unitName(side)}</div>
+      <div className="st-club">{unitClub(side)}</div>
       <div className="st-marks">
-        {fight.fusen === side ? 'OO' : status?.by === 'hantei' && status.winner === side ? 'HH' : totals[side].ippons.join(' ') || '·'}
+        {unit.fusen === side ? 'OO' : status?.by === 'hantei' && status.winner === side ? 'HH' : totals[side].ippons.join(' ') || '·'}
         {totals[side].hansoku > 0 && <span className="st-hansoku">{'▲'.repeat(totals[side].hansoku)}</span>}
       </div>
-      {fight.status === 'running' && !status?.over && (
+      {unit.status === 'running' && !status?.over && (
         <div className="st-buttons">
           {POINTS.map((p) => <button key={p} type="button" className={`st-btn ippon ${side}`} onClick={() => point(side, p)}>{p}</button>)}
           <button type="button" className={`st-btn hansoku ippon ${side}`} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
@@ -248,71 +348,113 @@ function ScoreInput() {
         <div className="tp-card st-fight">
           <div className="st-fight-head">
             <strong>{fight.label}</strong> · {category?.name} · {roundOf(fight)}
-            {fight.is_encho && <span className="tp-badge warn">encho</span>}
-            {fight.status === 'scheduled' && <span className="tp-muted"> · not started</span>}
+            {team && <> · {name(fight, 'red')} – {name(fight, 'white')}</>}
+            {teamBout && <span className="tp-badge">{POSITION_LABELS[teamBout.position]}</span>}
+            {unit?.is_encho && teamBout?.position !== 'daihyosen' && <span className="tp-badge warn">encho</span>}
+            {unit?.status === 'scheduled' && <span className="tp-muted"> · not started</span>}
           </div>
 
+          {team && <TeamProgress />}
+          {team && step.step === 'lineup' && teamInfo && (
+            <LineupPanel teamSize={category.team_size} teams={teamInfo} defaults={teamInfo.defaults} busy={busy}
+              onConfirm={(l) => run(() => confirmLineups(fight, boutRows(category.team_size, l.red, l.white)))} />
+          )}
+          {team && step.step === 'daihyosen' && teamInfo && (
+            <DaihyosenPanel teams={teamInfo} busy={busy}
+              defaults={{ red: bouts.find((b) => b.position === 'taisho')?.red_competitor_id ?? null, white: bouts.find((b) => b.position === 'taisho')?.white_competitor_id ?? null }}
+              onStart={(p) => run(() => addDaihyosen(fight, p.red, p.white))} />
+          )}
+          {team && step.step === 'finish' && (
+            <div className="tp-actions st-actions">
+              <button type="button" className="tp-btn" disabled={busy} onClick={() => run(async () => {
+                const out = await finishFight(fight, { winner: step.winner }, category);
+                setPickedId(null);
+                if (out?.message) setMsg({ type: 'info', text: out.message });
+              })}>
+                Finish team match — {step.winner ? `${name(fight, step.winner)} wins` : 'draw (hikiwake)'}
+              </button>
+              {manager && lastBout && (
+                <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => run(() => reopenBout(lastBout))}>
+                  Correct: reopen {POSITION_LABELS[lastBout.position]}
+                </button>
+              )}
+            </div>
+          )}
+
+          {unit && (<>
           <div className="st-board">
             {sideBlock('red')}
             <div className="st-center">
               {useTimer ? (
                 <>
                   <div className={`st-clock ${timeUp ? 'up' : ''}`}>{remaining == null ? mmss(elapsed) : mmss(remaining)}</div>
-                  {fight.status === 'running' && !status?.over && !timeUp && (
+                  {unit.status === 'running' && !status?.over && !timeUp && (
                     fight.timer_started_at
                       ? <button type="button" className="st-btn big" onClick={yame}>Yame</button>
                       : <button type="button" className="st-btn big go" onClick={hajime}>Hajime</button>
                   )}
                 </>
               ) : (
-                fight.status === 'running' && !status?.over && (
+                unit.status === 'running' && !status?.over && (
                   <button type="button" className={`st-btn big ${manualTimeUp ? 'go' : ''}`} onClick={() => setManualTimeUp(!manualTimeUp)}>
                     {manualTimeUp ? 'Time up ✓' : 'Time up'}
                   </button>
                 )
               )}
-              {fight.status === 'running' && (
-                <button type="button" className="st-btn small" disabled={events.length === 0} onClick={undo}>Undo last</button>
+              {unit.status === 'running' && (
+                <button type="button" className="st-btn small" disabled={unitEvents.length === 0} onClick={undo}>Undo last</button>
               )}
             </div>
             {sideBlock('white')}
           </div>
 
           <div className="tp-actions st-actions">
-            {fight.status === 'scheduled' && (
+            {unit.status === 'scheduled' && (
               <>
                 <button type="button" className="tp-btn" disabled={busy || !fight.red_entry_id || !fight.white_entry_id}
-                  onClick={() => run(() => startFight(fight, queue))}>
-                  Start fight
+                  onClick={() => run(() => (teamBout ? startBout(fight, teamBout, queue) : startFight(fight, queue)))}>
+                  {teamBout ? `Start ${POSITION_LABELS[teamBout.position]}` : 'Start fight'}
                 </button>
-                <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('red'); })}>Red wins OO</button>
-                <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('white'); })}>White wins OO</button>
+                {!teamBout && (
+                  <>
+                    <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('red'); })}>Red wins OO</button>
+                    <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('white'); })}>White wins OO</button>
+                  </>
+                )}
               </>
             )}
-            {fight.status === 'running' && status?.next === 'finish' && (
+            {unit.status === 'running' && status?.next === 'finish' && (
               <button type="button" className="tp-btn" disabled={busy} onClick={() => finish()}>
-                Finish — {status.winner === 'red' ? name(fight, 'red') : name(fight, 'white')} wins
+                Finish — {unitName(status.winner)} wins
               </button>
             )}
-            {fight.status === 'running' && status?.next === 'hikiwake' && (
+            {unit.status === 'running' && status?.next === 'hikiwake' && (
               <button type="button" className="tp-btn" disabled={busy} onClick={() => finish()}>Finish — hikiwake</button>
             )}
-            {fight.status === 'running' && (status?.next === 'encho') && (
+            {unit.status === 'running' && (status?.next === 'encho') && (
               <button type="button" className="tp-btn" disabled={busy} onClick={() => run(() => startEncho(fight))}>Encho</button>
             )}
-            {fight.status === 'running' && (status?.next === 'hantei' || (rules?.hantei && fight.is_encho && timeUp && status?.draw)) && (
+            {unit.status === 'running' && (status?.next === 'hantei' || (rules?.hantei && unit.is_encho && timeUp && status?.draw)) && (
               <>
                 <button type="button" className="tp-btn" disabled={busy} onClick={() => finish({ decision: 'red' })}>Hantei — red</button>
                 <button type="button" className="tp-btn" disabled={busy} onClick={() => finish({ decision: 'white' })}>Hantei — white</button>
               </>
             )}
-            {fight.status === 'running' && !status?.over && (
+            {unit.status === 'running' && !status?.over && (
               <>
                 <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'red' })}>Red wins OO</button>
                 <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'white' })}>White wins OO</button>
               </>
             )}
           </div>
+          </>)}
+          {team && step.step === 'lineup' && fight.status === 'scheduled' && (
+            <div className="tp-actions st-actions">
+              <span className="tp-muted">Team did not come:</span>
+              <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('red'); })}>{name(fight, 'red')} wins OO</button>
+              <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('white'); })}>{name(fight, 'white')} wins OO</button>
+            </div>
+          )}
         </div>
       )}
 

@@ -163,3 +163,23 @@
 .st-btn.ippon.white:active {
   background: linear-gradient(180deg, #e2e2e2 0%, #f4f4f4 100%);
 }
+
+/* team match: lineup step, daihyosen pick, progress of the bouts */
+.tl { margin: 0.75rem 0; }
+.tl-warning {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0a800;
+  background: #fff6d6;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+.tl-table select { width: 100%; }
+.tl-red { color: #a3121f; }
+.tl-problems { color: #a3121f; margin: 0.5rem 0; }
+.tl-check { margin-top: 0.5rem; font-weight: 600; }
+.st-team { margin: 0.5rem 0 0.75rem; }
+.st-team td { padding: 0.25rem 0.5rem; }
+.st-team tr.current { background: #fff6d6; font-weight: 700; }
+.st-team tr.scheduled { opacity: 0.55; }
+.st-team-red { color: #a3121f; text-align: right; }
+.st-team-score { text-align: center; white-space: nowrap; font-weight: 700; }

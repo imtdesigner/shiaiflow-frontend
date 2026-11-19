@@ -6,6 +6,7 @@ import { scoringOptions } from './tournament/scoring.js';
 import {
   koEntries, placesToCodes, startOutOfOrder, startSequence,
 } from './tournament/run.js';
+import { lineupOf, teamMatchSummary } from './tournament/team.js';
 
 function unwrap({ data, error }) {
   if (error) throw new Error(error.message);
@@ -22,7 +23,7 @@ export async function listRunFights(categoryIds) {
 }
 
 export async function listEvents(matchId) {
-  return unwrap(await supabase.from('score_events').select('id, side, type, created_at').eq('match_id', matchId).order('id'));
+  return unwrap(await supabase.from('score_events').select('id, bout_id, side, type, created_at').eq('match_id', matchId).order('id'));
 }
 
 async function setSeqs(map) {
@@ -45,8 +46,8 @@ export async function startFight(fight, queue) {
   unwrap(await supabase.from('matches').update({ status: 'running', started_at: new Date().toISOString() }).eq('id', fight.id));
 }
 
-export async function addEvent(matchId, side, type) {
-  unwrap(await supabase.from('score_events').insert({ match_id: matchId, side, type }));
+export async function addEvent(matchId, side, type, boutId = null) {
+  unwrap(await supabase.from('score_events').insert({ match_id: matchId, side, type, bout_id: boutId }));
 }
 
 export async function deleteEvent(eventId) {
@@ -78,6 +79,69 @@ export async function reopenFight(fight) {
   unwrap(await supabase.from('matches').update({
     status: 'running', winner_entry_id: null, finished_at: null, timer_started_at: null,
   }).eq('id', fight.id));
+}
+
+// --- team matches: lineups and position bouts (the table scores them one after another) ---
+
+const BOUT_COLUMNS = 'id, match_id, position, status, decision, fusen, is_encho, red_competitor_id, white_competitor_id';
+
+export async function listMatchBouts(matchId) {
+  return unwrap(await supabase.from('bouts').select(BOUT_COLUMNS).eq('match_id', matchId));
+}
+
+/** Members of two teams (lineup choices), with names, in registration order. */
+export async function listTeamMembers(teamIds) {
+  if (!teamIds.length) return [];
+  return unwrap(await supabase.from('team_members')
+    .select('team_id, competitor_id, sort_order, competitor:competitors(last_name, first_name, display_name)')
+    .in('team_id', teamIds));
+}
+
+/** Lineup this entry used in its latest team match of the category (null if none). */
+export async function previousLineup(match, entryId) {
+  const ms = unwrap(await supabase.from('matches').select('id, red_entry_id, white_entry_id, started_at')
+    .eq('category_id', match.category_id).neq('id', match.id)
+    .or(`red_entry_id.eq.${entryId},white_entry_id.eq.${entryId}`)
+    .not('started_at', 'is', null).order('started_at', { ascending: false }).limit(5));
+  for (const m of ms) {
+    const bs = await listMatchBouts(m.id);
+    if (bs.some((b) => b.position !== 'daihyosen')) return lineupOf(bs, m.red_entry_id === entryId ? 'red' : 'white');
+  }
+  return null;
+}
+
+/** The table confirms both lineups were handed in: one bout row per position. */
+export async function confirmLineups(match, rows) {
+  unwrap(await supabase.from('bouts').insert(rows.map((r) => ({ ...r, match_id: match.id }))));
+}
+
+/** Start a position bout (the team match starts with its first bout); the clock starts from zero. */
+export async function startBout(match, bout, queue) {
+  if (match.status === 'scheduled') await startFight(match, queue);
+  unwrap(await supabase.from('matches').update({ is_encho: false, timer_elapsed_ms: 0, timer_started_at: null }).eq('id', match.id));
+  unwrap(await supabase.from('bouts').update({ status: 'running' }).eq('id', bout.id));
+}
+
+export async function setBoutFields(bout, fields) {
+  unwrap(await supabase.from('bouts').update(fields).eq('id', bout.id));
+}
+
+/** Finish a position bout (extra: decision / fusen). */
+export async function finishBout(match, bout, extra = {}) {
+  if (match.timer_started_at) await timerStop(match);
+  unwrap(await supabase.from('bouts').update({ ...extra, status: 'finished' }).eq('id', bout.id));
+}
+
+/** Tied team match: the table picks one fighter per team; the daihyosen is fought like an encho (first point wins). */
+export async function addDaihyosen(match, redId, whiteId) {
+  unwrap(await supabase.from('bouts').insert({
+    match_id: match.id, position: 'daihyosen', red_competitor_id: redId, white_competitor_id: whiteId, is_encho: true,
+  }));
+}
+
+/** Manager correction inside a team match: the last finished bout runs again. */
+export async function reopenBout(bout) {
+  unwrap(await supabase.from('bouts').update({ status: 'running', decision: null }).eq('id', bout.id));
 }
 
 /** Bout record of a fight for the scoring logic. */
@@ -112,7 +176,12 @@ export async function afterFight(fight, category) {
   const pool = unwrap(await supabase.from('pools').select('id, number, pool_entries(entry_id, position)').eq('id', fight.pool_id).single());
   const fights = unwrap(await supabase.from('matches').select(FIGHT_COLUMNS).eq('pool_id', pool.id));
   const events = fights.length
-    ? unwrap(await supabase.from('score_events').select('match_id, side, type').in('match_id', fights.map((f) => f.id)).order('id'))
+    ? unwrap(await supabase.from('score_events').select('match_id, bout_id, side, type').in('match_id', fights.map((f) => f.id)).order('id'))
+    : [];
+  // team matches: the team result (bout wins, ippons of all bouts) counts, not one bout
+  const team = category.kind === 'team';
+  const teamBouts = team && fights.length
+    ? unwrap(await supabase.from('bouts').select(BOUT_COLUMNS).in('match_id', fights.map((f) => f.id)))
     : [];
   const bouts = fights.filter((f) => f.status === 'finished').map((f) => ({
     red: f.red_entry_id,
@@ -120,6 +189,9 @@ export async function afterFight(fight, category) {
     kind: f.phase === 'ipponshobu' ? 'ipponshobu' : 'pool',
     label: f.label,
     bout: boutOf(f, events.filter((e) => e.match_id === f.id)),
+    ...(team ? {
+      result: teamMatchSummary(f, category.team_size, teamBouts.filter((b) => b.match_id === f.id), events.filter((e) => e.match_id === f.id), scoringOptions(category)),
+    } : {}),
   }));
   const members = [...pool.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id);
   const res = rankPool({

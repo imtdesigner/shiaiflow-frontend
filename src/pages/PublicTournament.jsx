@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Message, entryName } from '../components/TournamentShell';
 import KoBracket from '../components/KoBracket';
 import {
-  getSavedDraw, getTournament, listCategories, listEntriesFor, listEventsFor, listTeams,
+  getSavedDraw, getTournament, listBouts, listCategories, listEntriesFor, listEventsFor, listTeams,
   listTournamentFights, publicRegister, publicRegisterTeam, resolveTournament, tournamentOrganizers,
 } from '../lib/api';
 import { OrganizerLine, fmtDate } from '../components/TournamentList';
@@ -14,6 +14,7 @@ import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { slotLabel, thirdPlaceFight } from '../lib/tournament/ko.js';
 import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
 import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
+import { teamMatchResult } from '../lib/tournament/team.js';
 import { GRADES, ineligibleReason, rulesText, teamPositions, teamProblems, teamReserves, teamMaxMembers, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
@@ -57,6 +58,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
   const [draws, setDraws] = useState({});
   const [fights, setFights] = useState([]);
   const [events, setEvents] = useState([]);
+  const [bouts, setBouts] = useState([]); // team matches: position bouts
   const [tab, setTab] = useState(null);
   const [error, setError] = useState('');
   const [organizer, setOrganizer] = useState(null);
@@ -73,8 +75,13 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         listEntriesFor(ids), listTeams(tournamentId), listTournamentFights(drawnCats.map((c) => c.id)),
         ...drawnCats.map((c) => getSavedDraw(c.id)),
       ]);
-      const evs = await listEventsFor(fs.filter((f) => f.status !== 'scheduled').map((f) => f.id));
-      setTournament(t); setCategories(cats); setEntries(ens); setTeams(tms); setFights(fs); setEvents(evs);
+      const started = fs.filter((f) => f.status !== 'scheduled').map((f) => f.id);
+      const teamIds = new Set(cats.filter((c) => c.kind === 'team').map((c) => c.id));
+      const [evs, bs] = await Promise.all([
+        listEventsFor(started),
+        listBouts(fs.filter((f) => f.status !== 'scheduled' && teamIds.has(f.category_id)).map((f) => f.id)),
+      ]);
+      setTournament(t); setCategories(cats); setEntries(ens); setTeams(tms); setFights(fs); setEvents(evs); setBouts(bs);
       setDraws(Object.fromEntries(drawnCats.map((c, i) => [c.id, ds[i]])));
     } catch (e) {
       setError('This tournament is not published, or it does not exist.');
@@ -110,6 +117,16 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     return c ? fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no)) : 180;
   };
   const score = (f) => {
+    if (byCat[f.category_id]?.kind === 'team') {
+      // team match: bouts won (finished bouts so far)
+      if (f.fusen) return f.fusen === 'red' ? 'OO : –' : '– : OO';
+      const r = teamMatchResult(bouts.filter((b) => b.match_id === f.id && b.status === 'finished').map((b) => ({
+        position: b.position,
+        bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
+      })), scoringOptions(byCat[f.category_id]));
+      const d = bouts.some((b) => b.match_id === f.id && b.position === 'daihyosen' && b.status === 'finished');
+      return `${r.redWins} : ${r.whiteWins}${d ? ' (daihyosen)' : ''}`;
+    }
     const r = boutResult({ events: events.filter((e) => e.match_id === f.id), decision: f.decision, fusen: f.fusen }, scoringOptions(byCat[f.category_id]));
     return `${r.totals.red.ippons.join('') || '–'} : ${r.totals.white.ippons.join('') || '–'}`;
   };
