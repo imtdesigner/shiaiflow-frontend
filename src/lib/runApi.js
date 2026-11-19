@@ -216,11 +216,12 @@ export async function claimTournament(tournamentId, pin, door = 'editor') {
   }));
 }
 
-/** Realtime: call `onChange` when fights or score events of these categories change. */
+/** Realtime: call `onChange` when fights, team bouts or score events change. */
 export function subscribeFights(key, onChange) {
   const channel = supabase.channel(`run-${key}-${Math.random().toString(36).slice(2)}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'score_events' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bouts' }, onChange)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

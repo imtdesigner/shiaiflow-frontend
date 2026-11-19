@@ -36,3 +36,37 @@ export function teamMatchResult(bouts, scoringOptions) {
     needsDaihyosen: winner === null,
   };
 }
+
+/**
+ * Team match for a display: one row per position (3 or 5, + daihyosen when
+ * it exists), in order. `bouts` = rows of the bouts table, `events` = score
+ * events with bout_id. Lineups count as known only when every position has
+ * both competitors (they are written once both teams confirmed).
+ * Returns { ready, rows: [{ position, bout, events, status, result }], current, totals }.
+ */
+export function teamBoard(teamSize, bouts, events, options) {
+  const positions = POSITIONS[teamSize === 5 ? 5 : 3];
+  const byPos = new Map(bouts.map((b) => [b.position, b]));
+  const ready = positions.every((p) => byPos.get(p)?.red_competitor_id && byPos.get(p)?.white_competitor_id);
+  const order = byPos.has('daihyosen') ? [...positions, 'daihyosen'] : positions;
+  const rows = order.map((position) => {
+    const bout = byPos.get(position) ?? null;
+    const evs = bout ? events.filter((e) => e.bout_id === bout.id) : [];
+    const record = { events: evs, decision: bout?.decision ?? null, fusen: bout?.fusen ?? null };
+    return {
+      position,
+      bout,
+      events: evs,
+      status: bout?.status ?? 'scheduled',
+      result: boutResult(record, options),
+    };
+  });
+  const current = rows.find((r) => r.status === 'running')?.position ?? null;
+  const totals = teamMatchResult(
+    rows.filter((r) => r.bout && r.status === 'finished').map((r) => ({
+      position: r.position, bout: { events: r.events, decision: r.bout.decision, fusen: r.bout.fusen },
+    })),
+    options,
+  );
+  return { ready, rows, current, totals };
+}

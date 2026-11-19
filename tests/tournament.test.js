@@ -944,3 +944,24 @@ test('first point of a bout (circled on the court display)', () => {
   assert.equal(firstPointSide({ events: [{ side: 'red', type: 'hansoku' }, { side: 'red', type: 'hansoku' }, { side: 'red', type: 'M' }] }), 'white');
   assert.equal(firstPointSide({ events: [{ side: 'red', type: 'hansoku' }, { side: 'red', type: 'hansoku' }] }, { autoHansokuIppon: false }), null);
 });
+
+import { teamBoard } from '../src/lib/tournament/team.js';
+test('team match board: lineups, current bout, totals', () => {
+  const b = (id, position, status, extra = {}) => ({ id, position, status, red_competitor_id: 'r' + id, white_competitor_id: 'w' + id, decision: null, fusen: null, ...extra });
+  const bouts = [b(1, 'senpo', 'finished'), b(2, 'chuken', 'finished'), b(3, 'taisho', 'running')];
+  const events = [
+    { bout_id: 1, side: 'red', type: 'M' },
+    { bout_id: 3, side: 'white', type: 'K' },
+  ];
+  const t = teamBoard(3, bouts, events);
+  assert.equal(t.ready, true);
+  assert.deepEqual(t.rows.map((r) => r.position), ['senpo', 'chuken', 'taisho']);
+  assert.equal(t.current, 'taisho');
+  assert.equal(t.totals.redWins, 1); // chuken hikiwake, taisho still running
+  assert.equal(t.totals.whiteWins, 0);
+  assert.equal(t.rows[1].result.draw, true);
+  // lineup missing on one side → not ready; 5 positions + daihyosen
+  const five = teamBoard(5, [b(1, 'senpo', 'scheduled', { white_competitor_id: null }), b(9, 'daihyosen', 'scheduled')], []);
+  assert.equal(five.ready, false);
+  assert.deepEqual(five.rows.map((r) => r.position), ['senpo', 'jiho', 'chuken', 'fukusho', 'taisho', 'daihyosen']);
+});

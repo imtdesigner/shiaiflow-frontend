@@ -115,7 +115,17 @@ export async function publicRegisterTeam(categoryId, team) {
 /** Score events of several fights (live results). */
 export async function listEventsFor(matchIds) {
   if (!matchIds.length) return [];
-  return unwrap(await supabase.from('score_events').select('match_id, side, type').in('match_id', matchIds).order('id'));
+  return unwrap(await supabase.from('score_events').select('match_id, bout_id, side, type').in('match_id', matchIds).order('id'));
+}
+
+/** Position bouts of team matches, with the competitors' names (court display). */
+export async function listBouts(matchIds) {
+  if (!matchIds.length) return [];
+  return unwrap(await supabase.from('bouts')
+    .select('id, match_id, position, status, decision, fusen, is_encho, red_competitor_id, white_competitor_id, '
+      + 'red:competitors!bouts_red_competitor_id_fkey(last_name, first_name, display_name), '
+      + 'white:competitors!bouts_white_competitor_id_fkey(last_name, first_name, display_name)')
+    .in('match_id', matchIds));
 }
 
 /** Teams of a tournament with members (public registration, team lists). */

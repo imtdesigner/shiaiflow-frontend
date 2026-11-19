@@ -144,3 +144,59 @@
 .cd-score-side { display: inline-flex; gap: 0.2em; min-width: 1.6em; flex-direction: row-reverse; justify-content: flex-end; }
 /* left fighter: points read from the name towards the middle */
 .cd-score-side.left { flex-direction: row; justify-content: flex-end; }
+
+/* team match in progress: team names + one row per position */
+.cd-team { display: flex; flex-direction: column; gap: 0.6vh; flex: 1; min-height: 0; }
+.cd-team-row { position: relative; display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-height: 0; }
+.cd-team-row.head { flex: 0 0 auto; }
+.cd-team-row.head .cd-team-side { padding: 1vh 9vw 1vh 2vw; }
+.cd-team-row.head .cd-team-side.right { padding: 1vh 2vw 1vh 9vw; }
+.cd-team-side {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 0 9vw 0 2vw;
+  min-width: 0;
+}
+.cd-team-side.right { flex-direction: row-reverse; padding: 0 2vw 0 9vw; }
+.cd-team-side.red { background: linear-gradient(180deg, #a3121f 0%, #6e0b14 100%); }
+.cd-team-side.white { background: linear-gradient(180deg, #f4f1ea 0%, #d9d4c8 100%); color: #14161a; }
+.cd-team-row:first-child .cd-team-side:not(.right) { border-top-left-radius: 1vw; }
+.cd-team-row:first-child .cd-team-side.right { border-top-right-radius: 1vw; }
+.cd-team-row:last-child .cd-team-side:not(.right) { border-bottom-left-radius: 1vw; }
+.cd-team-row:last-child .cd-team-side.right { border-bottom-right-radius: 1vw; }
+.cd-team-name { font-size: 3.4vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-member { font-size: 2.8vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-team-side .cd-marks { margin: 0; gap: 0.6vw; }
+.cd-team-side.right .cd-marks { flex-direction: row-reverse; }
+.cd-mark.mid { width: 1.3em; height: 1.3em; font-size: 2.8vw; }
+.cd-mark.mid.first { border-width: 0.25vw; }
+.cd-hansoku.small { font-size: 2vw; }
+
+/* bouts not yet fought are dimmed, the running one stands out */
+.cd-team-row.scheduled .cd-team-side { opacity: 0.55; }
+.cd-team-row.running .cd-team-side { box-shadow: inset 0 0.35vw 0 #e0a800, inset 0 -0.35vw 0 #e0a800; }
+
+/* position on the seam: white pill; X = hikiwake, E = encho of that bout */
+.cd-pos {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5vw;
+  padding: 0.2em 0.7em;
+  border-radius: 2vw;
+  background: #fff;
+  color: #14161a;
+  border: 0.25vw solid #14161a;
+  font-size: 2vw;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.cd-pos b { font-size: 1.3em; }
+.cd-pos.score { flex-direction: column; gap: 0; font-size: 3vw; line-height: 1.05; }
+.cd-pos.score small { font-size: 0.45em; font-weight: 600; color: #6b665b; }
+.cd-ippons { margin-left: 0.5em; font-size: 0.6em; color: #b9b4a8; font-weight: 600; }
+.cd-note { margin: 0; font-size: 2vw; color: #b9b4a8; text-align: center; }
