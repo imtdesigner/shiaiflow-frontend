@@ -45,7 +45,11 @@ function Registration() {
 
   const category = useMemo(() => categories.find((c) => c.id === selectedId), [categories, selectedId]);
   const isTeam = category?.kind === 'team';
+  // after the draw: presence (check-in on the day) and walk-ins still change here, the rest is fixed
+  // (withdraw / replace in Drawings → Adjust the draw); a cancelled category is fully locked
+  const cancelled = category?.status === 'cancelled';
   const locked = category && category.status !== 'registration';
+  const canAdd = category && !cancelled;
 
   useEffect(() => {
     if (!selectedId && categories.length) setSelectedId(categories[0].id);
@@ -146,16 +150,16 @@ function Registration() {
         <>
           {locked && (
             <Message type="info">
-              {category.status === 'cancelled'
+              {cancelled
                 ? 'This category is cancelled — registration is locked.'
-                : 'The draw for this category has been made — registration is locked.'}
+                : 'The draw for this category has been made. Tick who is present below; a walk-in added here is not in the draw yet — put them in place of a no-show or into a short pool in Drawings → Adjust the draw.'}
               {' '}<Link to={`/tournament/${tournamentId}/drawings`}>Open draw</Link>
             </Message>
           )}
 
-          {!locked && !isTeam && (
+          {canAdd && !isTeam && (
             <div className="tp-card">
-              <h3>Add competitor <span className="tp-muted">· {rulesText(category)}</span></h3>
+              <h3>{locked ? 'Add a walk-in' : 'Add competitor'} <span className="tp-muted">· {rulesText(category)}</span></h3>
               <form onSubmit={addPerson}>
                 <div className="tp-grid">
                   <label className="tp-field">Last name<input value={person.last_name} onChange={(e) => setPerson({ ...person, last_name: e.target.value })} required /></label>
@@ -202,9 +206,9 @@ function Registration() {
             </div>
           )}
 
-          {!locked && isTeam && (
+          {canAdd && isTeam && (
             <div className="tp-card">
-              <h3>Add team ({category.team_size} members + reserves)</h3>
+              <h3>{locked ? 'Add a walk-in team' : 'Add team'} ({category.team_size} members + reserves)</h3>
               <form onSubmit={addTeam}>
                 <div className="tp-grid">
                   <label className="tp-field">Team name<input value={team.name} onChange={(e) => setTeam({ ...team, name: e.target.value })} placeholder="e.g. RIJEKA 1" required /></label>
@@ -282,7 +286,7 @@ function Registration() {
                           <input
                             type="checkbox"
                             checked={en.checked_in}
-                            disabled={busy || locked}
+                            disabled={busy || cancelled}
                             onChange={(e) => run(() => setCheckedIn(en.id, e.target.checked))}
                           />
                         </td>
@@ -298,7 +302,7 @@ function Registration() {
                     ))}
                   </tbody>
                 </table>
-                {!locked && (
+                {!cancelled && (
                   <div className="tp-actions">
                     <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => checkAll(true)}>All present</button>
                     <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => checkAll(false)}>Clear check-in</button>
