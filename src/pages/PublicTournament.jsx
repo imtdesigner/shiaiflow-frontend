@@ -88,8 +88,30 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     }
   }, [tournamentId]);
 
+  // live: on a change only the fights, points and team bouts are fetched again (cheap);
+  // the rest (entries, draws) once a minute while the tournament runs
+  const loadLive = useCallback(async () => {
+    const drawnIds = categories.filter((c) => c.status !== 'registration').map((c) => c.id);
+    const teamIds = new Set(categories.filter((c) => c.kind === 'team').map((c) => c.id));
+    try {
+      const fs = await listTournamentFights(drawnIds);
+      const started = fs.filter((f) => f.status !== 'scheduled');
+      const [evs, bs] = await Promise.all([
+        listEventsFor(started.map((f) => f.id)),
+        listBouts(started.filter((f) => teamIds.has(f.category_id)).map((f) => f.id)),
+      ]);
+      setFights(fs); setEvents(evs); setBouts(bs);
+    } catch { /* keep what is shown; the next change or the minute refresh tries again */ }
+  }, [categories]);
+
   useEffect(() => { load(); }, [load]);
-  useEffect(() => (tournament?.status === 'running' ? subscribeFights(`public-${tournamentId}`, load) : undefined), [tournament?.status, tournamentId, load]);
+  const running0 = tournament?.status === 'running';
+  useEffect(() => (running0 ? subscribeFights(tournamentId, loadLive, 1000) : undefined), [running0, tournamentId, loadLive]);
+  useEffect(() => {
+    if (!running0) return undefined;
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [running0, load]);
 
   const regOpen = tournament && tournament.registration_open
     && (!tournament.registration_deadline || new Date(tournament.registration_deadline) > new Date());

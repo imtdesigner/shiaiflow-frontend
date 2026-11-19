@@ -288,12 +288,20 @@ export async function claimTournament(tournamentId, pin, door = 'editor') {
   }));
 }
 
-/** Realtime: call `onChange` when fights, team bouts or score events change. */
-export function subscribeFights(key, onChange) {
-  const channel = supabase.channel(`run-${key}-${Math.random().toString(36).slice(2)}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'score_events' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bouts' }, onChange)
+/**
+ * Live updates of one tournament: the database broadcasts every change of a
+ * fight, score event or team bout to 'run:<tournament id>' (migration
+ * 202611190002). Bursts are coalesced: `onChange` runs once, `wait` ms after
+ * the first change of a burst (scoretable short, public page longer).
+ */
+export function subscribeFights(tournamentId, onChange, wait = 250) {
+  let timer = null;
+  const fire = () => {
+    if (timer) return;
+    timer = setTimeout(() => { timer = null; onChange(); }, wait);
+  };
+  const channel = supabase.channel(`run:${tournamentId}`)
+    .on('broadcast', { event: 'change' }, fire)
     .subscribe();
-  return () => { supabase.removeChannel(channel); };
+  return () => { clearTimeout(timer); supabase.removeChannel(channel); };
 }

@@ -72,6 +72,10 @@ function ScoreInput() {
   }, [drawn]);
 
   useEffect(() => { reload(); }, [reload]);
+  // live changes: only the fights (entries do not change during a fight)
+  const reloadFights = useCallback(async () => {
+    try { setFights(await listRunFights(drawn.map((c) => c.id))); } catch (e) { setMsg({ type: 'error', text: e.message }); }
+  }, [drawn]);
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
   const fight = useMemo(() => {
@@ -128,10 +132,10 @@ function ScoreInput() {
   useEffect(() => { reloadEvents(); setManualTimeUp(false); }, [reloadEvents]);
 
   // realtime: other screens on this court (and the manager) see the same
-  useEffect(() => subscribeFights(`${tournamentId}-${court}`, () => {
+  useEffect(() => subscribeFights(tournamentId, () => {
     if (pendingRef.current > 0) return; // our own clicks are still being saved
-    reload(); reloadEvents();
-  }), [tournamentId, court, reload, reloadEvents]);
+    reloadFights(); reloadEvents();
+  }, 150), [tournamentId, reloadFights, reloadEvents]);
 
   // clock
   useEffect(() => {

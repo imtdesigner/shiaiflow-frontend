@@ -53,7 +53,7 @@ function Manage() {
   }, [drawn, tournamentId]);
 
   useEffect(() => { reload(); }, [reload]);
-  useEffect(() => subscribeFights(`manage-${tournamentId}`, reload), [tournamentId, reload]);
+  useEffect(() => subscribeFights(tournamentId, reload, 500), [tournamentId, reload]);
 
   const run = async (fn, ok) => {
     setBusy(true); setMsg({ type: '', text: '' });

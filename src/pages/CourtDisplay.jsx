@@ -74,8 +74,22 @@ export default function CourtDisplay() {
     }
   }, [tid, court]);
 
+  // live: only the fights and the points of what is shown (cheap); everything every 30 s below
+  const loadLive = useCallback(async () => {
+    const ids = categories.filter((c) => !['registration', 'cancelled'].includes(c.status)).map((c) => c.id);
+    if (!ids.length) { load(); return; }
+    try {
+      const fs = await listRunFights(ids);
+      const queue = courtQueue(fs.filter((f) => f.shiaijo === court), categories, court);
+      const shown = [currentFight(queue), queue.filter((f) => f.status === 'finished').sort(byFinish).at(-1)]
+        .filter(Boolean).map((f) => f.id);
+      const [evs, bs] = await Promise.all([listEventsFor(shown), listBouts(shown)]);
+      setFights(fs); setEvents(evs); setBouts(bs);
+    } catch { /* the 30 s refresh tries again */ }
+  }, [categories, court, load]);
+
   useEffect(() => { load(); }, [load]);
-  useEffect(() => (tid ? subscribeFights(`display-${tid}-${court}`, load) : undefined), [tid, court, load]);
+  useEffect(() => (tid ? subscribeFights(tid, loadLive, 300) : undefined), [tid, loadLive]);
   // safety net: if the realtime connection drops (venue wifi), still refresh every 30 s
   useEffect(() => {
     const t = setInterval(load, 30000);
