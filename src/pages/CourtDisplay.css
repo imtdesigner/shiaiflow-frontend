@@ -42,97 +42,72 @@
 }
 .cd-tools button:hover { opacity: 1; }
 
-.cd-board { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* full-width bands: last result, fight in progress, next fights */
+.cd-band { padding: 1.2vh 2.5vw; }
+.cd-band h3 { margin: 0 0 0.6vh; font-size: 1.3vw; letter-spacing: 0.15em; text-transform: uppercase; color: #8a8577; }
+.cd-last { background: #1e2126; border-bottom: 1px solid #2c3036; font-size: 2.2vw; }
+.cd-next { background: #1e2126; border-top: 1px solid #2c3036; font-size: 2vw; }
 
-.cd-fight {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2vw;
-  padding: 1.2vh 2vw;
-  font-size: 2vw;
-  color: #d8d2c4;
+.cd-row {
+  display: grid;
+  grid-template-columns: 22vw 1fr auto 1fr;
+  align-items: baseline;
+  gap: 1.2vw;
+  padding: 0.4vh 0;
 }
+.cd-info { color: #a39e92; font-size: 0.8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-label { font-weight: 800; color: #f4f1ea; margin-right: 0.4em; }
+.cd-who { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-who.left { text-align: right; }
+.cd-who.red { color: #ff6b74; }
+.cd-who.white { color: #f4f1ea; }
+.cd-who.won::after { content: ' ✓'; color: #e0a800; }
+.cd-vs { color: #8a8577; margin: 0 0.5em; }
+.cd-score { font-weight: 800; color: #e0a800; white-space: nowrap; }
+.cd-draw { margin-left: 0.6em; font-size: 0.6em; font-weight: 600; color: #b9b4a8; }
+.cd-muted { color: #8a8577; margin: 0; }
 
-.cd-label { font-weight: 800; color: #f4f1ea; }
-.cd-encho, .cd-final, .cd-soon {
+.cd-board { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2vh; min-height: 0; }
+.cd-fight { display: flex; align-items: center; gap: 1.5vw; font-size: 2.6vw; }
+.cd-fight .cd-info { font-size: 1em; color: #d8d2c4; }
+.cd-wait { text-align: center; font-size: 3vw; color: #b9b4a8; }
+
+.cd-encho, .cd-soon {
   padding: 0.1em 0.6em;
   border-radius: 0.3em;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 .cd-encho { background: #e0a800; color: #14161a; }
-.cd-final { background: #f4f1ea; color: #14161a; }
-.cd-soon { border: 2px solid #8a8577; color: #b9b4a8; font-weight: 600; }
+.cd-soon { border: 2px solid #8a8577; color: #b9b4a8; font-weight: 600; font-size: 0.7em; }
 
-.cd-sides { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
-
-.cd-side {
+.cd-fighters { display: grid; grid-template-columns: 1fr 1fr; border-radius: 1vw; overflow: hidden; }
+.cd-fighter {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.5vh;
-  padding: 2vh 2vw;
-  text-align: center;
-  position: relative;
+  justify-content: space-between;
+  gap: 2vw;
+  padding: 4vh 2.5vw;
+  min-height: 16vw;
 }
-.cd-side.red { background: linear-gradient(180deg, #a3121f 0%, #6e0b14 100%); }
-.cd-side.white { background: linear-gradient(180deg, #f4f1ea 0%, #d9d4c8 100%); color: #14161a; }
+.cd-fighter.right { flex-direction: row-reverse; }
+.cd-fighter.red { background: linear-gradient(180deg, #a3121f 0%, #6e0b14 100%); }
+.cd-fighter.white { background: linear-gradient(180deg, #f4f1ea 0%, #d9d4c8 100%); color: #14161a; }
 
-.cd-colour { font-size: 1.8vw; font-weight: 800; letter-spacing: 0.3em; opacity: 0.7; }
-.cd-name { font-size: 5.2vw; font-weight: 800; line-height: 1.05; }
-.cd-club { font-size: 2.4vw; opacity: 0.8; min-height: 1.2em; }
-
-.cd-marks { display: flex; gap: 1.5vw; min-height: 11vw; align-items: center; }
+.cd-name { font-size: 4.2vw; font-weight: 800; line-height: 1.05; overflow-wrap: anywhere; }
+.cd-fighter.right .cd-name { text-align: right; }
+.cd-marks { display: flex; align-items: center; gap: 1vw; flex-shrink: 0; }
+.cd-fighter.right .cd-marks { flex-direction: row-reverse; }
 .cd-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 10vw;
-  height: 10vw;
+  width: 8vw;
+  height: 8vw;
   border-radius: 50%;
-  border: 0.5vw solid currentColor;
-  font-size: 6.5vw;
+  border: 0.45vw solid currentColor;
+  font-size: 5.2vw;
   font-weight: 800;
 }
-
-.cd-hansoku { font-size: 4vw; letter-spacing: 0.2em; min-height: 1.2em; color: #e0a800; }
-.cd-side.white .cd-hansoku { color: #b07d00; }
-
-.cd-side.won { box-shadow: inset 0 0 0 0.8vw #e0a800; }
-.cd-winner {
-  font-size: 2.4vw;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  color: #14161a;
-  background: #e0a800;
-  padding: 0.1em 0.8em;
-  border-radius: 0.3em;
-}
-
-.cd-foot {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2vw;
-  padding: 1.5vh 2vw 2vh;
-  background: #1e2126;
-  font-size: 1.6vw;
-}
-.cd-foot h3 { margin: 0 0 0.5vh; font-size: 1.3vw; letter-spacing: 0.15em; text-transform: uppercase; color: #8a8577; }
-.cd-next:only-child { grid-column: 1 / -1; }
-.cd-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.8vw;
-  padding: 0.4vh 0;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.cd-row .cd-cat { color: #8a8577; font-size: 1.2vw; }
-.cd-who { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
-.cd-who.red { color: #ff6b74; }
-.cd-who.white { color: #f4f1ea; }
-.cd-vs { color: #8a8577; }
-.cd-score { margin-left: auto; font-weight: 800; color: #e0a800; }
-.cd-muted { color: #8a8577; margin: 0; }
+.cd-hansoku { font-size: 3.6vw; color: #e0a800; letter-spacing: 0.1em; }
+.cd-fighter.white .cd-hansoku { color: #b07d00; }
