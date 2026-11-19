@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   BackToDashboard, Message, entryName, useTournament,
 } from '../components/TournamentShell';
-import { listEntriesFor, tournamentOrganizers } from '../lib/api';
+import { listEntriesFor } from '../lib/api';
 import {
-  getPin, listRunFights, myRole, setPin, startTournament, subscribeFights,
+  getPin, listRunFights, myRole, setPin, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
 import { publicPath } from '../lib/tournament/days.js';
+import StartTournament from '../components/StartTournament';
 import './TournamentPages.css';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
@@ -29,9 +30,6 @@ function Manage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [role, setRole] = useState(null);
-  const [organizer, setOrganizer] = useState(null);
-  useEffect(() => { tournamentOrganizers([tournamentId]).then((o) => setOrganizer(o[tournamentId] ?? null)).catch(() => {}); }, [tournamentId]);
-  const waitingVerification = organizer && !organizer.verified;
 
   useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
 
@@ -90,6 +88,7 @@ function Manage() {
       <h2>Manage tournament</h2>
       <p className="tp-subtitle">{tournament?.name}</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
+      {!running && <StartTournament tournament={tournament} categories={categories} onStarted={async () => { await reloadTournament(); await reload(); }} />}
 
       <div className="tp-card">
         <h3>
@@ -101,21 +100,10 @@ function Manage() {
           </Message>
         )}
         <div className="tp-actions">
-          {!running && (
-            <button type="button" className="tp-btn" disabled={busy || drawn.length === 0 || waitingVerification}
-              onClick={() => run(() => startTournament(tournament, categories), 'Tournament started. Every shiaijo has its order of fights.')}>
-              Start tournament
-            </button>
-          )}
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
         </div>
-        {waitingVerification && !running && (
-          <Message type="info">The organizer's account is waiting for approval by the app admins — the tournament can be started once it is approved.</Message>
-        )}
-        <p className="tp-muted">
-          Starting freezes the order on every shiaijo. Categories drawn later are added at the end of their courts.
-        </p>
+        {running && <p className="tp-muted">Running: scoretables and court displays are live. Categories drawn later are added at the end of their courts.</p>}
       </div>
 
       <div className="tp-card">

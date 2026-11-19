@@ -11,6 +11,7 @@ import { consentLetters } from '../lib/tournament/signup.js';
 import { GRADES, entriesOutsideRules, gradeLabel, ineligibleReason, tournamentAgeCtx, rulesText } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
+import StartTournament from '../components/StartTournament';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
@@ -25,7 +26,7 @@ function parseBulk(text) {
 }
 
 function Registration() {
-  const { tournamentId, tournament, categories, error: loadError, loading } = useTournament();
+  const { tournamentId, tournament, categories, reload: reloadTournament, error: loadError, loading } = useTournament();
   const [selectedId, setSelectedId] = useState(null);
   const [entries, setEntries] = useState([]);
   const [contacts, setContacts] = useState(new Map());
@@ -315,6 +316,8 @@ function Registration() {
           </div>
         </>
       )}
+
+      {categories.length > 0 && <StartTournament tournament={tournament} categories={categories} onStarted={reloadTournament} />}
     </div>
   );
 }
