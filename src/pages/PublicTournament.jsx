@@ -174,7 +174,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
             fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
         ))}
       </div>
-    ) : !live && (
+    ) : (
       <div className="tp-pools">
         {pools.map((members, i) => (
           // eslint-disable-next-line react/no-array-index-key
@@ -236,8 +236,9 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
   }, [fights, drawn, courts.length, tournament]); // eslint-disable-line react-hooks/exhaustive-deps
   const clockOf = (f, start) => clockAt(dayStart(dayOfFight(f)), start);
 
-  // Live: categories that started; the one fighting now is shown unless another is picked
-  const liveCats = drawn.filter((c) => fights.some((f) => f.category_id === c.id && f.status !== 'scheduled'));
+  // Live: every drawn category (also the ones still to come); the one fighting now is shown unless another is picked
+  const liveCats = drawn.filter((c) => c.status !== 'cancelled');
+  const startedIds = new Set(fights.filter((f) => f.status !== 'scheduled').map((f) => f.category_id));
   const runningFights = fights.filter((f) => f.status === 'running');
   const activeCatIds = new Set(runningFights.map((f) => f.category_id));
   const activeCat = (() => {
@@ -247,7 +248,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     if (best) return liveCats.find((c) => c.id === best) ?? null;
     // nothing running: the category of the latest finished fight
     const last = fights.filter((f) => f.finished_at).sort((x, y) => String(x.finished_at).localeCompare(String(y.finished_at))).at(-1);
-    return liveCats.find((c) => c.id === last?.category_id) ?? liveCats[0] ?? null;
+    return liveCats.find((c) => c.id === last?.category_id) ?? liveCats.find((c) => startedIds.has(c.id)) ?? liveCats[0] ?? null;
   })();
   const shownCat = liveCats.find((c) => c.id === liveCat) ?? activeCat;
 
@@ -477,7 +478,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
             {liveCats.map((c) => (
               <button key={c.id} type="button" className={`tp-tab ${shownCat?.id === c.id ? 'active' : ''}`}
                 onClick={() => setLiveCat(c.id)}>
-                {c.name}{activeCatIds.has(c.id) ? ' ●' : ''}
+                {c.name}{activeCatIds.has(c.id) ? ' ●' : startedIds.has(c.id) ? '' : ' · later'}
               </button>
             ))}
           </div>

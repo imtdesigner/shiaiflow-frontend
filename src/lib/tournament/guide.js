@@ -64,8 +64,34 @@ export function createSteps(form = {}, categories = [], seen = {}) {
     step('courts', 'Courts', visited('g-courts'), 'How many shiaijos (courts) will there be?', 'create', 'g-courts'),
     step('days', 'Days', visited('g-days'), 'Set the start (and end) time of each day — the fight plan counts from it.', 'create', 'g-days'),
     step('signup', 'Signup', visited('g-signup-rules'), 'How age limits count, and may a competitor enter only one category?', 'create', 'g-signup-rules'),
-    step('categories', 'Categories', categories.length > 0 && !inside('g-categories'), 'Add categories — start from a template, then check who can enter and how they fight.', 'create', 'g-categories'),
+    step('categories', 'Categories', categories.length > 0, 'Add categories — start from a template (Junior A, Kyu M …) or an empty one.', 'create', 'g-categories'),
+    ...categorySteps(categories, seen),
     step('create', 'Create', false, 'All set? Create the tournament.', 'create', 'g-create'),
+  ];
+}
+
+/**
+ * Steps of one category while creating: the one being edited (focus inside
+ * it), else the first one whose parts were not all visited. A part counts
+ * once it has been visited and left.
+ */
+function categorySteps(categories, seen) {
+  const inside = (a) => !!seen.inside?.(a);
+  const visited = (a) => !!seen.left?.(a) && !inside(a);
+  const parts = (c) => [`g-cat-${c._key}-name`, `g-cat-${c._key}-who`, `g-cat-${c._key}-fights`];
+  const c = categories.find((x) => inside(`g-cat-${x._key}`))
+    ?? categories.find((x) => !parts(x).every(visited));
+  if (!c) return [];
+  const [nameA, whoA, fightsA] = parts(c);
+  const label = c.name?.trim() || 'New category';
+  const team = c.kind === 'team';
+  return [
+    step(`cat-name-${c._key}`, label, visited(nameA) && c.name?.trim(),
+      `${label}: check the name${team ? '' : ' and whether it is individual or team'}.`, 'create', nameA),
+    step(`cat-who-${c._key}`, 'Who', visited(whoA),
+      `${label} — who can enter: gender, age and grade${team ? ', team size and positions' : ''}; switch off what does not limit.`, 'create', whoA),
+    step(`cat-fights-${c._key}`, 'Fights', visited(fightsA),
+      `${label} — how it fights: pool size, how many go on to the KO, fight times and what happens on a tie.`, 'create', fightsA),
   ];
 }
 

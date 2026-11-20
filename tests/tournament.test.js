@@ -1048,6 +1048,16 @@ test('setup guide: steps and the current hint', () => {
   const visited = createSteps({ name: 'Open', start_date: '2027-03-20', venue: 'Hall' }, [],
     { inside: () => false, left: (a) => ['g-link', 'g-courts'].includes(a) });
   assert.equal(currentStep(visited).key, 'days');
+  // categories: the one being edited gets its own steps (name, who can enter, fights)
+  const cats = [{ _key: 'a', name: 'Junior A', kind: 'individual' }, { _key: 'b', name: 'Kyu M', kind: 'individual' }];
+  const left = new Set(['g-name', 'g-dates', 'g-venue', 'g-link', 'g-courts', 'g-days', 'g-signup-rules', 'g-cat-a-name', 'g-cat-a-who']);
+  const withCats = createSteps({ name: 'Open', start_date: '2027-03-20', venue: 'Hall' }, cats,
+    { inside: (a) => a === 'g-cat-a' || a === 'g-cat-a-fights', left: (a) => left.has(a) });
+  assert.equal(currentStep(withCats).key, 'cat-fights-a');
+  assert.match(currentStep(withCats).hint, /^Junior A — how it fights/);
+  left.add('g-cat-a-fights');
+  const next = createSteps({ name: 'Open', start_date: '2027-03-20', venue: 'Hall' }, cats, { inside: () => false, left: (a) => left.has(a) });
+  assert.equal(currentStep(next).key, 'cat-name-b');
   const t = { name: 'Open', start_date: '2027-03-20', venue: 'Hall', days: [{ start: null }], is_public: false };
   const setup = phaseSteps('setup', t, { categories: [{ status: 'registration' }] });
   assert.equal(currentStep(setup).key, 'times');

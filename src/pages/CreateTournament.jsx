@@ -189,8 +189,8 @@ function CreateTournament() {
 
           {categories.length === 0 && <p className="tp-muted">No categories yet.</p>}
           {categories.map((c) => (
-            <div key={c._key} className="ct-category">
-              <div className="ct-category-head">
+            <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
+              <div id={`g-cat-${c._key}-name`} className="ct-category-head">
                 <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
                 <select value={c.kind} onChange={(e) => updateCategory(c._key, 'kind', e.target.value)}>
                   <option value="individual">Individual</option>
@@ -205,12 +205,16 @@ function CreateTournament() {
                 <button type="button" className="tp-btn danger small" style={{ marginLeft: 'auto' }} onClick={() => removeCategory(c._key)}>Remove</button>
               </div>
 
-              <h4>1 · Who can enter</h4>
-              <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
+              <div id={`g-cat-${c._key}-who`}>
+                <h4>1 · Who can enter</h4>
+                <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
+              </div>
 
-              <h4>2 · Fights</h4>
-              <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)}
-                others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
+              <div id={`g-cat-${c._key}-fights`}>
+                <h4>2 · Fights</h4>
+                <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)}
+                  others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
+              </div>
               <p className="tp-muted">The KO bracket can be adjusted per category in the bracket editor.</p>
             </div>
           ))}

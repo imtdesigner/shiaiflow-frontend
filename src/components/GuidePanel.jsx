@@ -125,9 +125,21 @@ export default function GuidePanel() {
       if (!a || a === to) return;
       setFocus((f) => ({ current: to, left: new Set([...f.left, a]) }));
     };
+    // a click also counts (Safari does not focus checkboxes and buttons on click)
+    const onDown = (e) => {
+      const a = anchorOf(e.target);
+      setFocus((f) => (f.current && f.current !== a
+        ? { current: a, left: new Set([...f.left, f.current]) }
+        : { ...f, current: a }));
+    };
     document.addEventListener('focusin', onIn);
     document.addEventListener('focusout', onOut);
-    return () => { document.removeEventListener('focusin', onIn); document.removeEventListener('focusout', onOut); };
+    document.addEventListener('pointerdown', onDown);
+    return () => {
+      document.removeEventListener('focusin', onIn);
+      document.removeEventListener('focusout', onOut);
+      document.removeEventListener('pointerdown', onDown);
+    };
   }, [creating]);
   const routeId = location.pathname.match(/^\/tournament\/([^/]+)/)?.[1] ?? null;
   const tid = creating ? null : routeId ?? (location.pathname.startsWith('/dashboard') ? picked : null);
@@ -144,20 +156,26 @@ export default function GuidePanel() {
     try { localStorage.setItem(OFF_KEY, v ? '1' : '0'); } catch { /* private mode */ }
   };
 
+  // the focus is in this place, or in a place inside it (Create form)
+  const inside = (a) => {
+    if (!focus.current || !a) return false;
+    if (focus.current === a) return true;
+    const el = document.getElementById(a);
+    const cur = document.getElementById(focus.current);
+    return !!(el && cur && el.contains(cur));
+  };
   let steps = [];
   let phase = null;
   if (creating) {
     phase = 'setup';
-    steps = createSteps(create?.form, create?.categories, {
-      inside: (a) => focus.current === a,
-      left: (a) => focus.left.has(a),
-    });
+    steps = createSteps(create?.form, create?.categories, { inside, left: (a) => focus.left.has(a) });
   } else if (data) {
     phase = tPhase;
     const ctx = { categories: data.categories, entries: data.entries, fights: data.fights };
     steps = phaseSteps(phase, data.t, { ...ctx, entries: phase === 'signup' ? { total: data.entries?.all ?? 0 } : data.entries });
   }
-  const now = currentStep(steps);
+  // the hint follows the place being filled in (the most specific one); else the first open step
+  const now = (creating ? steps.filter((s) => inside(s.anchor)).at(-1) : null) ?? currentStep(steps);
 
   const go = (s) => {
     if (!s) return;
