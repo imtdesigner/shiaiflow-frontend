@@ -133,7 +133,7 @@ function FightPlan() {
   return (
     <div className="tp-page">
       <BackToDashboard />
-      <h2>Fight plan</h2>
+      <h2 id="g-plan">Fight plan</h2>
       <p className="tp-subtitle">{tournament?.name}</p>
 
       {tournament?.start_time && <p className="tp-print-only">Start {tournament.start_time.slice(0, 5)}</p>}

@@ -117,7 +117,7 @@ function Brackets() {
   return (
     <div className="tp-page">
       <BackToDashboard />
-      <h2>Bracket editor</h2>
+      <h2 id="g-brackets">Bracket editor</h2>
       <p className="tp-subtitle">{tournament?.name}</p>
 
       <CategoryTabs

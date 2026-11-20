@@ -95,18 +95,27 @@ function categorySteps(categories, seen) {
   ];
 }
 
-/** Steps of a phase for an existing tournament (same ctx as tournamentPhase). */
-export function phaseSteps(phase, t, { categories = [], entries = null, fights = null, now = new Date() } = {}) {
+/**
+ * Steps of a phase for an existing tournament (same ctx as tournamentPhase,
+ * plus seen: pages of this tournament already opened on this device — the
+ * steps that only ask to check something count once their page was seen).
+ */
+export function phaseSteps(phase, t, {
+  categories = [], entries = null, fights = null, now = new Date(), seen = new Set(),
+} = {}) {
   const live = categories.filter((c) => c.status !== 'cancelled');
   const drawn = live.filter((c) => c.status !== 'registration');
   const firstDay = Array.isArray(t?.days) ? t.days[0] : null;
+  const allPresent = entries && entries.present === entries.total;
   switch (phase) {
     case 'setup': return [
       step('name', 'Name', t?.name, 'Give the tournament a name.', 'edit', 'g-details'),
       step('dates', 'Dates', t?.start_date, 'Pick the start and end date.', 'edit', 'g-details'),
       step('venue', 'Venue', t?.venue || t?.city, 'Enter the venue and the city.', 'edit', 'g-details'),
-      step('categories', 'Categories', live.length, 'Add categories — start from a template and adjust it.', 'drawings'),
       step('times', 'Times', firstDay?.start || t?.start_time, 'Set the start time of each day — the fight plan counts from it.', 'edit', 'g-days'),
+      step('categories', 'Categories', live.length, 'Every tournament needs categories — add them when creating, or copy them from another tournament.', 'drawings'),
+      step('courts', 'Courts', seen.has('shiaijo') || live.every((c) => c.shiaijos?.length), 'Give each category its shiaijo in the Shiaijo plan.', 'shiaijo', 'g-court-cats'),
+      step('rules', 'Rules', seen.has('edit'), 'Check the rules for entering (age basis, one category only).', 'edit', 'g-rules'),
       step('signup', 'Form', t?.signup_fields, 'Choose which fields the signup form asks for.', 'edit', 'g-signup'),
       step('publish', 'Publish', t?.is_public, 'Publish the tournament so competitors can find it and sign up.', 'edit', 'g-publish'),
     ];
@@ -118,22 +127,25 @@ export function phaseSteps(phase, t, { categories = [], entries = null, fights =
     ];
     case 'draw': return [
       step('close', 'Closed', !signupOpen(t, now), 'Close the signup before the draw.', 'edit', 'g-registration'),
-      step('draw', 'Draw', live.length && drawn.length === live.length, `Make the draw of every category (${drawn.length} / ${live.length} drawn).`, 'drawings'),
-      step('courts', 'Courts', live.length && live.every((c) => c.shiaijos?.length), 'Give each category its shiaijo in the Shiaijo plan.', 'shiaijo'),
-      step('confirm', 'Confirm', t?.draws_confirmed, 'Confirm the draws so editors stop changing the setup.', 'drawings'),
+      step('brackets', 'Brackets', seen.has('brackets') || drawn.length > 0, 'Optional: adjust the KO pairings in the bracket editor before the draw.', 'brackets', 'g-brackets'),
+      step('draw', 'Draw', live.length && drawn.length === live.length, `Make the draw of every category (${drawn.length} / ${live.length} drawn).`, 'drawings', 'g-draw'),
+      step('courts', 'Courts', live.length && live.every((c) => c.shiaijos?.length), 'Give each category its shiaijo in the Shiaijo plan.', 'shiaijo', 'g-court-cats'),
+      step('plan', 'Plan', seen.has('fights'), 'Check the fight plan — order and estimated times per shiaijo.', 'fights', 'g-plan'),
+      step('confirm', 'Confirm', t?.draws_confirmed, 'Confirm the draws so editors stop changing the setup.', 'drawings', 'g-confirm'),
     ];
     case 'register':
     case 'start': return [
-      step('present', 'Present', entries && entries.present === entries.total,
+      step('present', 'Present', allPresent,
         `On the day, tick who is present${entries ? ` (${entries.present} / ${entries.total})` : ''}.`, 'registration', 'g-checkin'),
-      step('adjust', 'Adjust', entries && entries.present === entries.total, 'Replace or withdraw who did not come in Drawings → Adjust the draw.', 'drawings'),
+      step('adjust', 'Adjust', allPresent, 'Replace or withdraw who did not come in Drawings → Adjust the draw.', 'drawings', 'g-adjust'),
+      step('pin', 'PIN', seen.has('manage'), 'Set the PIN — scoretables join with it and pick their shiaijo.', 'manage', 'g-pin'),
       step('start', 'Start', false, 'Start the tournament — the order of fights on every shiaijo is frozen.', 'registration', 'g-start'),
     ];
     case 'live': return [
-      step('tables', 'Tables', true, 'Scoretables join with the PIN and pick their shiaijo.', 'manage'),
+      step('tables', 'Tables', true, 'Scoretables join with the PIN and pick their shiaijo.', 'manage', 'g-pin'),
       step('displays', 'Displays', true, 'Open the court display on the monitor next to each shiaijo.', 'manage', 'g-displays'),
       step('fights', 'Fights', fights && fights.finished === fights.total,
-        `Follow the courts and correct fights in Manage${fights ? ` (${fights.finished} / ${fights.total} done)` : ''}.`, 'manage'),
+        `Follow the courts and correct fights in Manage${fights ? ` (${fights.finished} / ${fights.total} done)` : ''}.`, 'manage', 'g-standings'),
     ];
     case 'finished': return [
       step('fights', 'Fights', true, 'All fights are finished.', 'manage'),

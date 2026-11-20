@@ -145,7 +145,7 @@ function EditTournament() {
               }} />
           </label>
         </div>
-        <h3 style={{ marginTop: '1rem' }}>Rules for entering</h3>
+        <h3 id="g-rules" style={{ marginTop: '1rem' }}>Rules for entering</h3>
         <div className="tp-grid">
           <label className="tp-field">
             Age limits count

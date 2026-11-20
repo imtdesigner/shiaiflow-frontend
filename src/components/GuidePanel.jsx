@@ -38,7 +38,13 @@ const PAGES = {
   registration: (id) => `/tournament/${id}/registration`,
   shiaijo: (id) => `/tournament/${id}/shiaijo`,
   manage: (id) => `/tournament/${id}/manage`,
+  brackets: (id) => `/tournament/${id}/brackets`,
+  fights: (id) => `/tournament/${id}/fights`,
 };
+
+/** Pages of a tournament opened on this device (steps that only ask to check a page). */
+const SEEN_KEY = (tid) => `sf-guide-seen-${tid}`;
+const readSeen = (tid) => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY(tid)) ?? '[]')); } catch { return new Set(); } };
 
 /** Scroll to the step's place on the page and flash it. */
 function flash(anchor) {
@@ -145,6 +151,19 @@ export default function GuidePanel() {
   const tid = creating ? null : routeId ?? (location.pathname.startsWith('/dashboard') ? picked : null);
   const { data, phase: tPhase } = useTournamentPhase(tid);
 
+  // remember the tournament pages opened here
+  const page = location.pathname.match(/^\/tournament\/[^/]+\/([a-z]+)/)?.[1] ?? null;
+  const [seen, setSeen] = useState(new Set());
+  useEffect(() => {
+    if (!tid) { setSeen(new Set()); return; }
+    const set = readSeen(tid);
+    if (page && routeId === tid && !set.has(page)) {
+      set.add(page);
+      try { localStorage.setItem(SEEN_KEY(tid), JSON.stringify([...set])); } catch { /* private mode */ }
+    }
+    setSeen(set);
+  }, [tid, page, routeId]);
+
   // make room on the right while it is shown (wide screens)
   useEffect(() => {
     document.body.classList.toggle('guide-open', !off);
@@ -172,7 +191,7 @@ export default function GuidePanel() {
   } else if (data) {
     phase = tPhase;
     const ctx = { categories: data.categories, entries: data.entries, fights: data.fights };
-    steps = phaseSteps(phase, data.t, { ...ctx, entries: phase === 'signup' ? { total: data.entries?.all ?? 0 } : data.entries });
+    steps = phaseSteps(phase, data.t, { ...ctx, seen, entries: phase === 'signup' ? { total: data.entries?.all ?? 0 } : data.entries });
   }
   // the hint follows the place being filled in (the most specific one); else the first open step
   const now = (creating ? steps.filter((s) => inside(s.anchor)).at(-1) : null) ?? currentStep(steps);
@@ -192,6 +211,18 @@ export default function GuidePanel() {
   return (
     <aside className="guide" aria-label="Setup guide">
       <button type="button" className="guide-close" onClick={() => setHidden(true)} title="Hide the guide on this device">✕</button>
+      {phase && (
+        // the tournament's lifecycle as info: the current phase, all phases on hover
+        <div className="guide-phase" tabIndex={0}>
+          <span className="guide-phase-now">{PHASES.find((p) => p.key === phase)?.label}</span>
+          <ol className="guide-phase-all">
+            {PHASES.map((p, i) => {
+              const at = PHASES.findIndex((x) => x.key === phase);
+              return <li key={p.key} className={i < at ? 'past' : i === at ? 'now' : ''}>{i < at ? '✓ ' : ''}{p.label}</li>;
+            })}
+          </ol>
+        </div>
+      )}
       {!phase ? (
         <ol className="guide-line">
           <li className="now">

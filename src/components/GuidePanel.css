@@ -86,6 +86,44 @@
 }
 .guide-tab:hover { background: #c62828; color: #fff; }
 
+/* the tournament's phase above the line; all phases on hover (info only) */
+.guide-phase {
+  pointer-events: auto;
+  position: relative;
+  text-align: right;
+  margin: 0 14px 0.6rem 0;
+  font-size: 0.72rem;
+  color: #9a948a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: default;
+  outline: none;
+}
+.guide-phase-now::before { content: 'Phase · '; text-transform: none; letter-spacing: 0; }
+.guide-phase-all {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 1.3rem;
+  z-index: 2;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #fffdf7;
+  border: 1px solid rgba(113, 25, 33, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.guide-phase:hover .guide-phase-all, .guide-phase:focus .guide-phase-all { display: block; }
+.guide-phase-all li { color: #6b665b; padding: 0.1rem 0; }
+.guide-phase-all li.past { opacity: 0.45; }
+.guide-phase-all li.now { color: #711921; font-weight: 700; }
+.guide-phase-all li.now::before { content: '● '; }
+
 /* the tournament's phase in the dashboard overview */
 .guide-phase-label {
   display: inline-block;
@@ -121,6 +159,7 @@
   .guide-line li:not(.now) { display: none; }
   .guide-line button { text-align: left; }
   .guide-line li.now .guide-label { display: none; }
+  .guide-phase { display: none; }
   .guide-hint { margin: 0; }
   .guide-close { top: 0.55rem; right: 0.6rem; }
   .guide-tab { top: auto; bottom: 8px; }

@@ -92,7 +92,7 @@ function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run })
   const absent = [...placed].filter((id) => !present.get(id));
   if (!saved) return null;
   return (
-    <details style={{ marginTop: '1rem' }} open={unplaced.length > 0}>
+    <details id="g-adjust" style={{ marginTop: '1rem' }} open={unplaced.length > 0}>
       <summary className="tp-muted">
         Adjust the draw — presence on the day
         {absent.length ? ` · ${absent.length} not marked present` : ' · everyone present'}
@@ -390,7 +390,7 @@ function Drawings() {
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
       {allDrawn && (
-        <div className="tp-card">
+        <div id="g-confirm" className="tp-card">
           {confirmed ? (
             <p style={{ margin: 0 }}>
               <span className="tp-badge ok">draws confirmed</span>{' '}
@@ -433,7 +433,7 @@ function Drawings() {
       )}
 
       {category && isOpen && (
-        <div className="tp-card">
+        <div id="g-draw" className="tp-card">
           <h3>Settings</h3>
           <div className="tp-grid">
             <div className="tp-field">

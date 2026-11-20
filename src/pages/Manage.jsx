@@ -113,7 +113,7 @@ function Manage() {
         {running && <p className="tp-muted">Running: scoretables and court displays are live. Categories drawn later are added at the end of their courts.</p>}
       </div>
 
-      <div className="tp-card">
+      <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           One PIN for this tournament. Before the start it lets editors change the tournament; after the start the same

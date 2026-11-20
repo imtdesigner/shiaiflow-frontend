@@ -127,7 +127,7 @@ function ShiaijoPlan() {
       <p className="tp-subtitle">{tournament?.name}</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
-      <div className="tp-card">
+      <div id="g-courts" className="tp-card">
         <h3>Courts</h3>
         <label className="tp-field" style={{ maxWidth: 240 }}>
           Number of shiaijo
@@ -194,7 +194,7 @@ function ShiaijoPlan() {
         </p>
       </div>
 
-      <div className="tp-card">
+      <div id="g-court-cats" className="tp-card">
         <h3>Categories</h3>
         {categories.length === 0 ? (
           <p className="tp-muted">No categories yet.</p>
