@@ -394,7 +394,9 @@
 /* public Live tab: the shiaijos use the whole screen width, 2 or 3 per row */
 .pt-live {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  /* each shiaijo at most 520px wide, the row centred */
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 520px));
+  justify-content: center;
   gap: 1rem;
   width: calc(100vw - 3rem);
   position: relative;
