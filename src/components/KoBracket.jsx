@@ -37,15 +37,18 @@ function layout(template) {
  * (pointer events, so mouse and touch both work), or click to type a code.
  */
 function Slot({
-  side, code, no, directKo, name, editable, editing, over, dragging, onPress, onTyped,
+  side, code, no, directKo, name, editable, editing, over, dragging, onPress, onTyped, result,
 }) {
   const field = side === 'aka' ? 'red' : 'white';
   const [text, setText] = useState(slotLabel(code, directKo));
   if (!editable) {
+    // finished fight (live view): winner bold, loser faded, points of this side on the right
+    const state = result ? (result.winner === field ? 'won' : 'lost') : '';
     return (
-      <div className={`ko-slot ${side}`}>
+      <div className={`ko-slot ${side} ${state}`}>
         <span className="ko-code">{slotLabel(code, directKo)}</span>
         <span className="ko-name">{name}</span>
+        {result && <span className="ko-score">{result[field]}</span>}
       </div>
     );
   }
@@ -96,10 +99,12 @@ const fightTargetAt = (x, y) => {
 /**
  * Graphical KO bracket. `resolved` maps slot codes to entry ids once known
  * (e.g. direct KO first round); names are shown next to the slot code.
+ * `results` (live view) maps a finished fight's number to
+ * { winner: 'red' | 'white', red, white } — the points of each side.
  * With `onSwap` / `onSet` the slots can be edited (bracket editor).
  */
 export default function KoBracket({
-  template, nameOf, resolved = {}, directKo = false, onSwap, onSet, onMoveFight, thirdPlace = null,
+  template, nameOf, resolved = {}, directKo = false, onSwap, onSet, onMoveFight, thirdPlace = null, results = {},
 }) {
   const [editing, setEditing] = useState(null);
   const [drag, setDrag] = useState(null); // { from, over, moved }
@@ -198,6 +203,7 @@ export default function KoBracket({
                   no={m.no}
                   directKo={directKo}
                   name={resolved[code] ? nameOf(resolved[code]) : ''}
+                  result={results[m.no]}
                   editable={editable}
                   editing={sameSlot(editing, { no: m.no, side: side === 'aka' ? 'red' : 'white' })}
                   over={(drag?.moved && sameSlot(drag.over, { no: m.no, side: side === 'aka' ? 'red' : 'white' }))
@@ -217,7 +223,7 @@ export default function KoBracket({
             <div className="ko-match-head"><strong>F-{thirdPlace.no}</strong><span>3rd place</span></div>
             {[['aka', thirdPlace.red], ['shiro', thirdPlace.white]].map(([side, code]) => (
               <Slot key={side} side={side} code={code} no={thirdPlace.no} directKo={directKo}
-                name={resolved[code] ? nameOf(resolved[code]) : ''} editable={false} onPress={() => {}} onTyped={() => {}} />
+                name={resolved[code] ? nameOf(resolved[code]) : ''} result={results[thirdPlace.no]} editable={false} onPress={() => {}} onTyped={() => {}} />
             ))}
           </div>
         </div>

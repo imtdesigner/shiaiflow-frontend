@@ -133,3 +133,9 @@
 .ko-match.over {
   box-shadow: 0 0 0 3px #e0a800;
 }
+
+/* live view: result of a finished fight */
+.ko-slot.won .ko-name { font-weight: 700; }
+.ko-slot.lost { opacity: 0.45; }
+.ko-score { margin-left: auto; flex-shrink: 0; font-weight: 700; font-size: 0.8em; padding-left: 0.3rem; }
+.ko-slot.aka .ko-score { color: #c62828; }

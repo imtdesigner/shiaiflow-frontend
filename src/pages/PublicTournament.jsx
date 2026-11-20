@@ -16,6 +16,7 @@ import { slotLabel, thirdPlaceFight } from '../lib/tournament/ko.js';
 import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
 import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 import { teamMatchResult } from '../lib/tournament/team.js';
+import { fightMarks } from '../lib/tournament/poolView.js';
 import { GRADES, ineligibleReason, rulesText, teamPositions, teamProblems, teamReserves, teamMaxMembers, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
@@ -139,6 +140,66 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     const c = byCat[f.category_id];
     return c ? fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no)) : 180;
   };
+  /**
+   * One category: pools (standings once fights started, else the members)
+   * and the KO bracket with the names known so far; live: points and winners
+   * of finished KO fights in the bracket.
+   */
+  const categoryBoard = (c, { live = false } = {}) => {
+    const d = draws[c.id];
+    const pools = d?.pools.map((p) => [...p.pool_entries].sort((x, y) => x.position - y.position).map((pe) => pe.entry_id)) ?? [];
+    const catFights = fights.filter((f) => f.category_id === c.id);
+    const poolsStarted = catFights.some((f) => f.phase === 'pool' && f.status !== 'scheduled');
+    const resolved = c.pool_size === 1 ? directKoQualifiers(pools) : {};
+    const results = {};
+    for (const f of catFights.filter((x) => x.phase === 'ko')) {
+      if (f.red_entry_id) resolved[f.red_code] = f.red_entry_id;
+      if (f.white_entry_id) resolved[f.white_code] = f.white_entry_id;
+      if (f.status === 'finished') {
+        const m = fightMarks(c, f, events, bouts);
+        results[f.ko_no] = {
+          winner: f.winner_entry_id === f.red_entry_id ? 'red' : f.winner_entry_id === f.white_entry_id ? 'white' : null,
+          red: f.fusen === 'red' ? 'OO' : m.red,
+          white: f.fusen === 'white' ? 'OO' : m.white,
+        };
+      }
+    }
+    return (
+      <div className="tp-card" key={`${live ? 'live' : 'draw'}-${c.id}`}>
+        <h3>{c.name}{c.ko_template_code && <span className="tp-muted"> · {c.ko_template_code}</span>}</h3>
+        {c.pool_size !== 1 && d && (poolsStarted ? (
+          // pools under way: standings, updated live
+          <div className="pool-standings-grid">
+            {d.pools.map((p, i) => (
+              <PoolStandings key={p.id} category={c} pool={p} members={pools[i]}
+                fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
+            ))}
+          </div>
+        ) : !live && (
+          <div className="tp-pools">
+            {pools.map((members, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <div className="tp-pool" key={i}>
+                <h4>Pool {i + 1}</h4>
+                <ol>{members.map((id) => <li key={id}>{entryName(entryById[id])}</li>)}</ol>
+              </div>
+            ))}
+          </div>
+        ))}
+        {c.ko_template && (
+          <KoBracket
+            template={c.ko_template}
+            nameOf={(id) => entryName(entryById[id])}
+            resolved={resolved}
+            results={results}
+            directKo={c.pool_size === 1}
+            thirdPlace={c.third_place === 'fight' ? thirdPlaceFight(c.ko_template) : null}
+          />
+        )}
+      </div>
+    );
+  };
+
   const score = (f) => {
     if (byCat[f.category_id]?.kind === 'team') {
       // team match: bouts won (finished bouts so far)
@@ -317,50 +378,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
           teams={teams} competitors={competitors} onDone={load} />
       )}
 
-      {tab === 'draw' && drawn.map((c) => {
-        const d = draws[c.id];
-        const pools = d?.pools.map((p) => [...p.pool_entries].sort((a, b) => a.position - b.position).map((pe) => pe.entry_id)) ?? [];
-        return (
-          <div className="tp-card" key={c.id}>
-            <h3>{c.name}{c.ko_template_code && <span className="tp-muted"> · {c.ko_template_code}</span>}</h3>
-            {c.pool_size !== 1 && (fights.some((f) => f.category_id === c.id && f.phase === 'pool' && f.status !== 'scheduled') ? (
-              // pools under way: standings, updated live
-              <div className="pool-standings-grid">
-                {d.pools.map((p, i) => (
-                  <PoolStandings key={p.id} category={c} pool={p} members={pools[i]}
-                    fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
-                ))}
-              </div>
-            ) : (
-              <div className="tp-pools">
-                {pools.map((members, i) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div className="tp-pool" key={i}>
-                    <h4>Pool {i + 1}</h4>
-                    <ol>{members.map((id) => <li key={id}>{entryName(entryById[id])}</li>)}</ol>
-                  </div>
-                ))}
-              </div>
-            ))}
-            {c.ko_template && (
-              <KoBracket
-                template={c.ko_template}
-                nameOf={(id) => entryName(entryById[id])}
-                resolved={(() => {
-                  const r = c.pool_size === 1 ? directKoQualifiers(pools) : {};
-                  for (const f of fights.filter((x) => x.category_id === c.id && x.phase === 'ko')) {
-                    if (f.red_entry_id) r[f.red_code] = f.red_entry_id;
-                    if (f.white_entry_id) r[f.white_code] = f.white_entry_id;
-                  }
-                  return r;
-                })()}
-                directKo={c.pool_size === 1}
-                thirdPlace={c.third_place === 'fight' ? thirdPlaceFight(c.ko_template) : null}
-              />
-            )}
-          </div>
-        );
-      })}
+      {tab === 'draw' && drawn.map((c) => categoryBoard(c))}
 
       {tab === 'schedule' && schedule.map(({ court, days: courtDays, list: allFights }) => (
         <div className="tp-card" key={court}>
@@ -431,6 +449,8 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
           })}
         </div>
       )}
+      {tab === 'live' && drawn.filter((c) => fights.some((f) => f.category_id === c.id && f.status !== 'scheduled'))
+        .map((c) => categoryBoard(c, { live: true }))}
     </div>
   );
 }
