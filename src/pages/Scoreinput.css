@@ -201,3 +201,4 @@
 }
 .st-lists .st-red { color: #c62828; font-weight: 600; }
 .st-lists .st-white { color: #111; font-weight: 600; }
+.st-lists .st-result { margin-left: 0.5rem; white-space: nowrap; font-weight: 600; }

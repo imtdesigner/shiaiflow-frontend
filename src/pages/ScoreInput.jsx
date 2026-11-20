@@ -3,14 +3,16 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   BackToDashboard, Message, entryName, useTournament,
 } from '../components/TournamentShell';
-import { listEntriesFor } from '../lib/api';
+import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
   addDaihyosen, addEvent, boutOf, confirmLineups, deleteEvent, finishBout, finishFight, listEvents, listMatchBouts,
   listRunFights, listTeamMembers, myRole, previousLineup, reopenBout, reopenFight,
   setFightFields, startBout, startEncho, startFight, subscribeFights, timerStart, timerStop,
 } from '../lib/runApi';
 import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
-import { POSITION_LABELS, boutRows, defaultLineup, teamMatchStep } from '../lib/tournament/team.js';
+import {
+  POSITION_LABELS, boutRows, defaultLineup, teamMatchResult, teamMatchStep,
+} from '../lib/tournament/team.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
@@ -300,6 +302,38 @@ function ScoreInput() {
 
   const upcoming = queue.filter((f) => f.status !== 'finished' && f.id !== fight?.id);
   const finished = queue.filter((f) => f.status === 'finished').slice(-6).reverse();
+
+  // points of the finished fights in the list (ippons and hansoku only)
+  const finishedKey = finished.map((f) => `${f.id}:${f.finished_at ?? ''}`).join();
+  const [done, setDone] = useState({ events: [], bouts: [] });
+  useEffect(() => {
+    const ids = finishedKey ? finishedKey.split(',').map((k) => k.split(':')[0]) : [];
+    if (!ids.length) { setDone({ events: [], bouts: [] }); return; }
+    Promise.all([listEventsFor(ids), listBouts(ids)])
+      .then(([events, bouts]) => setDone({ events, bouts }))
+      .catch(() => {});
+  }, [finishedKey]);
+  const resultOf = (f) => {
+    const cat = byId[f.category_id];
+    const o = scoringOptions(cat);
+    const evs = done.events.filter((e) => e.match_id === f.id);
+    if (cat?.kind === 'team') {
+      if (f.fusen) return { red: f.fusen === 'red' ? 'OO' : '', white: f.fusen === 'white' ? 'OO' : '' };
+      const bs = done.bouts.filter((b) => b.match_id === f.id);
+      const r = teamMatchResult(bs.map((b) => ({
+        position: b.position,
+        bout: { events: evs.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
+      })), o);
+      return { red: `${r.redWins} (${r.redIppons})`, white: `${r.whiteWins} (${r.whiteIppons})` };
+    }
+    const t = boutTotals({ events: evs.filter((e) => !e.bout_id) }, o);
+    const side = (s) => {
+      if (f.fusen === s) return 'OO';
+      const ip = f.decision === s && t.red.ippons.length === t.white.ippons.length ? (o.ipponShobu ? ['H'] : ['H', 'H']) : t[s].ippons;
+      return [...ip, ...(t[s].hansoku ? ['▲'.repeat(t[s].hansoku)] : [])].join(' ');
+    };
+    return { red: side('red'), white: side('white') };
+  };
   const courts = Array.from({ length: tournament?.shiaijo_count ?? 2 }, (_, i) => i + 1);
 
   if (loading) return <div className="tp-page">Loading…</div>;
@@ -489,7 +523,9 @@ function ScoreInput() {
               {finished.map((f) => (
                 <li key={f.id}>
                   <strong>{f.label}</strong> <span className="st-red">{name(f, 'red')}</span> – <span className="st-white">{name(f, 'white')}</span>
-                  <span className="tp-muted"> · {f.winner_entry_id ? <>winner <span className={f.winner_entry_id === f.red_entry_id ? 'st-red' : 'st-white'}>{f.winner_entry_id === f.red_entry_id ? name(f, 'red') : name(f, 'white')}</span></> : 'hikiwake'}</span>
+                  {(() => { const r = resultOf(f); return (
+                    <span className="st-result"><span className="st-red">{r.red || '–'}</span> : <span className="st-white">{r.white || '–'}</span>{!f.winner_entry_id ? ' X' : ''}</span>
+                  ); })()}
                   {manager && (
                     <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.4rem' }}
                       disabled={busy || fight?.status === 'running'} onClick={() => { setPickedId(f.id); run(() => reopenFight(f)); }}>
