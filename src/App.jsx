@@ -248,10 +248,34 @@ function AppContent() {
     return session ? <Navigate to="/dashboard" replace /> : page;
   };
 
+  // Table devices (owner, 2026-11-20): who joined a tournament through the Table door
+  // gets only its scoretables (and Manage = pick the shiaijo); a device that only
+  // has table roles (anonymous PIN sign-in) gets no dashboard, profile or guide.
+  const [memberships, setMemberships] = useState(null); // [{ tournament_id, role }]
+  useEffect(() => {
+    if (!session) { setMemberships([]); return; }
+    supabase.from('tournament_members').select('tournament_id, role').eq('user_id', session.user.id)
+      .then(({ data }) => setMemberships(data ?? []));
+  }, [session, location.pathname]);
+  const scorerIn = new Set((memberships ?? []).filter((m) => m.role === 'scorer').map((m) => m.tournament_id));
+  const tableOnly = !!session?.user?.is_anonymous && scorerIn.size > 0
+    && (memberships ?? []).every((m) => m.role === 'scorer');
+  const tableHome = tableOnly ? `/tournament/${[...scorerIn][0]}/manage` : null;
+  const routeTournament = location.pathname.match(/^\/tournament\/([^/]+)\/([a-z-]+)/);
+  const tableRedirect = (() => {
+    if (routeTournament && scorerIn.has(routeTournament[1]) && !['score', 'manage'].includes(routeTournament[2])) {
+      return `/tournament/${routeTournament[1]}/manage`;
+    }
+    if (tableOnly && /^\/(dashboard|profile|create-tournament|admin)/.test(location.pathname)) return tableHome;
+    return null;
+  })();
+  // tournament pages wait for the roles, so a table never sees a page it may not use
+  const waitRoles = !!session && memberships === null && !!routeTournament;
+
   // court display screens are full screen, without the app's navigation
   const display = /\/court\/\d+\/?$/.test(location.pathname);
   // setup guide on the organizer's pages (not the scoretable)
-  const guided = !!session && (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/create-tournament')
+  const guided = !!session && !tableOnly && (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/create-tournament')
     || (/^\/tournament\/[^/]+\/(edit|brackets|drawings|registration|manage|fights|shiaijo)/.test(location.pathname)));
 
   return (
@@ -265,8 +289,12 @@ function AppContent() {
   <div className="nav-links">
     {!isAuthLoading && (session ? (
       <>
-        <Link to="/dashboard">Dashboard</Link>
-        <Link to="/profile">Profile</Link>
+        {tableOnly ? <Link to={tableHome}>Scoretable</Link> : (
+          <>
+            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/profile">Profile</Link>
+          </>
+        )}
         {isAdmin && (
           <Link to="/admin/accounts" title={pendingAccounts ? `${pendingAccounts} account(s) waiting for verification` : 'Admin'}>
             Admin{pendingAccounts > 0 && <span className="nav-count">{pendingAccounts}</span>}
@@ -291,6 +319,7 @@ function AppContent() {
   </div>
 </nav>}
       {guided && <GuidePanel />}
+      {tableRedirect ? <Navigate to={tableRedirect} replace /> : waitRoles ? <div className="page">Loading...</div> : (
       <Routes>
         <Route path="/" element={publicOnly(<Home />)} />
         <Route path="/login" element={publicOnly(<LoginPage />)} />
@@ -408,6 +437,7 @@ function AppContent() {
 <Route path="/:tournamentId" element={<PublicTournamentRoute />} />
 
       </Routes>
+      )}
     </>
   );
 }
