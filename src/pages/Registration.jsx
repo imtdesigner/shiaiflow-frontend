@@ -235,7 +235,7 @@ function Registration() {
             </div>
           )}
 
-          <div className="tp-card">
+          <div id="g-checkin" className="tp-card">
             <h3>
               Registered: {entries.length}
               {' '}<span className={`tp-badge ${checkedCount === entries.length && entries.length ? 'ok' : 'warn'}`}>present {checkedCount}</span>

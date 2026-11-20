@@ -124,7 +124,7 @@ function Manage() {
         </div>
       </div>
 
-      <div className="tp-card">
+      <div id="g-displays" className="tp-card">
         <h3>Court display screens</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           For the monitor next to each shiaijo: the fight in progress, the last result and the next fights — no timer.

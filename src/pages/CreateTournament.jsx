@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message } from '../components/TournamentShell';
 import CategoryRules from '../components/CategoryRules';
@@ -10,6 +10,7 @@ import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
+import { useGuide } from '../components/GuidePanel';
 
 let nextKey = 1;
 const withKey = (c) => ({ ...c, _key: nextKey++ });
@@ -33,6 +34,11 @@ function CreateTournament() {
   const [sourceQuery, setSourceQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // the setup guide follows the form while it is filled in
+  const { setCreate } = useGuide();
+  useEffect(() => { setCreate({ form, categories }); }, [form, categories, setCreate]);
+  useEffect(() => () => setCreate(null), [setCreate]);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
@@ -108,13 +114,13 @@ function CreateTournament() {
         <div className="tp-card">
           <h3>Tournament</h3>
           <div className="tp-grid">
-            <label className="tp-field" style={{ gridColumn: '1 / -1' }}>
+            <label id="g-name" className="tp-field" style={{ gridColumn: '1 / -1' }}>
               Name
               <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
             </label>
-            <label className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
+            <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
             <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
-            <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
+            <label id="g-venue" className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
             <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
             <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
@@ -148,7 +154,7 @@ function CreateTournament() {
           </div>
         </div>
 
-        <div className="tp-card">
+        <div id="g-categories" className="tp-card">
           <h3>Categories</h3>
           <p className="tp-muted">Start from a template — everything can be changed, the name too — or add an empty one.</p>
           <div className="tp-actions" style={{ marginTop: 0, marginBottom: '1rem' }}>
@@ -208,7 +214,7 @@ function CreateTournament() {
           ))}
         </div>
 
-        <div className="tp-actions">
+        <div id="g-create" className="tp-actions">
           <button type="submit" className="tp-btn" disabled={saving}>
             {saving ? 'Saving…' : 'Create tournament and go to registration'}
           </button>

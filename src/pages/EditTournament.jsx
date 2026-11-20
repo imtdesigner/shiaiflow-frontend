@@ -107,7 +107,7 @@ function EditTournament() {
       <p className="tp-subtitle">{tournament.name}</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
-      <div className="tp-card">
+      <div id="g-publish" className="tp-card">
         <h3>Publishing</h3>
         <label className="tp-field tp-check">
           <input type="checkbox" checked={tournament.is_public} disabled={busy || role !== 'owner' || (waitingVerification && !tournament.is_public)}
@@ -124,7 +124,7 @@ function EditTournament() {
         {tournament.is_public && <p className="tp-muted">Public page: <a href={publicUrl}>{publicUrl}</a></p>}
       </div>
 
-      <div className="tp-card">
+      <div id="g-registration" className="tp-card">
         <h3>Registration</h3>
         <p>
           Status: <span className={`tp-badge ${regOpen ? 'ok' : 'warn'}`}>{regOpen ? 'open' : 'closed'}</span>
@@ -161,7 +161,7 @@ function EditTournament() {
           </label>
         </div>
         <p className="tp-muted">Each category's limits (gender, age, grade, team rules) are set on the Drawings page under "Who can enter".</p>
-        <h3 style={{ marginTop: '1rem' }}>Signup form</h3>
+        <h3 id="g-signup" style={{ marginTop: '1rem' }}>Signup form</h3>
         <p className="tp-muted">Name, club and what the category rules need (gender, birth, grade) are always asked. Switch the rest on as needed.</p>
         <div className="tp-grid">
           {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
@@ -226,7 +226,7 @@ function EditTournament() {
         </div>
       </div>
 
-      <form className="tp-card" onSubmit={save}>
+      <form id="g-details" className="tp-card" onSubmit={save}>
         <h3>Tournament</h3>
         {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
         <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
@@ -240,7 +240,7 @@ function EditTournament() {
           <LinkField value={form.slug} saved={tournament.slug ?? ''} name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
             confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
         </div>
-        <h4>Days</h4>
+        <h4 id="g-days">Days</h4>
         {form.start_date
           ? <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
           : <p className="tp-muted">Set the dates to plan the days.</p>}

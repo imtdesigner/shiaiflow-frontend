@@ -63,7 +63,7 @@ export default function StartTournament({ tournament, categories, onStarted }) {
   };
 
   return (
-    <div className="tp-card">
+    <div id="g-start" className="tp-card">
       <h3>Start the tournament</h3>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
       <table className="tp-table">

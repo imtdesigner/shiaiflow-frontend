@@ -35,6 +35,7 @@ import { amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTourna
 import AdminAccounts from './pages/AdminAccounts';
 import { PublicTournamentRoute } from './pages/PublicTournament';
 import CourtDisplay from './pages/CourtDisplay';
+import GuidePanel, { GuideProvider, useGuide } from './components/GuidePanel';
 import Tournaments from './pages/Tournaments';
 import TournamentList from './components/TournamentList';
 import './pages/TournamentPages.css';
@@ -80,6 +81,8 @@ function Dashboard() {
   });
   const [pendingPath, setPendingPath] = useState('');
   const navigate = useNavigate();
+  const { setPicked } = useGuide();
+  useEffect(() => { setPicked(selectedTournament?.id ?? null); }, [selectedTournament, setPicked]);
 
   useEffect(() => {
     listMyTournaments().then(setTournaments).catch(() => setTournaments([]));
@@ -246,6 +249,9 @@ function AppContent() {
 
   // court display screens are full screen, without the app's navigation
   const display = /\/court\/\d+\/?$/.test(location.pathname);
+  // setup guide on the organizer's pages (not the scoretable)
+  const guided = !!session && (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/create-tournament')
+    || (/^\/tournament\/[^/]+\/(edit|brackets|drawings|registration|manage|fights|shiaijo)/.test(location.pathname)));
 
   return (
     <>
@@ -283,6 +289,7 @@ function AppContent() {
   </div>
   </div>
 </nav>}
+      {guided && <GuidePanel />}
       <Routes>
         <Route path="/" element={publicOnly(<Home />)} />
         <Route path="/login" element={publicOnly(<LoginPage />)} />
@@ -407,7 +414,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <GuideProvider>
+        <AppContent />
+      </GuideProvider>
     </Router>
   );
 }

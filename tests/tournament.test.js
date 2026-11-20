@@ -1020,3 +1020,34 @@ test('short team: the proposed lineup leaves only allowed positions empty', () =
   assert.deepEqual(defaultLineup(3, m(2)), { senpo: 'm1', chuken: null, taisho: 'm2' });
   assert.deepEqual(lineupProblems(5, defaultLineup(5, m(4))), []);
 });
+
+import { tournamentPhase, phaseSteps, createSteps, currentStep } from '../src/lib/tournament/guide.js';
+test('setup guide: phase of the tournament timeline', () => {
+  const now = new Date('2027-03-01T10:00:00Z');
+  const base = { name: 'Open', start_date: '2027-03-20', end_date: '2027-03-21', venue: 'Hall', is_public: true, status: 'registration', registration_open: true };
+  const cat = (status) => ({ status });
+  assert.equal(tournamentPhase(null), 'setup');
+  assert.equal(tournamentPhase({ ...base, is_public: false }, { categories: [cat('registration')], now }), 'setup');
+  assert.equal(tournamentPhase(base, { categories: [], now }), 'setup'); // no categories
+  assert.equal(tournamentPhase(base, { categories: [cat('registration')], now }), 'signup');
+  assert.equal(tournamentPhase({ ...base, registration_deadline: '2027-02-28T00:00:00Z' }, { categories: [cat('registration')], now }), 'draw');
+  assert.equal(tournamentPhase({ ...base, registration_open: false }, { categories: [cat('pools'), cat('cancelled')], entries: { total: 10, present: 4 }, now }), 'register');
+  assert.equal(tournamentPhase({ ...base, registration_open: false }, { categories: [cat('pools')], entries: { total: 10, present: 10 }, now }), 'start');
+  assert.equal(tournamentPhase({ ...base, status: 'running' }, { fights: { total: 5, finished: 2 }, now }), 'live');
+  assert.equal(tournamentPhase({ ...base, status: 'running' }, { fights: { total: 5, finished: 5 }, now }), 'finished');
+  assert.equal(tournamentPhase({ ...base, status: 'running', end_date: '2027-02-01' }, { fights: { total: 5, finished: 5 }, now }), 'past');
+});
+
+test('setup guide: steps and the current hint', () => {
+  const create = createSteps({ name: 'Open', start_date: '', venue: '' }, []);
+  assert.deepEqual(create.map((s) => s.done), [true, false, false, false, false]);
+  assert.equal(currentStep(create).key, 'dates');
+  const t = { name: 'Open', start_date: '2027-03-20', venue: 'Hall', days: [{ start: null }], is_public: false };
+  const setup = phaseSteps('setup', t, { categories: [{ status: 'registration' }] });
+  assert.equal(currentStep(setup).key, 'times');
+  const draw = phaseSteps('draw', { ...t, registration_open: false }, { categories: [{ status: 'pools', shiaijos: [1] }, { status: 'registration', shiaijos: [] }] });
+  assert.equal(currentStep(draw).key, 'draw');
+  assert.match(currentStep(draw).hint, /1 \/ 2 drawn/);
+  const reg = phaseSteps('register', t, { entries: { total: 8, present: 5 } });
+  assert.match(currentStep(reg).hint, /5 \/ 8/);
+});
