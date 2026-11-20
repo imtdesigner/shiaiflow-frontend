@@ -390,7 +390,8 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
       ))}
 
       {tab === 'live' && (
-        <div className="tp-pools">
+        // full screen width; 1–2 courts side by side, 4 as 2 × 2, otherwise 3 per row
+        <div className="pt-live" style={{ '--cols': schedule.length <= 2 || schedule.length === 4 ? Math.max(1, Math.min(schedule.length, 2)) : 3 }}>
           {schedule.map(({ court, list }) => {
             const now = list.find(({ f }) => f.status === 'running')?.f;
             const upcoming = list.filter(({ f }) => f.status === 'scheduled').slice(0, 3);

@@ -390,3 +390,19 @@
 .pool-standings .ps-fights ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
 .pool-standings .ps-fights li { padding: 0.2rem 0; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
 .pool-standings .ps-fights li button { margin-left: auto; }
+
+/* public Live tab: the shiaijos use the whole screen width, 2 or 3 per row */
+.pt-live {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 1rem;
+  width: calc(100vw - 3rem);
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.pt-live .tp-pool { min-width: 0; }
+.pt-live .tp-pool li { padding: 0.15rem 0; }
+@media (max-width: 800px) {
+  .pt-live { grid-template-columns: 1fr; width: 100%; left: 0; transform: none; }
+}
