@@ -1,66 +1,104 @@
-/* Setup guide: fixed on the right on wide screens, a bar at the bottom on small ones. */
+/* Setup guide: a thin line on the right with the steps of the current phase.
+   Labels and the hint sit left of the line; only the hint stands out. */
 .guide {
   position: fixed;
-  top: 90px;
-  right: 12px;
-  bottom: 12px;
-  width: 260px;
+  top: 110px;
+  right: 18px;
+  width: 190px;
   z-index: 40;
-  display: flex;
-  flex-direction: column;
-  background: #fffdf7;
-  border: 2px solid #711921;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+  font-size: 0.8rem;
+  pointer-events: none; /* only the steps and the ✕ take clicks */
+}
+
+.guide-line {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 14px 0.4rem 0;
+  border-right: 1px solid rgba(113, 25, 33, 0.22);
+  display: grid;
+  gap: 0.9rem;
+  text-align: right;
+}
+
+.guide-line li { position: relative; }
+.guide-line li::after {
+  /* the point on the line */
+  content: '';
+  position: absolute;
+  top: 0.35em;
+  right: -18px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(113, 25, 33, 0.3);
+}
+.guide-line button {
+  pointer-events: auto;
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.guide-label { color: #8a8378; }
+.guide-line li.done { opacity: 0.22; }
+.guide-line li.done::after { background: rgba(113, 25, 33, 0.5); }
+.guide-line li.next { opacity: 0.6; }
+.guide-line li.done:hover, .guide-line li.next:hover { opacity: 0.9; }
+
+.guide-line li.now::after { background: #711921; border-color: #711921; width: 9px; height: 9px; right: -19px; }
+.guide-line li.now .guide-label { color: #711921; font-weight: 700; }
+.guide-hint {
+  display: block;
+  margin-top: 0.2rem;
+  color: #711921;
   font-size: 0.9rem;
+  line-height: 1.3;
 }
+.guide-hint.quiet { color: #8a8378; font-size: 0.8rem; }
+.guide-line button:hover .guide-hint { text-decoration: underline; }
 
-.guide-head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: #711921;
-  color: #fff;
+.guide-close {
+  pointer-events: auto;
+  position: absolute;
+  top: -1.6rem;
+  right: -6px;
+  background: none;
+  border: 0;
+  color: #b0a99c;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0 0.2rem;
 }
-.guide-title { flex: 1; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; }
-.guide-close { background: none; border: 0; color: #fff; cursor: pointer; font-size: 1rem; padding: 0 0.2rem; }
-
-.guide-body { flex: 1; overflow-y: auto; padding: 0.75rem; }
-
-.guide-phases { list-style: none; margin: 0 0 0.75rem; padding: 0; display: grid; gap: 0.15rem; }
-.guide-phases li { display: flex; align-items: center; gap: 0.45rem; color: #9a948a; font-size: 0.8rem; }
-.guide-phases li.done { color: #4a6b3a; }
-.guide-phases li.current { color: #711921; font-weight: 700; font-size: 0.9rem; }
-.guide-dot {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 1.1rem; height: 1.1rem; border-radius: 50%;
-  border: 2px solid currentColor; font-size: 0.65rem; flex-shrink: 0;
-}
-.guide-phases li.current .guide-dot { background: #711921; border-color: #711921; }
-
-.guide-steps { list-style: none; margin: 0 0 0.75rem; padding: 0.5rem 0 0; border-top: 1px solid #eadfc8; display: grid; gap: 0.1rem; }
-.guide-steps button {
-  display: flex; align-items: center; gap: 0.5rem; width: 100%;
-  background: none; border: 0; padding: 0.25rem 0.3rem; border-radius: 6px;
-  font: inherit; color: #6b665b; cursor: pointer; text-align: left;
-}
-.guide-steps button:hover { background: #f6eedb; }
-.guide-steps li.done button { color: #4a6b3a; }
-.guide-steps li.current button { color: #711921; font-weight: 700; background: #fff4d6; }
-.guide-check { width: 1rem; text-align: center; }
-
-.guide-hint { background: #fff4d6; border-left: 4px solid #e0a800; border-radius: 6px; padding: 0.6rem 0.7rem; }
-.guide-hint p { margin: 0 0 0.5rem; line-height: 1.35; }
-
-.guide-bar { display: none; }
+.guide-close:hover { color: #711921; }
 
 .guide-tab {
-  position: fixed; right: 0; top: 140px; z-index: 40;
-  background: #711921; color: #fff; border: 0; border-radius: 8px 0 0 8px;
-  padding: 0.5rem 0.6rem; cursor: pointer; font: inherit; font-size: 0.85rem;
+  position: fixed; right: 0; top: 110px; z-index: 40;
+  background: none; color: #b0a99c; border: 0; border-right: 1px solid rgba(113, 25, 33, 0.22);
+  padding: 0.3rem 0.5rem; cursor: pointer; font: inherit; font-size: 0.9rem;
 }
+.guide-tab:hover { color: #711921; }
+
+/* the tournament's phase in the dashboard overview */
+.guide-phase-label {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+  color: #8a8378;
+}
+.guide-phase-label.live { color: #2e7d32; }
+.guide-phase-label.start, .guide-phase-label.register { color: #b26a00; }
 
 /* the place a hint points to */
 .guide-flash { animation: guide-flash 1.8s ease; border-radius: 6px; }
@@ -70,24 +108,21 @@
 }
 
 @media (min-width: 1100px) {
-  body.guide-open { padding-right: 280px; }
+  body.guide-open { padding-right: 220px; }
+  body.guide-open .navbar { margin-right: -220px; } /* the navbar keeps the full width */
 }
 
+/* small screens: only the current hint, as a thin line at the bottom */
 @media (max-width: 1099px) {
-  .guide { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 70vh; }
-  .guide-body, .guide-head { display: none; }
-  .guide.open .guide-body, .guide.open .guide-head { display: block; }
-  .guide.open .guide-head { display: flex; }
-  .guide-bar {
-    display: flex; align-items: center; gap: 0.5rem; width: 100%;
-    background: #fff4d6; border: 0; padding: 0.6rem 0.75rem; font: inherit; text-align: left; cursor: pointer;
-  }
-  .guide-bar-more { margin-left: auto; color: #711921; }
-  .guide-tab { top: auto; bottom: 12px; }
-}
-
-@media (max-width: 1099px) {
-  /* keep the page's last lines and the back button above the guide bar */
-  body.guide-open { padding-bottom: 64px; }
-  body.guide-open .back-to-dashboard-icon { bottom: 4.5rem !important; }
+  .guide { top: auto; bottom: 0; left: 0; right: 0; width: auto; background: rgba(255, 253, 247, 0.96); border-top: 1px solid rgba(113, 25, 33, 0.22); }
+  .guide-line { border-right: 0; padding: 0.5rem 2.2rem 0.5rem 0.75rem; text-align: left; gap: 0; }
+  .guide-line li::after { display: none; }
+  .guide-line li:not(.now) { display: none; }
+  .guide-line button { text-align: left; }
+  .guide-line li.now .guide-label { display: none; }
+  .guide-hint { margin: 0; }
+  .guide-close { top: 0.55rem; right: 0.6rem; }
+  .guide-tab { top: auto; bottom: 8px; }
+  body.guide-open { padding-bottom: 48px; }
+  body.guide-open .back-to-dashboard-icon { bottom: 3.5rem !important; }
 }

@@ -35,7 +35,7 @@ import { amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTourna
 import AdminAccounts from './pages/AdminAccounts';
 import { PublicTournamentRoute } from './pages/PublicTournament';
 import CourtDisplay from './pages/CourtDisplay';
-import GuidePanel, { GuideProvider, useGuide } from './components/GuidePanel';
+import GuidePanel, { GuideProvider, PhaseLabel, useGuide, useTournamentPhase } from './components/GuidePanel';
 import Tournaments from './pages/Tournaments';
 import TournamentList from './components/TournamentList';
 import './pages/TournamentPages.css';
@@ -83,6 +83,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const { setPicked } = useGuide();
   useEffect(() => { setPicked(selectedTournament?.id ?? null); }, [selectedTournament, setPicked]);
+  const { phase } = useTournamentPhase(selectedTournament?.id ?? null);
 
   useEffect(() => {
     listMyTournaments().then(setTournaments).catch(() => setTournaments([]));
@@ -131,7 +132,7 @@ function Dashboard() {
             className="dropdown-icon"
             onClick={() => setShowDropdown(!showDropdown)}
           />
-          {selectedTournament && <p className="selected-tournament">{selectedTournament.name}</p>}
+          {selectedTournament && <p className="selected-tournament">{selectedTournament.name} <PhaseLabel phase={phase} /></p>}
 
           {showDropdown && (
             <ul className="dropdown-list">
