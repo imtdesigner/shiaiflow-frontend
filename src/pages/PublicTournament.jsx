@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Message, entryName } from '../components/TournamentShell';
+import { Message, courtGridStyle, entryName } from '../components/TournamentShell';
 import PoolStandings from '../components/PoolStandings';
 import KoBracket from '../components/KoBracket';
 import {
@@ -433,7 +433,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
 
       {tab === 'live' && (
         // all shiaijos side by side (two rows when they do not fit): previous fight, the current one, the next 3
-        <div className="pt-live" style={{ '--cols': Math.max(1, schedule.length), '--cols-half': Math.max(1, Math.ceil(schedule.length / 2)) }}>
+        <div className="court-grid pt-live" style={courtGridStyle(schedule.length)}>
           {schedule.map(({ court, list }) => {
             const open = list.filter(({ f }) => f.status !== 'finished').map(({ f }) => f);
             const now = open.find((f) => f.status === 'running') ?? open[0] ?? null;

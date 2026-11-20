@@ -391,9 +391,10 @@
 .pool-standings .ps-fights li { padding: 0.2rem 0; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
 .pool-standings .ps-fights li button { margin-left: auto; }
 
-/* public Live tab: all shiaijos side by side across the screen (each ≤ 420px),
-   two rows on narrower screens, one column on phones */
-.pt-live {
+/* shiaijos side by side across the whole screen (each ≤ 420px), two rows on
+   narrower screens, one column on phones — public Live, Manage, Shiaijo plan.
+   Set --cols (number of courts) and --cols-half (half of it, rounded up). */
+.court-grid {
   display: grid;
   grid-template-columns: repeat(var(--cols, 2), minmax(0, 420px));
   justify-content: center;
@@ -404,11 +405,15 @@
   transform: translateX(-50%);
 }
 @media (max-width: 1300px) {
-  .pt-live { grid-template-columns: repeat(var(--cols-half, 2), minmax(0, 420px)); }
+  .court-grid { grid-template-columns: repeat(var(--cols-half, 2), minmax(0, 420px)); }
 }
 @media (max-width: 700px) {
-  .pt-live { grid-template-columns: 1fr; width: 100%; left: 0; transform: none; }
+  .court-grid { grid-template-columns: 1fr; width: 100%; left: 0; transform: none; }
 }
+.court-grid > * { min-width: 0; }
+/* the setup guide takes 220px on the right of organizer pages */
+body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
+@media (max-width: 1099px) { body.guide-open .court-grid { width: calc(100vw - 3rem); } }
 .pt-court { min-width: 0; }
 .pt-court h4 { margin: 0 0 0.4rem; }
 .pt-prev { margin: 0 0 0.4rem; font-size: 0.85rem; opacity: 0.65; }

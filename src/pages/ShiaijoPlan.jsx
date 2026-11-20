@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
+import {
+  BackToDashboard, Message, courtGridStyle, useTournament,
+} from '../components/TournamentShell';
 import {
   checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
 } from '../lib/api';
@@ -277,7 +279,7 @@ function ShiaijoPlan() {
         )}
       </div>
 
-      <div className="tp-pools">
+      <div className="court-grid" style={courtGridStyle(courts.length)}>
         {courts.map((n) => {
           const partsOf = (end) => perCategory.map((r) => {
             const fs = r.fights.filter((f) => f.court === n && !!f.end === end);

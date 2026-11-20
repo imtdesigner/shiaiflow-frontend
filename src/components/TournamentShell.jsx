@@ -73,3 +73,6 @@ export function entryName(entry) {
   if (!c) return '—';
   return c.display_name || `${c.last_name}${c.first_name ? ` ${c.first_name}` : ''}`;
 }
+
+/** Style of a .court-grid for n shiaijos (all side by side, or two rows on narrower screens). */
+export const courtGridStyle = (n) => ({ '--cols': Math.max(1, n), '--cols-half': Math.max(1, Math.ceil(n / 2)) });

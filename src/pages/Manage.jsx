@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  BackToDashboard, Message, entryName, useTournament,
+  BackToDashboard, Message, courtGridStyle, entryName, useTournament,
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
@@ -147,7 +147,7 @@ function Manage() {
         </div>
       </div>
 
-      <div className="tp-pools">
+      <div className="court-grid" style={courtGridStyle(courts.length)}>
         {courts.map((n) => {
           const queue = courtQueue(fights, drawn, n);
           const now = currentFight(queue);
