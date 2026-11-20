@@ -62,6 +62,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
   const [events, setEvents] = useState([]);
   const [bouts, setBouts] = useState([]); // team matches: position bouts
   const [tab, setTab] = useState(null);
+  const [liveCat, setLiveCat] = useState(null); // category picked in Live; null = the one fighting now
   const [error, setError] = useState('');
   const [organizer, setOrganizer] = useState(null);
   useEffect(() => { tournamentOrganizers([tournamentId]).then((o) => setOrganizer(o[tournamentId] ?? null)).catch(() => {}); }, [tournamentId]);
@@ -164,38 +165,45 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         };
       }
     }
+    const poolsOver = poolsStarted && catFights.filter((f) => f.phase === 'pool').every((f) => f.status === 'finished');
+    const standings = c.pool_size !== 1 && d && (poolsStarted ? (
+      // pools under way: standings, updated live
+      <div className="pool-standings-grid">
+        {d.pools.map((p, i) => (
+          <PoolStandings key={p.id} category={c} pool={p} members={pools[i]}
+            fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
+        ))}
+      </div>
+    ) : !live && (
+      <div className="tp-pools">
+        {pools.map((members, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <div className="tp-pool" key={i}>
+            <h4>Pool {i + 1}</h4>
+            <ol>{members.map((id) => <li key={id}>{entryName(entryById[id])}</li>)}</ol>
+          </div>
+        ))}
+      </div>
+    ));
+    const bracket = c.ko_template && (
+      <KoBracket
+        template={c.ko_template}
+        nameOf={(id) => entryName(entryById[id])}
+        resolved={resolved}
+        results={results}
+        directKo={c.pool_size === 1}
+        thirdPlace={c.third_place === 'fight' ? thirdPlaceFight(c.ko_template) : null}
+      />
+    );
     return (
       <div className="tp-card" key={`${live ? 'live' : 'draw'}-${c.id}`}>
         <h3>{c.name}{c.ko_template_code && <span className="tp-muted"> · {c.ko_template_code}</span>}</h3>
-        {c.pool_size !== 1 && d && (poolsStarted ? (
-          // pools under way: standings, updated live
-          <div className="pool-standings-grid">
-            {d.pools.map((p, i) => (
-              <PoolStandings key={p.id} category={c} pool={p} members={pools[i]}
-                fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
-            ))}
-          </div>
-        ) : !live && (
-          <div className="tp-pools">
-            {pools.map((members, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div className="tp-pool" key={i}>
-                <h4>Pool {i + 1}</h4>
-                <ol>{members.map((id) => <li key={id}>{entryName(entryById[id])}</li>)}</ol>
-              </div>
-            ))}
-          </div>
-        ))}
-        {c.ko_template && (
-          <KoBracket
-            template={c.ko_template}
-            nameOf={(id) => entryName(entryById[id])}
-            resolved={resolved}
-            results={results}
-            directKo={c.pool_size === 1}
-            thirdPlace={c.third_place === 'fight' ? thirdPlaceFight(c.ko_template) : null}
-          />
-        )}
+        {live && poolsOver && standings ? (
+          <>
+            {bracket}
+            <details className="pt-pool-results"><summary>Pool results</summary>{standings}</details>
+          </>
+        ) : <>{standings}{bracket}</>}
       </div>
     );
   };
@@ -227,6 +235,21 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     }).map(({ court, days: ds }) => ({ court, days: ds, list: ds.flatMap((d) => d.list) }));
   }, [fights, drawn, courts.length, tournament]); // eslint-disable-line react-hooks/exhaustive-deps
   const clockOf = (f, start) => clockAt(dayStart(dayOfFight(f)), start);
+
+  // Live: categories that started; the one fighting now is shown unless another is picked
+  const liveCats = drawn.filter((c) => fights.some((f) => f.category_id === c.id && f.status !== 'scheduled'));
+  const runningFights = fights.filter((f) => f.status === 'running');
+  const activeCatIds = new Set(runningFights.map((f) => f.category_id));
+  const activeCat = (() => {
+    const count = new Map();
+    for (const f of runningFights) count.set(f.category_id, (count.get(f.category_id) ?? 0) + 1);
+    const best = [...count.entries()].sort((x, y) => y[1] - x[1])[0]?.[0];
+    if (best) return liveCats.find((c) => c.id === best) ?? null;
+    // nothing running: the category of the latest finished fight
+    const last = fights.filter((f) => f.finished_at).sort((x, y) => String(x.finished_at).localeCompare(String(y.finished_at))).at(-1);
+    return liveCats.find((c) => c.id === last?.category_id) ?? liveCats[0] ?? null;
+  })();
+  const shownCat = liveCats.find((c) => c.id === liveCat) ?? activeCat;
 
   // "who am I": competitors, and their entries (own + teams)
   const competitors = useMemo(() => {
@@ -408,49 +431,59 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
       ))}
 
       {tab === 'live' && (
-        // full screen width; 1–2 courts side by side, 4 as 2 × 2, otherwise 3 per row
-        <div className="pt-live" style={{ '--cols': schedule.length <= 2 || schedule.length === 4 ? Math.max(1, Math.min(schedule.length, 2)) : 3 }}>
+        // all shiaijos side by side (two rows when they do not fit): previous fight, the current one, the next 3
+        <div className="pt-live" style={{ '--cols': Math.max(1, schedule.length), '--cols-half': Math.max(1, Math.ceil(schedule.length / 2)) }}>
           {schedule.map(({ court, list }) => {
-            const now = list.find(({ f }) => f.status === 'running')?.f;
-            const upcoming = list.filter(({ f }) => f.status === 'scheduled').slice(0, 3);
-            const done = list.filter(({ f }) => f.status === 'finished').slice(-5).reverse();
+            const open = list.filter(({ f }) => f.status !== 'finished').map(({ f }) => f);
+            const now = open.find((f) => f.status === 'running') ?? open[0] ?? null;
+            const upcoming = open.filter((f) => f !== now).slice(0, 3);
+            const prev = list.filter(({ f }) => f.status === 'finished').map(({ f }) => f)
+              .sort((x, y) => String(x.finished_at ?? '').localeCompare(String(y.finished_at ?? ''))).at(-1);
             return (
-              <div className="tp-pool" key={court}>
+              <div className="tp-pool pt-court" key={court}>
                 <h4>Shiaijo {court}</h4>
-                {now ? (
-                  <p>
-                    <span className="tp-badge ok">now</span> <strong>{now.label}</strong> {byCat[now.category_id]?.name}<br />
-                    <span className="aka">{name(now, 'red')}</span> {score(now)} <span className="shiro">{name(now, 'white')}</span>
+                {prev && (
+                  <p className="pt-prev">
+                    <strong>{prev.label}</strong>{' '}
+                    <span className={prev.winner_entry_id === prev.red_entry_id ? 'aka' : ''}>{name(prev, 'red')}</span> {score(prev)}{' '}
+                    <span className={prev.winner_entry_id && prev.winner_entry_id === prev.white_entry_id ? 'shiro' : ''}>{name(prev, 'white')}</span>
+                    {!prev.winner_entry_id && <span className="tp-muted"> (hikiwake)</span>}
                   </p>
-                ) : <p className="tp-muted">No fight right now.</p>}
-                {upcoming.length > 0 && (
-                  <>
-                    <p className="tp-muted" style={{ margin: '0.4rem 0 0.2rem' }}>Next</p>
-                    <ol>{upcoming.map(({ f }) => <li key={f.id}><strong>{f.label}</strong> {name(f, 'red')} – {name(f, 'white')}</li>)}</ol>
-                  </>
                 )}
-                {done.length > 0 && (
-                  <>
-                    <p className="tp-muted" style={{ margin: '0.4rem 0 0.2rem' }}>Results</p>
-                    <ul>
-                      {done.map(({ f }) => (
-                        <li key={f.id}>
-                          <strong>{f.label}</strong>{' '}
-                          <span className={f.winner_entry_id === f.red_entry_id ? 'aka' : ''}>{name(f, 'red')}</span> {score(f)}{' '}
-                          <span className={f.winner_entry_id && f.winner_entry_id === f.white_entry_id ? 'shiro' : ''}>{name(f, 'white')}</span>
-                          {!f.winner_entry_id && <span className="tp-muted"> (hikiwake)</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
+                {now ? (
+                  <div className={`pt-now ${now.status === 'running' ? 'running' : ''}`}>
+                    <div className="tp-muted">
+                      <span className={`tp-badge ${now.status === 'running' ? 'ok' : ''}`}>{now.status === 'running' ? 'now' : 'next'}</span>
+                      {' '}<strong>{now.label}</strong> {byCat[now.category_id]?.name}
+                    </div>
+                    <div className="pt-now-fight">
+                      <span className="aka">{name(now, 'red')}</span>
+                      <b>{now.status === 'running' ? score(now) : 'vs'}</b>
+                      <span className="shiro">{name(now, 'white')}</span>
+                    </div>
+                  </div>
+                ) : <p className="tp-muted">All fights done.</p>}
+                {upcoming.length > 0 && (
+                  <ol className="pt-next">{upcoming.map((f) => <li key={f.id}><strong>{f.label}</strong> {name(f, 'red')} – {name(f, 'white')}</li>)}</ol>
                 )}
               </div>
             );
           })}
         </div>
       )}
-      {tab === 'live' && drawn.filter((c) => fights.some((f) => f.category_id === c.id && f.status !== 'scheduled'))
-        .map((c) => categoryBoard(c, { live: true }))}
+      {tab === 'live' && liveCats.length > 0 && (
+        <>
+          <div className="tp-tabs pt-cats">
+            {liveCats.map((c) => (
+              <button key={c.id} type="button" className={`tp-tab ${shownCat?.id === c.id ? 'active' : ''}`}
+                onClick={() => setLiveCat(c.id)}>
+                {c.name}{activeCatIds.has(c.id) ? ' ●' : ''}
+              </button>
+            ))}
+          </div>
+          {shownCat && categoryBoard(shownCat, { live: true })}
+        </>
+      )}
     </div>
   );
 }

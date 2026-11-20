@@ -49,7 +49,8 @@
 .guide-label { color: #8a8378; }
 .guide-line li.done { opacity: 0.22; }
 .guide-line li.done::after { background: rgba(113, 25, 33, 0.5); }
-.guide-line li.next { opacity: 0.6; }
+.guide-line li.next { opacity: 0.85; }
+.guide-line li.next .guide-label { color: #5f5a50; }
 .guide-line li.done:hover, .guide-line li.next:hover { opacity: 0.9; }
 
 .guide-line li.now::after { background: #711921; border-color: #711921; width: 9px; height: 9px; right: -19px; }
@@ -80,10 +81,10 @@
 
 .guide-tab {
   position: fixed; right: 0; top: 110px; z-index: 40;
-  background: none; color: #b0a99c; border: 0; border-right: 1px solid rgba(113, 25, 33, 0.22);
-  padding: 0.3rem 0.5rem; cursor: pointer; font: inherit; font-size: 0.9rem;
+  background: #fffdf7; color: #c62828; border: 1px solid #c62828; border-right: 0;
+  border-radius: 8px 0 0 8px; padding: 0.4rem 0.7rem; cursor: pointer; font: inherit; font-size: 0.95rem; font-weight: 700;
 }
-.guide-tab:hover { color: #711921; }
+.guide-tab:hover { background: #c62828; color: #fff; }
 
 /* the tournament's phase in the dashboard overview */
 .guide-phase-label {

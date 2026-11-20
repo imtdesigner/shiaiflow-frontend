@@ -148,7 +148,7 @@ export default function GuidePanel() {
   };
 
   if (off) {
-    return <button type="button" className="guide-tab" onClick={() => setHidden(false)} title="Show the setup guide">‹</button>;
+    return <button type="button" className="guide-tab" onClick={() => setHidden(false)} title="Show the setup guide">‹ Guideline</button>;
   }
 
   return (
