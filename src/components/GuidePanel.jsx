@@ -112,6 +112,23 @@ export default function GuidePanel() {
   const [off, setOff] = useState(() => { try { return localStorage.getItem(OFF_KEY) === '1'; } catch { return false; } });
 
   const creating = location.pathname.startsWith('/create-tournament');
+  // Create form: which guide place has the focus, and which were left (a step moves on only then)
+  const [focus, setFocus] = useState({ current: null, left: new Set() });
+  useEffect(() => {
+    if (!creating) return undefined;
+    setFocus({ current: null, left: new Set() });
+    const anchorOf = (el) => el?.closest?.('[id^="g-"]')?.id ?? null;
+    const onIn = (e) => setFocus((f) => ({ ...f, current: anchorOf(e.target) }));
+    const onOut = (e) => {
+      const a = anchorOf(e.target);
+      const to = anchorOf(e.relatedTarget);
+      if (!a || a === to) return;
+      setFocus((f) => ({ current: to, left: new Set([...f.left, a]) }));
+    };
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    return () => { document.removeEventListener('focusin', onIn); document.removeEventListener('focusout', onOut); };
+  }, [creating]);
   const routeId = location.pathname.match(/^\/tournament\/([^/]+)/)?.[1] ?? null;
   const tid = creating ? null : routeId ?? (location.pathname.startsWith('/dashboard') ? picked : null);
   const { data, phase: tPhase } = useTournamentPhase(tid);
@@ -131,7 +148,10 @@ export default function GuidePanel() {
   let phase = null;
   if (creating) {
     phase = 'setup';
-    steps = createSteps(create?.form, create?.categories);
+    steps = createSteps(create?.form, create?.categories, {
+      inside: (a) => focus.current === a,
+      left: (a) => focus.left.has(a),
+    });
   } else if (data) {
     phase = tPhase;
     const ctx = { categories: data.categories, entries: data.entries, fights: data.fights };

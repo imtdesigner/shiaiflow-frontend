@@ -46,15 +46,26 @@ export function tournamentPhase(t, { categories = [], entries = null, fights = n
 
 /**
  * Steps of the creating form (no tournament yet). form: the Create page's
- * fields; categories: the categories added so far.
+ * fields; categories: the categories added so far; seen: { left(anchor),
+ * inside(anchor) } — a step counts as done only once its field has been left
+ * (typing in it keeps the hint there), and fields with a default (link,
+ * courts, days, signup rules) once they have been visited.
  */
-export function createSteps(form = {}, categories = []) {
+export function createSteps(form = {}, categories = [], seen = {}) {
+  const inside = (a) => !!seen.inside?.(a);
+  const left = (a) => !!seen.left?.(a);
+  const filled = (a, v) => !!v && !inside(a);
+  const visited = (a) => left(a) && !inside(a);
   return [
-    step('name', 'Name', form.name?.trim(), 'Give the tournament a name.', 'create', 'g-name'),
-    step('dates', 'Dates', form.start_date, 'Pick the start and end date.', 'create', 'g-dates'),
-    step('venue', 'Venue', form.venue?.trim() || form.city?.trim(), 'Enter the venue and the city.', 'create', 'g-venue'),
-    step('categories', 'Categories', categories.length, 'Add categories — start from a template and adjust it.', 'create', 'g-categories'),
-    step('create', 'Create', false, 'Check who can enter and how each category fights, then create the tournament.', 'create', 'g-create'),
+    step('name', 'Name', filled('g-name', form.name?.trim()), 'Give the tournament a name.', 'create', 'g-name'),
+    step('dates', 'Dates', filled('g-dates', form.start_date), 'Pick the start and end date.', 'create', 'g-dates'),
+    step('venue', 'Venue', filled('g-venue', form.venue?.trim()), 'Enter the venue, the city and the country.', 'create', 'g-venue'),
+    step('link', 'Link', visited('g-link') || filled('g-link', form.slug?.trim()), 'Optional: a short link name for the public page (e.g. croatia-open).', 'create', 'g-link'),
+    step('courts', 'Courts', visited('g-courts'), 'How many shiaijos (courts) will there be?', 'create', 'g-courts'),
+    step('days', 'Days', visited('g-days'), 'Set the start (and end) time of each day — the fight plan counts from it.', 'create', 'g-days'),
+    step('signup', 'Signup', visited('g-signup-rules'), 'How age limits count, and may a competitor enter only one category?', 'create', 'g-signup-rules'),
+    step('categories', 'Categories', categories.length > 0 && !inside('g-categories'), 'Add categories — start from a template, then check who can enter and how they fight.', 'create', 'g-categories'),
+    step('create', 'Create', false, 'All set? Create the tournament.', 'create', 'g-create'),
   ];
 }
 

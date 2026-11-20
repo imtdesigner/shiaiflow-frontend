@@ -123,9 +123,11 @@ function CreateTournament() {
             <label id="g-venue" className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
             <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
-            <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
-              confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
-            <label className="tp-field">
+            <div id="g-link" style={{ gridColumn: '1 / -1' }}>
+              <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
+                confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
+            </div>
+            <label id="g-courts" className="tp-field">
               Number of courts (shiaijo)
               <select value={form.shiaijo_count} onChange={set('shiaijo_count')}>
                 {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
@@ -133,13 +135,13 @@ function CreateTournament() {
             </label>
           </div>
           {form.start_date && (
-            <>
+            <div id="g-days">
               <h4>Days</h4>
               <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
-            </>
+            </div>
           )}
           <h4>Signup</h4>
-          <div className="tp-grid">
+          <div id="g-signup-rules" className="tp-grid">
             <label className="tp-field">
               Age limits count
               <select value={form.age_basis} onChange={set('age_basis')}>

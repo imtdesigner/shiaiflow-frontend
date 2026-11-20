@@ -1040,8 +1040,14 @@ test('setup guide: phase of the tournament timeline', () => {
 
 test('setup guide: steps and the current hint', () => {
   const create = createSteps({ name: 'Open', start_date: '', venue: '' }, []);
-  assert.deepEqual(create.map((s) => s.done), [true, false, false, false, false]);
+  assert.deepEqual(create.map((s) => s.done), [true, false, false, false, false, false, false, false, false]);
   assert.equal(currentStep(create).key, 'dates');
+  // typing in a field keeps the hint there; fields with a default count once visited
+  const typing = createSteps({ name: 'Open' }, [], { inside: (a) => a === 'g-name', left: () => false });
+  assert.equal(currentStep(typing).key, 'name');
+  const visited = createSteps({ name: 'Open', start_date: '2027-03-20', venue: 'Hall' }, [],
+    { inside: () => false, left: (a) => ['g-link', 'g-courts'].includes(a) });
+  assert.equal(currentStep(visited).key, 'days');
   const t = { name: 'Open', start_date: '2027-03-20', venue: 'Hall', days: [{ start: null }], is_public: false };
   const setup = phaseSteps('setup', t, { categories: [{ status: 'registration' }] });
   assert.equal(currentStep(setup).key, 'times');
