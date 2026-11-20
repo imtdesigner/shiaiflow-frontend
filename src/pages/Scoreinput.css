@@ -199,3 +199,5 @@
 @media (max-width: 800px) {
   .st-lists { grid-template-columns: 1fr; }
 }
+.st-lists .st-red { color: #c62828; font-weight: 600; }
+.st-lists .st-white { color: #111; font-weight: 600; }

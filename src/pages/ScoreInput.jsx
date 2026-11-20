@@ -470,7 +470,7 @@ function ScoreInput() {
               {upcoming.slice(0, 8).map((f) => (
                 <li key={f.id}>
                   <strong>{f.label}</strong> <span className="tp-muted">{byId[f.category_id]?.name}</span>
-                  {' '}{name(f, 'red')} – {name(f, 'white')}
+                  {' '}<span className="st-red">{name(f, 'red')}</span> – <span className="st-white">{name(f, 'white')}</span>
                   {f.status === 'scheduled' && f.red_entry_id && f.white_entry_id && (
                     <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.4rem' }}
                       disabled={busy || fight?.status === 'running'} onClick={() => setPickedId(f.id)}>
@@ -488,8 +488,8 @@ function ScoreInput() {
             <ol>
               {finished.map((f) => (
                 <li key={f.id}>
-                  <strong>{f.label}</strong> {name(f, 'red')} – {name(f, 'white')}
-                  <span className="tp-muted"> · {f.winner_entry_id ? `winner ${f.winner_entry_id === f.red_entry_id ? name(f, 'red') : name(f, 'white')}` : 'hikiwake'}</span>
+                  <strong>{f.label}</strong> <span className="st-red">{name(f, 'red')}</span> – <span className="st-white">{name(f, 'white')}</span>
+                  <span className="tp-muted"> · {f.winner_entry_id ? <>winner <span className={f.winner_entry_id === f.red_entry_id ? 'st-red' : 'st-white'}>{f.winner_entry_id === f.red_entry_id ? name(f, 'red') : name(f, 'white')}</span></> : 'hikiwake'}</span>
                   {manager && (
                     <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.4rem' }}
                       disabled={busy || fight?.status === 'running'} onClick={() => { setPickedId(f.id); run(() => reopenFight(f)); }}>
