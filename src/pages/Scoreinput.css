@@ -183,3 +183,19 @@
 .st-team tr.scheduled { opacity: 0.55; }
 .st-team-red { color: #a3121f; text-align: right; }
 .st-team-score { text-align: center; white-space: nowrap; font-weight: 700; }
+
+/* next and finished fights below the board: half and half of its width */
+.st-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  align-items: start;
+}
+.st-lists .tp-pool { min-width: 0; }
+.st-lists ol { margin: 0; padding-left: 1.6rem; }
+.st-lists li { padding: 0.35rem 0; border-bottom: 1px solid #eee; line-height: 1.4; }
+.st-lists li:last-child { border-bottom: 0; }
+@media (max-width: 800px) {
+  .st-lists { grid-template-columns: 1fr; }
+}

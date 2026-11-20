@@ -462,7 +462,7 @@ function ScoreInput() {
         </div>
       )}
 
-      <div className="tp-pools">
+      <div className="st-lists">
         <div className="tp-pool">
           <h4>Next on shiaijo {court}</h4>
           {upcoming.length === 0 ? <p className="tp-muted">Nothing left.</p> : (
