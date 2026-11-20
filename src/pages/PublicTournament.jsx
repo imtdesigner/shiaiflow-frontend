@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Message, entryName } from '../components/TournamentShell';
+import PoolStandings from '../components/PoolStandings';
 import KoBracket from '../components/KoBracket';
 import {
   getSavedDraw, getTournament, listBouts, listCategories, listEntriesFor, listEventsFor, listTeams,
@@ -322,7 +323,15 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         return (
           <div className="tp-card" key={c.id}>
             <h3>{c.name}{c.ko_template_code && <span className="tp-muted"> · {c.ko_template_code}</span>}</h3>
-            {c.pool_size !== 1 && (
+            {c.pool_size !== 1 && (fights.some((f) => f.category_id === c.id && f.phase === 'pool' && f.status !== 'scheduled') ? (
+              // pools under way: standings, updated live
+              <div className="pool-standings-grid">
+                {d.pools.map((p, i) => (
+                  <PoolStandings key={p.id} category={c} pool={p} members={pools[i]}
+                    fights={fights} events={events} bouts={bouts} nameOf={(id) => entryName(entryById[id])} />
+                ))}
+              </div>
+            ) : (
               <div className="tp-pools">
                 {pools.map((members, i) => (
                   // eslint-disable-next-line react/no-array-index-key
@@ -332,7 +341,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
                   </div>
                 ))}
               </div>
-            )}
+            ))}
             {c.ko_template && (
               <KoBracket
                 template={c.ko_template}

@@ -377,3 +377,16 @@
 
 .fr-note { margin: 0 0 0.5rem; max-width: 46rem; }
 .fr-same { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; }
+
+/* pool standings (public page, Manage, scoretable) */
+.pool-standings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.pool-standings h4 { margin: 0 0 0.4rem; }
+.pool-standings .tp-table { width: 100%; }
+.pool-standings .tp-table td:nth-child(n+3), .pool-standings .tp-table th:nth-child(n+3) { text-align: center; width: 2.2rem; }
+.pool-standings tr.ps-through td { font-weight: 700; }
+.pool-standings p { margin: 0.3rem 0 0; font-size: 0.85rem; }
+.pool-standings .ps-fights { margin-top: 0.4rem; font-size: 0.85rem; }
+.pool-standings .ps-fights summary { cursor: pointer; color: #711921; }
+.pool-standings .ps-fights ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
+.pool-standings .ps-fights li { padding: 0.2rem 0; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.pool-standings .ps-fights li button { margin-left: auto; }

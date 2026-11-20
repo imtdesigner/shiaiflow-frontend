@@ -289,6 +289,15 @@ export async function removeEntry(entryId) {
 
 // --- draw ----------------------------------------------------------------------
 
+/** Pools of several categories with their members (pool standings). */
+export async function listPools(categoryIds) {
+  if (!categoryIds.length) return [];
+  return unwrap(await supabase.from('pools')
+    .select('id, number, category_id, pool_entries(entry_id, position)')
+    .in('category_id', categoryIds)
+    .order('number'));
+}
+
 export async function getSavedDraw(categoryId) {
   const pools = unwrap(await supabase
     .from('pools')

@@ -5,11 +5,12 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor } from '../lib/api';
 import {
-  getPin, listRunFights, myRole, setPin, subscribeFights,
+  getPin, listRunFights, myRole, reopenFight, setPin, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
 import { publicPath } from '../lib/tournament/days.js';
+import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import StartTournament from '../components/StartTournament';
 import './TournamentPages.css';
 
@@ -59,6 +60,12 @@ function Manage() {
     catch (e) { setMsg({ type: 'error', text: e.message }); }
     finally { setBusy(false); }
   };
+
+  // categories whose pools have started: their standings
+  const poolCats = drawn.filter((c) => c.pool_size !== 1
+    && fights.some((f) => f.category_id === c.id && f.phase === 'pool' && f.status !== 'scheduled'));
+  const poolData = usePoolData(poolCats.map((c) => c.id), fights);
+  const entryNameById = (id) => { const e = entries.find((x) => x.id === id); return e ? entryName(e) : '—'; };
 
   const name = (f, side) => {
     const id = side === 'red' ? f.red_entry_id : f.white_entry_id;
@@ -165,6 +172,29 @@ function Manage() {
           );
         })}
       </div>
+
+      {poolCats.length > 0 && (
+        <div className="tp-card" id="g-standings">
+          <h3>Pool standings</h3>
+          <p className="tp-muted" style={{ marginTop: 0 }}>
+            Live, by each category's ranking criteria. To change a result, open Fights under the pool and press Correct — the fight is
+            reopened on its shiaijo and the table scores it again; the standings and the KO follow.
+          </p>
+          {poolCats.map((c) => (
+            <div key={c.id}>
+              <h4>{c.name}</h4>
+              <div className="pool-standings-grid">
+                {poolData.pools.filter((p) => p.category_id === c.id).map((p) => (
+                  <PoolStandings key={p.id} category={c} pool={p} members={poolMembers(p)}
+                    fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
+                    canCorrect={(f) => !busy && !fights.some((x) => x.status === 'running' && x.shiaijo === f.shiaijo)}
+                    onCorrect={(f) => run(() => reopenFight(f), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again at the scoretable.`)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

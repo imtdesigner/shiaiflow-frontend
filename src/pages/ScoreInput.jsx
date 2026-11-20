@@ -11,9 +11,11 @@ import {
 } from '../lib/runApi';
 import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
 import {
-  POSITION_LABELS, boutRows, defaultLineup, teamMatchResult, teamMatchStep,
+  POSITION_LABELS, boutRows, defaultLineup, teamMatchStep,
 } from '../lib/tournament/team.js';
 import { slotLabel } from '../lib/tournament/ko.js';
+import { fightMarks } from '../lib/tournament/poolView.js';
+import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
 } from '../lib/tournament/run.js';
@@ -313,27 +315,15 @@ function ScoreInput() {
       .then(([events, bouts]) => setDone({ events, bouts }))
       .catch(() => {});
   }, [finishedKey]);
-  const resultOf = (f) => {
-    const cat = byId[f.category_id];
-    const o = scoringOptions(cat);
-    const evs = done.events.filter((e) => e.match_id === f.id);
-    if (cat?.kind === 'team') {
-      if (f.fusen) return { red: f.fusen === 'red' ? 'OO' : '', white: f.fusen === 'white' ? 'OO' : '' };
-      const bs = done.bouts.filter((b) => b.match_id === f.id);
-      const r = teamMatchResult(bs.map((b) => ({
-        position: b.position,
-        bout: { events: evs.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
-      })), o);
-      return { red: `${r.redWins} (${r.redIppons})`, white: `${r.whiteWins} (${r.whiteIppons})` };
-    }
-    const t = boutTotals({ events: evs.filter((e) => !e.bout_id) }, o);
-    const side = (s) => {
-      if (f.fusen === s) return 'OO';
-      const ip = f.decision === s && t.red.ippons.length === t.white.ippons.length ? (o.ipponShobu ? ['H'] : ['H', 'H']) : t[s].ippons;
-      return [...ip, ...(t[s].hansoku ? ['▲'.repeat(t[s].hansoku)] : [])].join(' ');
-    };
-    return { red: side('red'), white: side('white') };
-  };
+  const resultOf = (f) => fightMarks(byId[f.category_id], f, done.events, done.bouts);
+
+  // pools fought on this shiaijo (at least one fight started): a button each, standings in a popup
+  const courtPoolIds = [...new Set(queue.filter((f) => f.phase === 'pool' && f.status !== 'scheduled').map((f) => f.pool_id))];
+  const courtPoolCats = [...new Set(queue.filter((f) => courtPoolIds.includes(f.pool_id)).map((f) => f.category_id))];
+  const poolData = usePoolData(courtPoolCats, fights);
+  const courtPools = courtPoolIds.map((id) => poolData.pools.find((p) => p.id === id)).filter(Boolean);
+  const [shownPool, setShownPool] = useState(null);
+  const entryNameById = (id) => { const e = entries.find((x) => x.id === id); return e ? entryName(e) : '—'; };
   const courts = Array.from({ length: tournament?.shiaijo_count ?? 2 }, (_, i) => i + 1);
 
   if (loading) return <div className="tp-page">Loading…</div>;
@@ -493,6 +483,27 @@ function ScoreInput() {
               <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('white'); })}>{name(fight, 'white')} wins OO</button>
             </div>
           )}
+        </div>
+      )}
+
+      {courtPools.length > 0 && (
+        <div className="st-pools">
+          <span className="tp-muted">Pool standings:</span>
+          {courtPools.map((p) => (
+            <button key={p.id} type="button" className="tp-btn secondary small" onClick={() => setShownPool(p)}>
+              {byId[p.category_id]?.name} · Pool {p.number}
+            </button>
+          ))}
+        </div>
+      )}
+      {shownPool && (
+        <div className="st-popup-back" onClick={() => setShownPool(null)} role="presentation">
+          <div className="st-popup" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Pool standings">
+            <button type="button" className="st-popup-close" onClick={() => setShownPool(null)} title="Close">✕</button>
+            <PoolStandings category={byId[shownPool.category_id]} pool={shownPool} members={poolMembers(shownPool)}
+              fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
+              title={`${byId[shownPool.category_id]?.name} · Pool ${shownPool.number}`} />
+          </div>
         </div>
       )}
 
