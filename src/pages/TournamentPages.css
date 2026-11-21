@@ -358,6 +358,7 @@
 .td-schedule-row.editor { flex-direction: column; }
 .td-program { flex: 1 1 15rem; max-width: 40rem; padding: 0.6rem 0.9rem; background: #faf8f3; border-radius: 6px; }
 .td-program h4 { margin: 0 0 0.4rem; }
+.td-program-day { margin: 0.6rem 0 0.2rem; font-size: 0.85rem; color: #5f5a50; }
 .td-program-list td { padding: 0.15rem 0.6rem 0.15rem 0; border: 0; }
 .td-program-time { white-space: nowrap; font-variant-numeric: tabular-nums; color: #711921; font-weight: 600; }
 .td-program-edit td:nth-child(2) input { width: 15rem; max-width: 100%; }

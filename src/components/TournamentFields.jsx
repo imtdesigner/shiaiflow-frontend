@@ -54,7 +54,7 @@ export const usesSchedule = (days, startTime) => !!startTime || (Array.isArray(d
  * take. Yes shows the days with their times.
  */
 export function ScheduleQuestion({ value, onChange, startDate, endDate, days, onDays, disabled, program, onProgram, programMode = 'proposal' }) {
-  const day1 = tournamentDays({ start_date: startDate, end_date: endDate || startDate, days })[0];
+  const allDays = tournamentDays({ start_date: startDate, end_date: endDate || startDate, days });
   return (
     <div className="td-schedule">
       <h4>Use a schedule?</h4>
@@ -72,8 +72,8 @@ export function ScheduleQuestion({ value, onChange, startDate, endDate, days, on
             ? <DaysEditor startDate={startDate} endDate={endDate} value={days} onChange={onDays} disabled={disabled} />
             : <p className="tp-muted">Pick the dates first — then set the times of each day.</p>}
           {program && onProgram && (programMode === 'editor'
-            ? <ProgramEditor program={program} onChange={onProgram} day={day1} disabled={disabled} />
-            : <ProgramProposal program={program} onChange={onProgram} day={day1} disabled={disabled} />)}
+            ? <ProgramEditor program={program} onChange={onProgram} days={allDays} disabled={disabled} />
+            : <ProgramProposal program={program} onChange={onProgram} days={allDays} disabled={disabled} />)}
         </div>
       )}
     </div>
@@ -206,21 +206,19 @@ export const noEnterSubmit = (e) => {
 };
 
 /**
- * Create: the proposed day programme next to the days, read only, with the
- * shinai check on / off and "Edit now" (the full editor); details later in
- * Edit tournament.
+ * The programme of day 1, then of every later day whose times differ (a
+ * different start or end moves the relative items).
  */
-export function ProgramProposal({ program, onChange, day, disabled }) {
-  const [editing, setEditing] = useState(false);
-  if (editing) return <ProgramEditor program={program} onChange={onChange} day={day} disabled={disabled} />;
-  const shinai = program.find((it) => it.key === 'shinai');
-  return (
-    <div id="g-program" className="td-program">
-      <h4>Proposed schedule <span className="tp-muted">(every day)</span></h4>
-      {!day?.start && <p className="tp-muted">Set the start time of the day — the times below follow it.</p>}
+function ProgramDays({ program, days, skipFirst = false }) {
+  const first = days[0];
+  const multi = days.length > 1;
+  const shown = days.filter((d, i) => i === 0 || d.start !== first?.start || d.end !== first?.end);
+  return shown.map((d, i) => (skipFirst && i === 0 ? null : (
+    <div key={d.n}>
+      {multi && <h5 className="td-program-day">Day {d.n}{d.date ? ` · ${fmtDay(d.date)}` : ''}</h5>}
       <table className="tp-table td-program-list">
         <tbody>
-          {dayProgram(program, day).map((it) => (
+          {dayProgram(program, d).map((it) => (
             <tr key={it.key}>
               <td className="td-program-time">{it.fromTime ?? '—'}{it.toTime ? `–${it.toTime}` : ''}</td>
               <td>{it.label}</td>
@@ -228,6 +226,25 @@ export function ProgramProposal({ program, onChange, day, disabled }) {
           ))}
         </tbody>
       </table>
+    </div>
+  )));
+}
+
+/**
+ * Create: the proposed day programme next to the days, read only, with the
+ * shinai check on / off and "Edit now" (the full editor); details later in
+ * Edit tournament.
+ */
+export function ProgramProposal({ program, onChange, days, disabled }) {
+  const [editing, setEditing] = useState(false);
+  const day = days[0];
+  if (editing) return <ProgramEditor program={program} onChange={onChange} days={days} disabled={disabled} />;
+  const shinai = program.find((it) => it.key === 'shinai');
+  return (
+    <div id="g-program" className="td-program">
+      <h4>Proposed schedule</h4>
+      {!day?.start && <p className="tp-muted">Set the start time of the day — the times below follow it.</p>}
+      <ProgramDays program={program} days={days} />
       {shinai && (
         <label className="tp-check"><input type="checkbox" checked={shinai.on} disabled={disabled}
           onChange={(e) => onChange(updateItem(program, 'shinai', { on: e.target.checked }))} /> Shinai check (during the warm-up)</label>
@@ -243,12 +260,13 @@ export function ProgramProposal({ program, onChange, day, disabled }) {
  * on / off, name, from / to (a typed time stays fixed; ↺ back to the
  * proposal), remove, add your own.
  */
-export function ProgramEditor({ program, onChange, day, disabled }) {
+export function ProgramEditor({ program, onChange, days, disabled }) {
+  const day = days[0];
   const set = (key, patch) => onChange(updateItem(program, key, patch));
   const ordered = dayProgram(program.map((it) => ({ ...it, on: true })), day).map((it) => program.find((p) => p.key === it.key));
   return (
     <div id="g-program" className="td-program">
-      <h4>Day schedule <span className="tp-muted">(every day)</span></h4>
+      <h4>Day schedule{days.length > 1 ? <span className="tp-muted"> · times of day 1</span> : null}</h4>
       {!day?.start && <p className="tp-muted">Set the start time of the day — relative times follow it.</p>}
       <table className="tp-table td-program-edit">
         <thead><tr><th /><th>Item</th><th>From</th><th>To</th><th /></tr></thead>
@@ -288,6 +306,7 @@ export function ProgramEditor({ program, onChange, day, disabled }) {
         </tbody>
       </table>
       <button type="button" className="tp-btn secondary small" disabled={disabled} onClick={() => onChange(addItem(program))}>+ Add item</button>
+      <ProgramDays program={program} days={days} skipFirst />
       <p className="tp-muted">Times without a typed value follow the start (or end) of each day. The awards time is an estimate until the categories and entries are known.</p>
     </div>
   );
