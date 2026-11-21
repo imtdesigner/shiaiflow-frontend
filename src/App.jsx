@@ -31,7 +31,8 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
-import { amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTournaments } from './lib/api';
+import { AccountBanner } from './components/AccountStatus';
+import { accountWaiting, amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTournaments } from './lib/api';
 import AdminAccounts from './pages/AdminAccounts';
 import { PublicTournamentRoute } from './pages/PublicTournament';
 import CourtDisplay from './pages/CourtDisplay';
@@ -115,7 +116,7 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      {/* ... profile bar ... */}
+      <AccountBanner />
 
       <div className="dashboard-main">
         <div className="create-container special-font">
@@ -196,7 +197,7 @@ function AppContent() {
   const [pendingAccounts, setPendingAccounts] = useState(0);
   useEffect(() => {
     if (!isAdmin) { setPendingAccounts(0); return undefined; }
-    const load = () => listOrganizationAccounts().then((a) => setPendingAccounts(a.filter((x) => !x.verified_at).length)).catch(() => {});
+    const load = () => listOrganizationAccounts().then((a) => setPendingAccounts(a.filter(accountWaiting).length)).catch(() => {});
     load();
     const t = setInterval(load, 60000);
     return () => clearInterval(t);

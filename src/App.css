@@ -555,3 +555,13 @@ html, body {
   display: inline-block; min-width: 1.2em; margin-left: 0.3em; padding: 0 0.35em;
   border-radius: 999px; background: #c62828; color: #fff; font-size: 0.75em; line-height: 1.4em; text-align: center;
 }
+
+/* dashboard: account not verified yet (dojo / federation) */
+.account-banner {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem;
+  max-width: 900px; margin: 1rem auto 0; padding: 0.6rem 1rem; border-radius: 8px;
+  background: #fff8e1; border: 1px solid #e0a800; color: #5f4b00; font-size: 0.95rem;
+}
+.account-banner.error { background: #fdecea; border-color: #c62828; color: #7f1d1d; }
+.account-banner q { font-style: italic; }
+.account-banner a { margin-left: auto; font-weight: 600; color: inherit; }

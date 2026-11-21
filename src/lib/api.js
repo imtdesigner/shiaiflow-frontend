@@ -617,25 +617,44 @@ export async function amIAdmin() {
 /** Dojo and federation accounts for the admins, unverified first. */
 export async function listOrganizationAccounts() {
   const rows = unwrap(await supabase.from('users')
-    .select('id, email, name, role, city, country, website, contact_name, contact_email, verified_at, needs_review, created_at')
+    .select('id, email, name, role, city, country, website, contact_name, contact_email, verified_at, needs_review, review_state, review_note, created_at')
     .or('role.in.(dojo,regional,continental),needs_review.eq.true')
     .order('created_at', { ascending: false }));
-  return rows.sort((a, b) => (!!a.verified_at - !!b.verified_at));
+  const order = (a) => (a.verified_at ? 2 : a.review_state ? 1 : 0); // waiting, answered, verified
+  return rows.sort((a, b) => order(a) - order(b));
 }
+
+/** Waiting for the admins = not verified and not answered (more info / rejected). */
+export const accountWaiting = (a) => !a.verified_at && !a.review_state;
 
 /** Verify (or withdraw the verification of) an account — admins only. */
 export async function setAccountVerified(userId, verified) {
   const { data: { user } } = await supabase.auth.getUser();
   return unwrap(await supabase.from('users')
-    .update({ verified_at: verified ? new Date().toISOString() : null, verified_by: verified ? user.id : null })
+    .update({
+      verified_at: verified ? new Date().toISOString() : null, verified_by: verified ? user.id : null,
+      ...(verified ? { review_state: null, review_note: null } : {}),
+    })
     .eq('id', userId).select('id, verified_at').single());
+}
+
+/** Admins: ask for more information or reject, with a note the account sees (and gets by email). */
+export async function setAccountReview(userId, state, note) {
+  return unwrap(await supabase.from('users')
+    .update({ review_state: state, review_note: note, verified_at: null, verified_by: null })
+    .eq('id', userId).select('id, review_state').single());
+}
+
+/** The account corrected its data after "more information" / "rejected" and sends it again. */
+export async function resubmitAccount() {
+  return unwrap(await supabase.rpc('resubmit_account'));
 }
 
 /** Account of the signed-in user (kind, verification). */
 export async function myAccount() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  return unwrap(await supabase.from('users').select('id, name, role, verified_at').eq('id', user.id).maybeSingle());
+  return unwrap(await supabase.from('users').select('id, name, role, verified_at, needs_review, review_state, review_note').eq('id', user.id).maybeSingle());
 }
 
 /** Change the account kind (RPC): verification starts again; a former dojo / federation turned individual needs the admins' approval. */

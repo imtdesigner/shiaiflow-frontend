@@ -149,3 +149,4 @@
 .signup-kind input {
   display: none;
 }
+.review-note { margin: 0.5rem 0; padding: 0.4rem 0.75rem; border-left: 3px solid currentColor; font-style: italic; white-space: pre-wrap; }

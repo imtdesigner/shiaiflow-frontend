@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { countryOptions } from '../lib/countries';
-import { changeAccountKind } from '../lib/api';
+import { changeAccountKind, resubmitAccount } from '../lib/api';
+import { accountStatus } from '../components/AccountStatus';
 import './SignupPage.css';
-import { fmtDate } from '../lib/format.js';
 
 const ORG = ['dojo', 'regional', 'continental'];
 const KIND_LABEL = {
@@ -12,18 +12,6 @@ const KIND_LABEL = {
   regional: 'National / regional federation',
   continental: 'Continental federation',
 };
-
-/** Verification status of the account, in words. */
-function accountStatus(p) {
-  if (p.verified_at) return { cls: 'success', text: `Verified by the app admins on ${fmtDate(p.verified_at)}.` };
-  if (ORG.includes(p.role)) {
-    return { cls: 'info', text: 'Waiting for verification by the app admins. Until then you can set up tournaments, but not publish the signup or start them.' };
-  }
-  if (p.needs_review) {
-    return { cls: 'info', text: 'Former dojo / federation account, now individual: the app admins approve it again before you can publish the signup or start a tournament.' };
-  }
-  return { cls: 'info', text: 'Individual account — no verification needed. Your tournaments show as personal tournaments.' };
-}
 
 /**
  * Profile: account data, verification status and changing the account kind.
@@ -101,13 +89,27 @@ const ProfilePage = () => {
     finally { setBusy(false); }
   };
 
+  const resend = async () => {
+    setBusy(true); setMsg({ type: '', text: '' });
+    try {
+      await resubmitAccount();
+      await load();
+      setMsg({ type: 'success', text: 'Sent again — the app admins get an email and check your data.' });
+    } catch (err) { setMsg({ type: 'error', text: err.message }); }
+    finally { setBusy(false); }
+  };
+
   const toOrg = kindForm && ORG.includes(kindForm.role);
 
   return (
     <div className="signup-page">
       <h2>Your profile</h2>
       <p><strong>{KIND_LABEL[profile.role] ?? profile.role}</strong></p>
-      <div className={`popup-message ${status.cls}`}>{status.text}</div>
+      <div className={`popup-message ${status.cls}`}>
+        {status.text}
+        {status.note && <blockquote className="review-note">{status.note}</blockquote>}
+        {status.resend && <button type="button" disabled={busy} onClick={resend}>Send again</button>}
+      </div>
       {msg.text && <div className={`popup-message ${msg.type}`}>{msg.text}</div>}
 
       <form onSubmit={save}>
