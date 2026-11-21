@@ -1,4 +1,4 @@
-import { DEFAULT_CRITERIA } from '../lib/tournament/standings.js';
+import { DEFAULT_CRITERIA, NEW_CATEGORY_CRITERIA } from '../lib/tournament/standings.js';
 import { FIGHT_FIELDS, copyFields } from '../lib/tournament/categoryTemplates.js';
 import Segmented from './Segmented';
 
@@ -8,7 +8,7 @@ const CRITERIA = {
   draws: 'Draws (more)',
   scored: 'Ippons scored (more)',
   conceded: 'Ippons conceded (fewer)',
-  headToHead: 'Head-to-head',
+  headToHead: 'Head-to-head (who won their fight)',
 };
 
 const min = (s) => (s ? String(s / 60) : '');
@@ -117,7 +117,7 @@ export default function FightRules({ category, onChange, hidePools = false, stru
           </Row>
           {!hidePools && (
             <Row label="Go on to the KO">
-              <Segmented options={[[1, '1 per pool'], [2, '2 per pool'], [0, 'None — pools only']]} value={advancing}
+              <Segmented options={[[1, '1 per pool'], [2, '2 per pool']]} value={advancing}
                 onChange={(n) => set({ advancing: n })} disabled={structureLocked} />
             </Row>
           )}
@@ -155,13 +155,13 @@ export default function FightRules({ category, onChange, hidePools = false, stru
               </li>
             ))}
           </ol>
-          {(unused.length > 0 || criteria.join() !== DEFAULT_CRITERIA.join()) && (
+          {(unused.length > 0 || criteria.join() !== NEW_CATEGORY_CRITERIA.join()) && (
             <div className="tp-actions" style={{ marginTop: 0 }}>
               {unused.map((k) => (
                 <button key={k} type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...criteria, k] })}>+ {CRITERIA[k]}</button>
               ))}
-              {criteria.join() !== DEFAULT_CRITERIA.join() && (
-                <button type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...DEFAULT_CRITERIA] })}>Back to default</button>
+              {criteria.join() !== NEW_CATEGORY_CRITERIA.join() && (
+                <button type="button" className="tp-btn secondary small" onClick={() => set({ ranking_criteria: [...NEW_CATEGORY_CRITERIA] })}>Back to default</button>
               )}
             </div>
           )}
@@ -200,7 +200,7 @@ export default function FightRules({ category, onChange, hidePools = false, stru
             </Row>
           ) : null}
           <Row label="3rd place">
-            <Segmented options={[['shared', 'Shared — both semifinal losers'], ['fight', 'Fight for 3rd place']]}
+            <Segmented options={[['shared', 'Shared — both semifinalists'], ['fight', 'Fight for 3rd place']]}
               value={c.third_place ?? 'shared'} onChange={(v) => set({ third_place: v })} disabled={structureLocked} />
           </Row>
         </div>

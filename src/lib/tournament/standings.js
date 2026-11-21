@@ -12,6 +12,12 @@ import { boutResult } from './scoring.js';
 const resultOf = (m, scoringOptions) => m.result ?? boutResult(m.bout, scoringOptions);
 
 export const DEFAULT_CRITERIA = ['wins', 'losses', 'draws', 'scored', 'conceded'];
+/**
+ * Ranking order offered to new categories (owner, 2026-11-21): wins, ippons
+ * scored, head-to-head, losses, ippons conceded, draws. Categories without
+ * their own criteria (older ones) keep DEFAULT_CRITERIA (the Excel order).
+ */
+export const NEW_CATEGORY_CRITERIA = ['wins', 'scored', 'headToHead', 'losses', 'conceded', 'draws'];
 const DIRECTION = { wins: -1, losses: 1, draws: -1, scored: -1, conceded: 1 };
 
 /**

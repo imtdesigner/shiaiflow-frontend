@@ -1,9 +1,11 @@
+import { NEW_CATEGORY_CRITERIA } from './standings.js';
+
 // Category templates offered when setting up a tournament (owner, 2026-11-08).
 // A template is only a starting point: everything can be changed, the name
 // too. Times from DP HKS 2026 (seconds). Ages by the tournament's age basis.
 
-const IND = { kind: 'individual', team_size: null, pool_size: 3, advancing: 2 };
-const TEAM = { kind: 'team', team_size: 3, team_same_dojo: false, position_rules: null };
+const IND = { kind: 'individual', team_size: null, pool_size: 3, advancing: 2, ranking_criteria: NEW_CATEGORY_CRITERIA };
+const TEAM = { kind: 'team', team_size: 3, team_same_dojo: false, position_rules: null, ranking_criteria: NEW_CATEGORY_CRITERIA };
 
 export const CATEGORY_TEMPLATES = [
   { ...IND, name: 'Junior A', max_age: 14, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
@@ -26,6 +28,7 @@ export const EMPTY_CATEGORY = {
   fight_system: 'sanbon', pool_split: 'even', qf_fight_seconds: null, sf_fight_seconds: null,
   pool_tie: 'hikiwake', pool_encho_seconds: null, pool_hantei: false, ko_encho_seconds: null, ko_hantei: false,
   daihyosen_encho_seconds: null, daihyosen_hantei: false, third_place: 'shared', no_hantei_from: null, day: 1,
+  ranking_criteria: NEW_CATEGORY_CRITERIA,
 };
 
 /** Setup fields of a category (what a template or a copy carries over). */
