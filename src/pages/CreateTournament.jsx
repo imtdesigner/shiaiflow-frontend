@@ -198,7 +198,7 @@ function CreateTournament() {
               </div>
 
               <div id={`g-cat-${c._key}-fights`}>
-                <h4>2 · Fights</h4>
+                <h4>2 · Type of tournament</h4>
                 <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)}
                   others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
               </div>

@@ -1056,7 +1056,7 @@ test('setup guide: steps and the current hint', () => {
   const withCats = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, custom_link: false, venue: 'Hall' }, cats,
     { inside: (a) => a === 'g-cat-a' || a === 'g-cat-a-fights', left: (a) => left.has(a) });
   assert.equal(currentStep(withCats).key, 'cat-fights-a');
-  assert.match(currentStep(withCats).hint, /^Junior A — how it fights/);
+  assert.match(currentStep(withCats).hint, /^Junior A — type of tournament/);
   left.add('g-cat-a-fights');
   const next = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, custom_link: false, venue: 'Hall' }, cats, { inside: () => false, left: (a) => left.has(a) });
   assert.equal(currentStep(next).key, 'cat-name-b');

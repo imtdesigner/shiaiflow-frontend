@@ -45,7 +45,7 @@ export const RULE_FIELDS = [
   'no_hantei_from', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'third_place', 'ranking_criteria',
 ];
 
-/** Everything of "2 · Fights" ("Same as" copies it): rules, times, pools. */
+/** Everything of "2 · Type of tournament" ("Same as" copies it): rules, times, pools. */
 export const FIGHT_FIELDS = [
   ...RULE_FIELDS, 'pool_size', 'advancing',
   'pool_fight_seconds', 'ko_fight_seconds', 'qf_fight_seconds', 'sf_fight_seconds', 'final_fight_seconds',

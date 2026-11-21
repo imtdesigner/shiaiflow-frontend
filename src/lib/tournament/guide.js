@@ -92,8 +92,8 @@ function categorySteps(categories, seen, multiDay = false) {
       `Name the category, pick individual or team${multiDay ? ' and the day it is fought' : ''}.`, 'create', nameA),
     step(`cat-who-${c._key}`, 'Who', visited(whoA),
       `${label} — who can enter: switch on the limits it has (gender, age, grade${team ? ', team size and positions' : ''}).`, 'create', whoA),
-    step(`cat-fights-${c._key}`, 'Fights', visited(fightsA),
-      `${label} — how it fights: pool size, how many go on to the KO, fight times and what happens on a tie.`, 'create', fightsA),
+    step(`cat-fights-${c._key}`, 'Type', visited(fightsA),
+      `${label} — type of tournament: pools then KO, or KO only; fight times and what happens on a draw.`, 'create', fightsA),
   ];
 }
 

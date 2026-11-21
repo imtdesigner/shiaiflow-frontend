@@ -456,3 +456,16 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .ct-head-name input { flex: 1; font-size: 1.25rem; font-weight: 600; padding: 0.35rem 0.5rem; }
 .ct-head-label { font-size: 0.8rem; color: #8a8378; margin-right: 0.5rem; }
 .cr-grade-modes { display: inline-flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+/* Type of tournament (category part 2): question left, answer right */
+.fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem; margin-bottom: 0.55rem; }
+.fr-row-label { min-width: 11rem; font-weight: 600; font-size: 0.9rem; }
+.fr-row-value { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.fr-row-note { flex-basis: 100%; margin-left: 11.9rem; font-size: 0.8rem; }
+.fr-part { margin: 0.8rem 0 0.4rem; padding: 0.6rem 0.9rem; border-left: 3px solid #e3dccf; }
+.fr-part .fr-h { margin-top: 0; font-size: 1rem; color: #711921; }
+.fr-row .cr-range input { width: 4.5rem; }
+.fr-times { display: inline-flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; }
+.fr-time { display: inline-flex; flex-direction: column; font-size: 0.8rem; color: #6b665b; }
+.fr-row .fr-tie { margin: 0; }
+@media (max-width: 700px) { .fr-row-note { margin-left: 0; } }
