@@ -482,3 +482,23 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .cr-option .tp-check { margin: 0; }
 .cr-option-hint { margin: 0.15rem 0 0 1.6rem; font-size: 0.8rem; max-width: 46rem; }
 .seg.seg-small button { padding: 0.15rem 0.55rem; font-size: 0.85rem; }
+
+/* Edit tournament: status column on the left, tabs on top */
+.et-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 1000px) { .et-layout { grid-template-columns: 1fr; } }
+.ts { position: sticky; top: 80px; background: #fffdf7; border: 1px solid #e3ddd0; border-radius: 10px; padding: 0.9rem 1rem; }
+.ts h3 { margin: 0 0 0.6rem; font-size: 1rem; }
+.ts-steps { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid #e3ddd0; display: grid; gap: 0.9rem; }
+.ts-step { position: relative; display: grid; gap: 0.3rem; font-size: 0.85rem; }
+.ts-step::before { content: ''; position: absolute; left: -21px; top: 0.25rem; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #cfc8bb; }
+.ts-step.past::before { background: #8a8378; border-color: #8a8378; }
+.ts-step.now::before { background: #711921; border-color: #711921; }
+.ts-step.now > strong { color: #711921; }
+.ts-step.next { opacity: 0.8; }
+.ts-step .tp-muted { font-size: 0.78rem; }
+.ts-sub { font-size: 0.78rem; color: #6b665b; margin-top: 0.2rem; }
+.et-tabs { margin-bottom: 1rem; }
+.tp-page.tp-page-wide { max-width: 1400px; }
+.ts-card { margin-top: 1rem; }
+.ts-card h3 { font-size: 1rem; }
+.et-layout .court-grid { width: 100%; left: 0; transform: none; }

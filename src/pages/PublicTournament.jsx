@@ -119,7 +119,9 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
 
   const regOpen = tournament && tournament.registration_open
     && (!tournament.registration_deadline || new Date(tournament.registration_deadline) > new Date());
-  const drawn = categories.filter((c) => c.status !== 'registration');
+  // the draw shows publicly once the organizer publishes it (always while running)
+  const drawsShown = running0 || tournament?.draws_public !== false;
+  const drawn = drawsShown ? categories.filter((c) => c.status !== 'registration') : [];
   const running = tournament?.status === 'running';
   useEffect(() => {
     if (tab || !tournament) return;

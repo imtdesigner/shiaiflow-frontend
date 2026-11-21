@@ -102,6 +102,7 @@ function CreateTournament() {
         slug: (form.custom_link && form.slug) || null,
         single_category: form.single_category,
         is_public: false,
+        draws_public: false,
         status: 'registration',
       }, categories.map((c) => ({ ...categoryRow(c), day: Math.min(Number(c.day) || 1, lastDay) })));
       navigate(`/tournament/${t.id}/registration`);

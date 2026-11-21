@@ -30,7 +30,8 @@ const fmt = (seconds) => {
  * all categories at the end on the central courts. Times are fighting time
  * only (no breaks or changeovers).
  */
-function ShiaijoPlan() {
+/** embedded: inside Edit tournament / the wizard — no page title or back button. */
+function ShiaijoPlan({ embedded = false }) {
   const {
     tournamentId, tournament, categories, reload: reloadTournament, error: loadError, loading,
   } = useTournament();
@@ -106,10 +107,14 @@ function ShiaijoPlan() {
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
   return (
-    <div className="tp-page">
-      <BackToDashboard />
-      <h2>Shiaijo plan</h2>
-      <p className="tp-subtitle">{tournament?.name}</p>
+    <div className={embedded ? '' : 'tp-page'}>
+      {!embedded && (
+        <>
+          <BackToDashboard />
+          <h2>Shiaijo plan</h2>
+          <p className="tp-subtitle">{tournament?.name}</p>
+        </>
+      )}
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
       <div id="g-courts" className="tp-card">
@@ -124,7 +129,7 @@ function ShiaijoPlan() {
             <div className="fr-row">
               <span className="fr-row-label">Days</span>
               <span>{tournamentDays(tournament).map((d) => `Day ${d.n}: ${d.start ?? '—'}–${d.end ?? '—'}`).join(' · ')}</span>
-              <Link className="tp-muted" to={`/tournament/${tournamentId}/edit`}>Change in Edit tournament</Link>
+              <Link className="tp-muted" to={`/tournament/${tournamentId}/edit`}>Change in Tournament basics</Link>
             </div>
           ) : (
             <div className="fr-row">

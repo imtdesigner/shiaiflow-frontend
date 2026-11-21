@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
 import { changeCourtCount, deleteTournament, tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
 import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit, usesSchedule } from '../components/TournamentFields';
 import { daysValue } from '../lib/tournament/days.js';
 import { programOf } from '../lib/tournament/program.js';
-import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
-import { DateTimeInput } from '../components/EuInputs';
 import Segmented from '../components/Segmented';
+import SignupSetup from '../components/SignupSetup';
+import TournamentStatus from '../components/TournamentStatus';
+import ShiaijoPlan from './ShiaijoPlan';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -22,15 +23,25 @@ const toLocalInput = (iso) => {
 };
 
 /**
- * Tournament setup, in the same parts as Create: Tournament (name, dates,
- * schedule), Venue (hall, address, courts), Public page (link, publishing,
- * logo); then registration and the signup form, the PIN for editors and
- * tables, and deleting the tournament (owner).
+ * Edit tournament (owner, 2026-11-22): tabs Tournament basics / Categories /
+ * Signup setup / Shiaijo plan — the same parts as the new-tournament wizard —
+ * and on the left the tournament status (published, signup, draws,
+ * registration, running, finished) with its switches, the PIN and Delete.
  */
 function EditTournament() {
   const { tournamentId, tournament, categories, reload, error: loadError, loading } = useTournament();
   const navigate = useNavigate();
   const [deleteName, setDeleteName] = useState(null); // typed name while confirming the delete
+  // tabs: ?tab= in the address, and the guide opens the tab that holds its anchor
+  const [params, setParams] = useSearchParams();
+  const tab = ['basics', 'categories', 'signup', 'shiaijo'].includes(params.get('tab')) ? params.get('tab') : 'basics';
+  const setTab = (t) => setParams(t === 'basics' ? {} : { tab: t }, { replace: true });
+  useEffect(() => {
+    const ANCHOR_TAB = { 'g-registration': 'signup', 'g-signup': 'signup', 'g-rules': 'signup', 'g-courts': 'shiaijo', 'g-court-cats': 'shiaijo' };
+    const onGo = (e) => { const t = ANCHOR_TAB[e.detail] ?? (String(e.detail).startsWith('g-') ? 'basics' : null); if (t && !['g-publish', 'g-pin', 'g-delete'].includes(e.detail)) setTab(t); };
+    window.addEventListener('guide-goto', onGo);
+    return () => window.removeEventListener('guide-goto', onGo);
+  });
   const [form, setForm] = useState(null);
   const [pin, setPinState] = useState(null);
   const [role, setRole] = useState(null);
@@ -112,155 +123,29 @@ function EditTournament() {
   };
 
   const toggle = (field, value, ok) => run(() => updateTournament(tournamentId, { [field]: value }), ok);
-  const signup = signupSettings(tournament);
-  const saveSignup = (patch) => run(() => updateTournament(tournamentId, { signup_fields: { ...signup, ...patch } }), 'Signup form saved.');
 
   if (loading || !form) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
-  const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < new Date();
-  const regOpen = tournament.registration_open && !deadlinePassed;
   const publicUrl = `${window.location.origin}${tournament.slug ? `/${tournament.slug}` : `/t/${tournamentId}`}`;
   const joinUrl = `${window.location.origin}/join/${tournamentId}`;
 
+  const TABS = [['basics', 'Tournament basics'], ['categories', 'Categories'], ['signup', 'Signup setup'], ['shiaijo', 'Shiaijo plan']];
+  const locked = tournament.draws_confirmed && role !== 'owner';
+
   return (
-    <div className="tp-page">
+    <div className="tp-page tp-page-wide">
       <BackToDashboard />
       <h2>Edit tournament</h2>
       <p className="tp-subtitle">{tournament.name}</p>
       <p className="tp-muted guide-note">The setup guide on the right (at the bottom on small screens) shows the next step — click it to jump there.</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
-      <form id="g-details" onSubmit={save} onKeyDown={noEnterSubmit}>
-        {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
-        <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
-          <TournamentPart form={form} setForm={setForm} programMode="editor" />
-          <VenuePart form={form} setForm={setForm} />
-          <PublicPagePart form={form} setForm={setForm} saved={tournament.slug ?? ''}
-            linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState} />
-          <div className="tp-actions" style={{ marginTop: '-0.5rem', marginBottom: '1.5rem' }}>
-            <button type="submit" className="tp-btn" disabled={busy}>Save</button>
-            <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
-          </div>
-        </fieldset>
-      </form>
-
-      <div id="g-publish" className="tp-card">
-        <h3>Publishing</h3>
-        <div className="fr-row">
-          <span className="fr-row-label">Public page</span>
-          <Segmented options={[[false, 'Hidden'], [true, 'Published']]} value={!!tournament.is_public}
-            disabled={busy || role !== 'owner' || (waitingVerification && !tournament.is_public)}
-            onChange={(v) => toggle('is_public', v, v ? 'Published on the home page.' : 'Hidden from the home page.')} />
-        </div>
-        <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
-          Published: listed on the home page; setup, entries, draw, schedule and live results are public, and competitors can sign up.
-          {role !== 'owner' && ' Only the owner can publish.'}
-        </p>
-        {waitingVerification && (
-          <Message type="info">
-            The organizer's account is waiting for approval by the app admins (new dojo or federation, or a former one turned individual). Everything can be set up,
-            but publishing the signup and starting the tournament wait for the verification.
-          </Message>
-        )}
-        {tournament.is_public && <p className="tp-muted">Public page: <a href={publicUrl}>{publicUrl}</a></p>}
-      </div>
-
-      <div className="tp-card">
-        <h3>Logo</h3>
-        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
-        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
-        {tournament.logo_url && (
-          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
-        )}
-        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
-      </div>
-
-      <div id="g-registration" className="tp-card">
-        <h3>Registration</h3>
-        <div className="fr-row">
-          <span className="fr-row-label">Registration</span>
-          <Segmented options={[[true, 'Open'], [false, 'Closed']]} value={!!tournament.registration_open} disabled={busy}
-            onChange={(v) => toggle('registration_open', v)} />
-          {tournament.registration_open && !regOpen && <span className="tp-badge warn">closed — the deadline has passed</span>}
-        </div>
-        <div className="fr-row">
-          <span className="fr-row-label">Closes by itself on</span>
-          <DateTimeInput value={form.registration_deadline || null} disabled={busy}
-            onChange={(v) => {
-              setForm({ ...form, registration_deadline: v ?? '' });
-              run(() => updateTournament(tournamentId, { registration_deadline: v ? new Date(v).toISOString() : null }), 'Deadline saved.');
-            }} />
-        </div>
-        <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
-          {tournament.is_public ? 'Competitors sign up on the public page while registration is open.' : 'Competitors can sign up once the tournament is published.'}
-          {' '}No approval needed; edit or remove entries in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.
-        </p>
-      </div>
-
-      <div id="g-signup" className="tp-card">
-        <h3>Signup form</h3>
-        <p className="tp-muted" style={{ marginTop: 0 }}>
-          Name, club and what the category rules need (gender, birth, grade) are always asked. Each category's limits — and whether age counts by
-          year or exact date of birth — are set in Drawings under "Who can enter".
-        </p>
-        {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
-          <div key={k} className="fr-row">
-            <span className="fr-row-label">{label}</span>
-            <Segmented options={[['off', 'Not asked'], ['optional', 'Optional'], ['required', 'Required']]} value={signup[k]} disabled={busy}
-              onChange={(v) => saveSignup({ [k]: v })} />
-          </div>
-        ))}
-        <div id="g-rules" className="cr-option">
-          <label className="tp-check">
-            <input type="checkbox" checked={!!tournament.single_category} disabled={busy} onChange={(e) => toggle('single_category', e.target.checked)} />
-            Only one individual category per competitor
-          </label>
-          <p className="tp-muted cr-option-hint">Off: a competitor may enter every individual category they qualify for.</p>
-        </div>
-        <div className="cr-option">
-          <label className="tp-check">
-            <input type="checkbox" checked={signup.add_another} disabled={busy} onChange={(e) => saveSignup({ add_another: e.target.checked })} />
-            "Add another" button
-          </label>
-          <p className="tp-muted cr-option-hint">Several people in one signup, e.g. a dojo registering its members.</p>
-        </div>
-        <h4>Consents (GDPR)</h4>
-        {CONSENTS.map((c) => (
-          <div key={c.key} className="fr-row">
-            <span className="fr-row-label">{c.label}</span>
-            <Segmented options={[['off', 'Not asked'], ['ask', 'Asked (yes / no)'], ['required', 'Required']]} value={signup.consents[c.key]} disabled={busy}
-              onChange={(v) => saveSignup({ consents: { ...signup.consents, [c.key]: v } })} />
-          </div>
-        ))}
-        <p className="tp-muted">Emails and consents are seen by the organizers only (Registration).</p>
-      </div>
-
-      {categories.some((c) => c.kind === 'team') && (
-        <div className="tp-card">
-          <h3>Team signup</h3>
-          <div className="fr-row">
-            <span className="fr-row-label">How teams sign up</span>
-            <Segmented options={[['with_competitor', 'Each competitor names or picks a team'], ['team_first', 'A team picks its members']]}
-              value={tournament.team_signup} disabled={busy} onChange={(v) => toggle('team_signup', v)} />
-          </div>
-          <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
-            {tournament.team_signup === 'team_first'
-              ? 'The team signs up and picks its members from competitors who are already registered.'
-              : 'When signing up, a competitor names a new team or joins one that already exists.'}
-          </p>
-          <div className="cr-option">
-            <label className="tp-check">
-              <input type="checkbox" checked={tournament.multi_team} disabled={busy} onChange={(e) => toggle('multi_team', e.target.checked)} />
-              One competitor in teams of different categories
-            </label>
-            <p className="tp-muted cr-option-hint">E.g. in Team juniors and Team adults. Off: one team per competitor.</p>
-          </div>
-        </div>
-      )}
-
-      <div id="g-pin" className="tp-card">
+      <div className="et-layout">
+        <div>
+          <TournamentStatus tournament={tournament} categories={categories} role={role} waitingVerification={waitingVerification}
+            onChanged={reload} run={run} />
+      <div id="g-pin" className="tp-card ts-card">
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           Before the start the PIN lets editors change the tournament; after the start it opens the scoretables and Manage.
@@ -276,7 +161,7 @@ function EditTournament() {
       </div>
 
       {role === 'owner' && (
-        <div id="g-delete" className="tp-card">
+        <div id="g-delete" className="tp-card ts-card">
           <h3>Delete tournament</h3>
           <p className="tp-muted" style={{ marginTop: 0 }}>Deletes the tournament with its categories, entries, draws and results. This cannot be undone.</p>
           {deleteName === null ? (
@@ -295,6 +180,54 @@ function EditTournament() {
           )}
         </div>
       )}
+        </div>
+
+        <div>
+          <Segmented className="et-tabs" options={TABS} value={tab} onChange={setTab} />
+
+          {tab === 'basics' && (
+            <>
+              <form id="g-details" onSubmit={save} onKeyDown={noEnterSubmit}>
+                {locked && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
+                <fieldset disabled={locked} style={{ border: 0, padding: 0, margin: 0 }}>
+                  <TournamentPart form={form} setForm={setForm} programMode="editor" />
+                  <VenuePart form={form} setForm={setForm} />
+                  <PublicPagePart form={form} setForm={setForm} saved={tournament.slug ?? ''}
+                    linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState}>
+                    {tournament.is_public && <p className="tp-muted">Public page: <a href={publicUrl}>{publicUrl}</a></p>}
+                  </PublicPagePart>
+                  <div className="tp-actions" style={{ marginTop: '-0.5rem', marginBottom: '1.5rem' }}>
+                    <button type="submit" className="tp-btn" disabled={busy}>Save</button>
+                  </div>
+                </fieldset>
+              </form>
+      <div className="tp-card">
+        <h3>Logo</h3>
+        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
+        {tournament.logo_url && (
+          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
+        )}
+        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
+      </div>
+
+            </>
+          )}
+
+          {tab === 'categories' && (
+            <div className="tp-card">
+              <h3>Categories</h3>
+              <p className="tp-muted">Who can enter and the type of tournament of each category are edited in Drawings for now; the full category editor comes here next.</p>
+              <Link className="tp-btn" to={`/tournament/${tournamentId}/drawings`}>Open Drawings</Link>
+            </div>
+          )}
+
+          {tab === 'signup' && <SignupSetup tournament={tournament} categories={categories} run={run} busy={busy} />}
+
+          {tab === 'shiaijo' && <ShiaijoPlan embedded />}
+        </div>
+      </div>
     </div>
   );
 }

@@ -49,6 +49,8 @@ const readSeen = (tid) => { try { return new Set(JSON.parse(localStorage.getItem
 /** Scroll to the step's place on the page and flash it. */
 function flash(anchor) {
   if (!anchor) return;
+  // pages with tabs (Edit tournament) open the tab that holds the anchor
+  setTimeout(() => window.dispatchEvent(new CustomEvent('guide-goto', { detail: anchor })), 50);
   let tries = 0;
   const t = setInterval(() => {
     const el = document.getElementById(anchor);
@@ -102,7 +104,7 @@ export function useTournamentPhase(tid) {
   const phase = data?.t && data.t.id === tid
     ? tournamentPhase(data.t, { categories: data.categories, entries: data.entries, fights: data.fights })
     : null;
-  return { data: phase ? data : null, phase };
+  return { data: phase ? data : null, phase, reload: load };
 }
 
 /** The tournament's current phase as a small label (dashboard overview). */
