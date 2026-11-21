@@ -186,6 +186,16 @@ export async function listCategories(tournamentId) {
     .order('sort_order'));
 }
 
+/** Add a category to an existing tournament (Edit tournament → Categories), at the end. */
+export async function addCategory(tournamentId, row, sortOrder) {
+  return unwrap(await supabase.from('categories').insert({ ...row, tournament_id: tournamentId, sort_order: sortOrder }, { defaultToNull: false }).select().single());
+}
+
+/** Delete a category (only one without entries; the page checks). */
+export async function deleteCategory(id) {
+  unwrap(await supabase.from('categories').delete().eq('id', id));
+}
+
 export async function updateCategory(id, fields) {
   return unwrap(await supabase.from('categories').update(fields).eq('id', id).select().single());
 }

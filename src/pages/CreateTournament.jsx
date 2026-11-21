@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message } from '../components/TournamentShell';
-import CategoryRules from '../components/CategoryRules';
-import FightRules from '../components/FightRules';
+import CategoryCard from '../components/CategoryCard';
 import { createTournament, listCategorySources } from '../lib/api';
-import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
-import { rulesText } from '../lib/tournament/eligibility.js';
+import { EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
 import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit } from '../components/TournamentFields';
-import { addDays, dayCount, daysValue } from '../lib/tournament/days.js';
-import { fmtDay } from '../lib/format.js';
-import Segmented from '../components/Segmented';
+import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { useGuide } from '../components/GuidePanel';
 import { DEFAULT_PROGRAM } from '../lib/tournament/program.js';
@@ -60,15 +56,6 @@ function CreateTournament() {
     return { ...(first ? copyFields(fresh, first, RULE_FIELDS) : fresh), _key: key };
   }));
   const replaceCategory = (key, next) => setCategories((cur) => cur.map((c) => (c._key === key ? { ...next, _key: key } : c)));
-  const updateCategory = (key, k, v) => setCategories((cur) => cur.map((c) => {
-    if (c._key !== key) return c;
-    const next = { ...c, [k]: v };
-    if (k === 'kind') {
-      next.team_size = v === 'team' ? 3 : null;
-      if (v !== 'team') { next.team_same_dojo = false; next.position_rules = null; }
-    }
-    return next;
-  }));
   const removeCategory = (key) => setCategories((cur) => cur.filter((c) => c._key !== key));
 
   const openCopy = async () => {
@@ -159,47 +146,11 @@ function CreateTournament() {
 
           {categories.length === 0 && <p className="tp-muted">No categories yet.</p>}
           {categories.map((c) => (
-            <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
-              <button type="button" className="tp-btn danger small ct-remove"
-                onClick={() => { if (!c.name.trim() || window.confirm(`Remove the category "${c.name.trim()}"?`)) removeCategory(c._key); }}>Remove category</button>
-              <div id={`g-cat-${c._key}-name`} className="ct-head">
-                {c._fresh && (
-                  <div className="ct-templates">
-                    <span className="ct-head-label">Templates</span>
-                    {CATEGORY_TEMPLATES.map((p) => (
-                      <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => applyTemplate(c._key, p)}>{p.name}</button>
-                    ))}
-                  </div>
-                )}
-                <div className="ct-head-name">
-                  <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
-                </div>
-                <div>
-                  <Segmented options={[['individual', 'Individual'], ['team', 'Team']]} value={c.kind}
-                    onChange={(v) => updateCategory(c._key, 'kind', v)} />
-                </div>
-                {days > 1 && (
-                  <div>
-                    <Segmented options={Array.from({ length: days }, (_, i) => [i + 1, `Day ${i + 1}${form.start_date ? ` · ${fmtDay(addDays(form.start_date, i))}` : ''}`])}
-                      value={Number(c.day ?? 1)} onChange={(v) => updateCategory(c._key, 'day', v)} />
-                  </div>
-                )}
-                <span className="tp-muted">{rulesText(c)}</span>
-              </div>
-
-              <div id={`g-cat-${c._key}-who`}>
-                <h4>1 · Who can enter</h4>
-                <CategoryRules category={c} ageBasis={form.age_basis} onAgeBasis={(v) => setForm({ ...form, age_basis: v })}
-                  onChange={(next) => replaceCategory(c._key, next)} />
-              </div>
-
-              <div id={`g-cat-${c._key}-fights`}>
-                <h4>2 · Type of tournament</h4>
-                <FightRules category={c} onChange={(next) => replaceCategory(c._key, next)}
-                  others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
-              </div>
-              <p className="tp-muted">The KO bracket can be adjusted per category in the bracket editor.</p>
-            </div>
+            <CategoryCard key={c._key} c={c} id={c._key} days={days} startDate={form.start_date}
+              ageBasis={form.age_basis} onAgeBasis={(v) => setForm({ ...form, age_basis: v })}
+              onChange={(next) => replaceCategory(c._key, next)} onTemplate={(p) => applyTemplate(c._key, p)}
+              onRemove={() => removeCategory(c._key)}
+              others={categories.filter((x) => x._key !== c._key && x.kind === c.kind && x.name.trim())} />
           ))}
           {categories.length > 0 && (
             <div className="tp-actions">

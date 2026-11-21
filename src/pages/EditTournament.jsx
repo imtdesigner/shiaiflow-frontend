@@ -9,6 +9,7 @@ import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
 import Segmented from '../components/Segmented';
 import SignupSetup from '../components/SignupSetup';
+import CategoriesEditor from '../components/CategoriesEditor';
 import TournamentStatus from '../components/TournamentStatus';
 import ShiaijoPlan from './ShiaijoPlan';
 
@@ -37,7 +38,7 @@ function EditTournament() {
   const tab = ['basics', 'categories', 'signup', 'shiaijo'].includes(params.get('tab')) ? params.get('tab') : 'basics';
   const setTab = (t) => setParams(t === 'basics' ? {} : { tab: t }, { replace: true });
   useEffect(() => {
-    const ANCHOR_TAB = { 'g-registration': 'signup', 'g-signup': 'signup', 'g-rules': 'signup', 'g-courts': 'shiaijo', 'g-court-cats': 'shiaijo' };
+    const ANCHOR_TAB = { 'g-categories': 'categories', 'g-registration': 'signup', 'g-signup': 'signup', 'g-rules': 'signup', 'g-courts': 'shiaijo', 'g-court-cats': 'shiaijo' };
     const onGo = (e) => { const t = ANCHOR_TAB[e.detail] ?? (String(e.detail).startsWith('g-') ? 'basics' : null); if (t && !['g-publish', 'g-pin', 'g-delete'].includes(e.detail)) setTab(t); };
     window.addEventListener('guide-goto', onGo);
     return () => window.removeEventListener('guide-goto', onGo);
@@ -215,13 +216,7 @@ function EditTournament() {
             </>
           )}
 
-          {tab === 'categories' && (
-            <div className="tp-card">
-              <h3>Categories</h3>
-              <p className="tp-muted">Who can enter and the type of tournament of each category are edited in Drawings for now; the full category editor comes here next.</p>
-              <Link className="tp-btn" to={`/tournament/${tournamentId}/drawings`}>Open Drawings</Link>
-            </div>
-          )}
+          {tab === 'categories' && <CategoriesEditor tournament={tournament} categories={categories} role={role} onSaved={reload} />}
 
           {tab === 'signup' && <SignupSetup tournament={tournament} categories={categories} run={run} busy={busy} />}
 
