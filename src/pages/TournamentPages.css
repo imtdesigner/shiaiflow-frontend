@@ -461,7 +461,8 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 
 /* Type of tournament (category part 2): question left, answer right */
 .fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem; margin-bottom: 0.55rem; }
-.fr-row-label { min-width: 11rem; font-weight: 600; font-size: 0.9rem; }
+.fr-row-label { flex: 0 0 11rem; font-weight: 600; font-size: 0.9rem; }
+#g-signup .fr-row-label { flex-basis: 16rem; }
 .fr-row-value { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .fr-row-note { flex-basis: 100%; margin-left: 11.9rem; font-size: 0.8rem; }
 .fr-part { margin: 0.8rem 0 0.4rem; padding: 0.6rem 0.9rem; border-left: 3px solid #e3dccf; }
@@ -480,3 +481,4 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .cr-option { margin-top: 0.9rem; }
 .cr-option .tp-check { margin: 0; }
 .cr-option-hint { margin: 0.15rem 0 0 1.6rem; font-size: 0.8rem; max-width: 46rem; }
+.seg.seg-small button { padding: 0.15rem 0.55rem; font-size: 0.85rem; }

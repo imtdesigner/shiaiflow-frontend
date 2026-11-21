@@ -9,6 +9,7 @@ import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
 import { DateTimeInput } from '../components/EuInputs';
+import Segmented from '../components/Segmented';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -146,12 +147,16 @@ function EditTournament() {
 
       <div id="g-publish" className="tp-card">
         <h3>Publishing</h3>
-        <label className="tp-field tp-check">
-          <input type="checkbox" checked={tournament.is_public} disabled={busy || role !== 'owner' || (waitingVerification && !tournament.is_public)}
-            onChange={(e) => toggle('is_public', e.target.checked, e.target.checked ? 'Published on the home page.' : 'Hidden from the home page.')} />
-          Published — shown on the home page; setup, entries, draw, schedule and live results are public
-        </label>
-        {role !== 'owner' && <p className="tp-muted">Only the owner can publish.</p>}
+        <div className="fr-row">
+          <span className="fr-row-label">Public page</span>
+          <Segmented options={[[false, 'Hidden'], [true, 'Published']]} value={!!tournament.is_public}
+            disabled={busy || role !== 'owner' || (waitingVerification && !tournament.is_public)}
+            onChange={(v) => toggle('is_public', v, v ? 'Published on the home page.' : 'Hidden from the home page.')} />
+        </div>
+        <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
+          Published: listed on the home page; setup, entries, draw, schedule and live results are public, and competitors can sign up.
+          {role !== 'owner' && ' Only the owner can publish.'}
+        </p>
         {waitingVerification && (
           <Message type="info">
             The organizer's account is waiting for approval by the app admins (new dojo or federation, or a former one turned individual). Everything can be set up,
@@ -171,81 +176,89 @@ function EditTournament() {
         )}
         <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
       </div>
+
       <div id="g-registration" className="tp-card">
         <h3>Registration</h3>
-        <p>
-          Status: <span className={`tp-badge ${regOpen ? 'ok' : 'warn'}`}>{regOpen ? 'open' : 'closed'}</span>
-          {!tournament.is_public && <span className="tp-muted"> · competitors can register once the tournament is published</span>}
-        </p>
-        <div className="tp-grid">
-          <label className="tp-field tp-check">
-            <input type="checkbox" checked={tournament.registration_open} disabled={busy}
-              onChange={(e) => toggle('registration_open', e.target.checked)} />
-            Registration open
-          </label>
-          <label className="tp-field">
-            Deadline (closes by itself)
-            <DateTimeInput value={form.registration_deadline || null} disabled={busy}
-              onChange={(v) => {
-                setForm({ ...form, registration_deadline: v ?? '' });
-                run(() => updateTournament(tournamentId, { registration_deadline: v ? new Date(v).toISOString() : null }), 'Deadline saved.');
-              }} />
-          </label>
+        <div className="fr-row">
+          <span className="fr-row-label">Registration</span>
+          <Segmented options={[[true, 'Open'], [false, 'Closed']]} value={!!tournament.registration_open} disabled={busy}
+            onChange={(v) => toggle('registration_open', v)} />
+          {tournament.registration_open && !regOpen && <span className="tp-badge warn">closed — the deadline has passed</span>}
         </div>
-        <h3 id="g-signup" style={{ marginTop: '1rem' }}>Signup form</h3>
-        <p className="tp-muted">Name, club and what the category rules need (gender, birth, grade) are always asked. Switch the rest on as needed. Each category's limits — and whether age counts by year or exact date of birth — are set in Drawings under "Who can enter".</p>
-        <div className="tp-grid">
-          {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
-            <label key={k} className="tp-field">
-              {label}
-              <select value={signup[k]} disabled={busy} onChange={(e) => saveSignup({ [k]: e.target.value })}>
-                <option value="off">not asked</option>
-                <option value="optional">optional</option>
-                <option value="required">required</option>
-              </select>
-            </label>
-          ))}
-          <label id="g-rules" className="tp-field tp-check">
-            <input type="checkbox" checked={!!tournament.single_category} disabled={busy}
-              onChange={(e) => toggle('single_category', e.target.checked)} />
-            A competitor may enter only one individual category (of those they qualify for)
+        <div className="fr-row">
+          <span className="fr-row-label">Closes by itself on</span>
+          <DateTimeInput value={form.registration_deadline || null} disabled={busy}
+            onChange={(v) => {
+              setForm({ ...form, registration_deadline: v ?? '' });
+              run(() => updateTournament(tournamentId, { registration_deadline: v ? new Date(v).toISOString() : null }), 'Deadline saved.');
+            }} />
+        </div>
+        <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
+          {tournament.is_public ? 'Competitors sign up on the public page while registration is open.' : 'Competitors can sign up once the tournament is published.'}
+          {' '}No approval needed; edit or remove entries in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.
+        </p>
+      </div>
+
+      <div id="g-signup" className="tp-card">
+        <h3>Signup form</h3>
+        <p className="tp-muted" style={{ marginTop: 0 }}>
+          Name, club and what the category rules need (gender, birth, grade) are always asked. Each category's limits — and whether age counts by
+          year or exact date of birth — are set in Drawings under "Who can enter".
+        </p>
+        {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
+          <div key={k} className="fr-row">
+            <span className="fr-row-label">{label}</span>
+            <Segmented options={[['off', 'Not asked'], ['optional', 'Optional'], ['required', 'Required']]} value={signup[k]} disabled={busy}
+              onChange={(v) => saveSignup({ [k]: v })} />
+          </div>
+        ))}
+        <div id="g-rules" className="cr-option">
+          <label className="tp-check">
+            <input type="checkbox" checked={!!tournament.single_category} disabled={busy} onChange={(e) => toggle('single_category', e.target.checked)} />
+            Only one individual category per competitor
           </label>
-          <label className="tp-field tp-check">
+          <p className="tp-muted cr-option-hint">Off: a competitor may enter every individual category they qualify for.</p>
+        </div>
+        <div className="cr-option">
+          <label className="tp-check">
             <input type="checkbox" checked={signup.add_another} disabled={busy} onChange={(e) => saveSignup({ add_another: e.target.checked })} />
-            "Add another" — register several people in one go (e.g. a dojo for its members)
+            "Add another" button
           </label>
+          <p className="tp-muted cr-option-hint">Several people in one signup, e.g. a dojo registering its members.</p>
         </div>
         <h4>Consents (GDPR)</h4>
-        <div className="tp-grid">
-          {CONSENTS.map((c) => (
-            <label key={c.key} className="tp-field">
-              {c.label}
-              <select value={signup.consents[c.key]} disabled={busy} onChange={(e) => saveSignup({ consents: { ...signup.consents, [c.key]: e.target.value } })}>
-                <option value="off">not asked</option>
-                <option value="ask">asked (yes / no)</option>
-                <option value="required">required to register</option>
-              </select>
-            </label>
-          ))}
-        </div>
+        {CONSENTS.map((c) => (
+          <div key={c.key} className="fr-row">
+            <span className="fr-row-label">{c.label}</span>
+            <Segmented options={[['off', 'Not asked'], ['ask', 'Asked (yes / no)'], ['required', 'Required']]} value={signup.consents[c.key]} disabled={busy}
+              onChange={(v) => saveSignup({ consents: { ...signup.consents, [c.key]: v } })} />
+          </div>
+        ))}
         <p className="tp-muted">Emails and consents are seen by the organizers only (Registration).</p>
-        <h3 style={{ marginTop: '1rem' }}>Teams</h3>
-        <div className="tp-grid">
-          <label className="tp-field">
-            How teams register
-            <select value={tournament.team_signup} disabled={busy} onChange={(e) => toggle('team_signup', e.target.value)}>
-              <option value="with_competitor">Each competitor names a new team or picks an existing one</option>
-              <option value="team_first">A team registers and picks its members from registered competitors</option>
-            </select>
-          </label>
-          <label className="tp-field tp-check">
-            <input type="checkbox" checked={tournament.multi_team} disabled={busy}
-              onChange={(e) => toggle('multi_team', e.target.checked)} />
-            A competitor may be in teams of different categories (e.g. Junior B and Team adults)
-          </label>
-        </div>
-        <p className="tp-muted">Registrations need no approval; edit or remove them in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.</p>
       </div>
+
+      {categories.some((c) => c.kind === 'team') && (
+        <div className="tp-card">
+          <h3>Team signup</h3>
+          <div className="fr-row">
+            <span className="fr-row-label">How teams sign up</span>
+            <Segmented options={[['with_competitor', 'Each competitor names or picks a team'], ['team_first', 'A team picks its members']]}
+              value={tournament.team_signup} disabled={busy} onChange={(v) => toggle('team_signup', v)} />
+          </div>
+          <p className="tp-muted cr-option-hint" style={{ marginLeft: 0 }}>
+            {tournament.team_signup === 'team_first'
+              ? 'The team signs up and picks its members from competitors who are already registered.'
+              : 'When signing up, a competitor names a new team or joins one that already exists.'}
+          </p>
+          <div className="cr-option">
+            <label className="tp-check">
+              <input type="checkbox" checked={tournament.multi_team} disabled={busy} onChange={(e) => toggle('multi_team', e.target.checked)} />
+              One competitor in teams of different categories
+            </label>
+            <p className="tp-muted cr-option-hint">E.g. in Team juniors and Team adults. Off: one team per competitor.</p>
+          </div>
+        </div>
+      )}
 
       <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>

@@ -10,14 +10,10 @@ import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts
 import { dayCount, tournamentDays } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { TimeInput } from '../components/EuInputs';
+import Segmented from '../components/Segmented';
 
 const MAX_COURTS = 6;
 
-const END_BLOCK_LABELS = {
-  none: 'No — finals stay with their category',
-  finals: 'Finals at the end (first central court)',
-  semis_finals: 'Semifinals and finals at the end (central courts)',
-};
 
 const toggle = (list, n) => (list.includes(n) ? list.filter((x) => x !== n) : [...list, n].sort((a, b) => a - b));
 
@@ -118,62 +114,58 @@ function ShiaijoPlan() {
 
       <div id="g-courts" className="tp-card">
         <h3>Courts</h3>
-        <label className="tp-field" style={{ maxWidth: 240 }}>
-          Number of shiaijo
-          <select value={courtCount} disabled={busy} onChange={(e) => changeCourts(Number(e.target.value))}>
-            {Array.from({ length: MAX_COURTS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-        <div className="tp-grid">
+        <div className="fr">
+          <div className="fr-row">
+            <span className="fr-row-label">Number of shiaijo</span>
+            <Segmented options={Array.from({ length: MAX_COURTS }, (_, i) => [i + 1, String(i + 1)])} value={courtCount} disabled={busy}
+              onChange={(n) => changeCourts(n)} />
+          </div>
           {dayTotal > 1 ? (
-            <div className="tp-field">
-              Days
+            <div className="fr-row">
+              <span className="fr-row-label">Days</span>
               <span>{tournamentDays(tournament).map((d) => `Day ${d.n}: ${d.start ?? '—'}–${d.end ?? '—'}`).join(' · ')}</span>
               <Link className="tp-muted" to={`/tournament/${tournamentId}/edit`}>Change in Edit tournament</Link>
             </div>
           ) : (
-            <label className="tp-field">
-              Start time
+            <div className="fr-row">
+              <span className="fr-row-label">Start time</span>
               <TimeInput value={tournament?.start_time?.slice(0, 5) ?? null} disabled={busy}
                 onChange={(v) => run(() => updateTournament(tournamentId, {
                   start_time: v,
                   ...(tournament?.days?.length ? { days: [{ ...tournament.days[0], start: v }, ...tournament.days.slice(1)] } : {}),
                 }))} />
-            </label>
+            </div>
           )}
-          <label className="tp-field">
-            Time between fights (s) <span className="tp-muted">bow-in, changeover — for the time estimate</span>
-            <input type="number" min="0" max="600" step="5" defaultValue={tournament?.changeover_seconds ?? 15} disabled={busy}
-              key={tournament?.changeover_seconds}
-              onBlur={(e) => {
-                const v = Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0)));
-                if (v !== (tournament?.changeover_seconds ?? 15)) run(() => updateTournament(tournamentId, { changeover_seconds: v }));
-              }} />
-          </label>
-          <label className="tp-field tp-check">
-            <input type="checkbox" checked={tournament?.use_timer ?? true} disabled={busy}
-              onChange={(e) => run(() => updateTournament(tournamentId, { use_timer: e.target.checked }))} />
-            Scoretable runs the timer (off = separate timekeeper)
-          </label>
-        </div>
-        <div className="tp-field">
-          Central shiaijo
-          <div className="tp-actions" style={{ marginTop: 0 }}>
-            {courts.map((n) => (
-              <label key={n} className="tp-check">
-                <input type="checkbox" checked={central.includes(n)} disabled={busy}
-                  onChange={() => changeTournament({ central_shiaijos: toggle(central, n) })} />
-                {' '}{n}
-              </label>
-            ))}
+          <div className="fr-row">
+            <span className="fr-row-label">Time between fights</span>
+            <span className="cr-range">
+              <input type="number" min="0" max="600" step="5" defaultValue={tournament?.changeover_seconds ?? 15} disabled={busy}
+                key={tournament?.changeover_seconds}
+                onBlur={(e) => {
+                  const v = Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0)));
+                  if (v !== (tournament?.changeover_seconds ?? 15)) run(() => updateTournament(tournamentId, { changeover_seconds: v }));
+                }} /> s
+            </span>
+            <span className="tp-muted fr-row-note">Bow-in and changeover, used for the time estimate.</span>
+          </div>
+          <div className="fr-row">
+            <span className="fr-row-label">Timer</span>
+            <Segmented options={[[true, 'The scoretable runs the timer'], [false, 'Separate timekeeper']]} value={tournament?.use_timer ?? true}
+              disabled={busy} onChange={(v) => run(() => updateTournament(tournamentId, { use_timer: v }))} />
+          </div>
+          <div className="fr-row">
+            <span className="fr-row-label">Central shiaijo</span>
+            <Segmented options={courts.map((n) => [n, String(n)])} value={null} disabled={busy}
+              className="seg-multi" onChange={(n) => changeTournament({ central_shiaijos: toggle(central, n) })} selected={central} />
+            <span className="tp-muted fr-row-note">The main courts (e.g. for the finals). Click to mark or unmark; several allowed.</span>
+          </div>
+          <div className="fr-row">
+            <span className="fr-row-label">End of the tournament</span>
+            <Segmented options={[['none', 'Finals stay with their category'], ['finals', 'Finals at the end'], ['semis_finals', 'Semifinals and finals at the end']]}
+              value={endBlock} disabled={busy} onChange={(v) => changeTournament({ end_block: v })} />
+            <span className="tp-muted fr-row-note">At the end = after every court has finished, on the central shiaijo.</span>
           </div>
         </div>
-        <label className="tp-field" style={{ maxWidth: 420 }}>
-          End of the tournament
-          <select value={endBlock} disabled={busy} onChange={(e) => changeTournament({ end_block: e.target.value })}>
-            {Object.entries(END_BLOCK_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </select>
-        </label>
         {endBlock !== 'none' && central.length === 0 && (
           <Message type="info">Mark the central shiaijo — until then these fights stay on their category courts.</Message>
         )}
@@ -228,9 +220,8 @@ function ShiaijoPlan() {
                     </td>
                     {dayTotal > 1 && (
                       <td>
-                        <select value={c.day ?? 1} disabled={disabledRow} onChange={(e) => run(() => updateCategory(c.id, { day: Number(e.target.value) }))}>
-                          {Array.from({ length: dayTotal }, (_, d) => <option key={d} value={d + 1}>Day {d + 1}</option>)}
-                        </select>
+                        <Segmented className="seg-small" options={Array.from({ length: dayTotal }, (_, d) => [d + 1, String(d + 1)])} value={Number(c.day ?? 1)}
+                          disabled={disabledRow} onChange={(v) => run(() => updateCategory(c.id, { day: v }))} />
                       </td>
                     )}
                     <td>{counts[c.id] ?? 0}</td>
