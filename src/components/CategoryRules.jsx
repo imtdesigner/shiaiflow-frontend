@@ -106,14 +106,20 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
             <span className="fr-row-label">Team of</span>
             <Segmented options={[[3, '3'], [5, '5']]} value={size} onChange={(n) => onChange({ ...c, team_size: n, position_rules: null })} />
           </div>
-          <label className="tp-check">
-            <input type="checkbox" checked={!!c.team_same_dojo} onChange={(e) => onChange({ ...c, team_same_dojo: e.target.checked })} />
-            All members must be from the same dojo
-          </label>
-          <label className="tp-check">
-            <input type="checkbox" checked={!!c.position_rules} onChange={(e) => setPositions(e.target.checked)} />
-            Fixed fighting order
-          </label>
+          <div className="cr-option">
+            <label className="tp-check">
+              <input type="checkbox" checked={!!c.team_same_dojo} onChange={(e) => onChange({ ...c, team_same_dojo: e.target.checked })} />
+              All members must be from the same dojo
+            </label>
+            <p className="tp-muted cr-option-hint">E.g. national championships, where every team represents one dojo. Off: mixed teams are allowed.</p>
+          </div>
+          <div className="cr-option">
+            <label className="tp-check">
+              <input type="checkbox" checked={!!c.position_rules} onChange={(e) => setPositions(e.target.checked)} />
+              Fixed fighting order
+            </label>
+            <p className="tp-muted cr-option-hint">Off: each team hands in its fighting order before every match. On: the order is fixed and you can set limits per position (e.g. the youngest as senpo).</p>
+          </div>
           {c.position_rules ? (
             <div className="cr-positions">
               {positions.map((name, i) => (
@@ -125,9 +131,7 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
               ))}
               <p className="tp-muted">Reserves ({teamReserves(size)}) must fit at least one position.</p>
             </div>
-          ) : (
-            <p className="tp-muted">Off: each team hands in its fighting order before every match. On: the order is fixed and you can set limits per position (e.g. the youngest as senpo).</p>
-          )}
+          ) : null}
         </div>
       )}
     </div>
