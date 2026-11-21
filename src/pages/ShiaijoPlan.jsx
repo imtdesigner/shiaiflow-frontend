@@ -4,7 +4,7 @@ import {
   BackToDashboard, Message, courtGridStyle, useTournament,
 } from '../components/TournamentShell';
 import {
-  checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
+  changeCourtCount, checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
 } from '../lib/api';
 import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts.js';
 import { dayCount, tournamentDays } from '../lib/tournament/days.js';
@@ -87,20 +87,7 @@ function ShiaijoPlan() {
 
   const changeTournament = (fields) => run(() => setTournamentCourts(tournament, fields, active));
 
-  const changeCourtCount = (n) => run(async () => {
-    const t = await setTournamentCourts(tournament, {
-      shiaijo_count: n, central_shiaijos: central.filter((s) => s <= n),
-    }, []);
-    for (const c of active) {
-      const keep = (list) => (list ? list.filter((s) => s <= n) : null);
-      const shiaijos = keep(c.shiaijos);
-      const ko = keep(c.ko_shiaijos);
-      await setCategoryCourts(c, {
-        shiaijos: shiaijos.length ? shiaijos : [1],
-        ko_shiaijos: ko && ko.length ? ko : null,
-      }, t);
-    }
-  });
+  const changeCourts = (n) => run(() => changeCourtCount(tournament, active, n));
 
   const toggleCourt = (c, field, court) => {
     const next = toggle(c[field] ?? c.shiaijos, court);
@@ -133,7 +120,7 @@ function ShiaijoPlan() {
         <h3>Courts</h3>
         <label className="tp-field" style={{ maxWidth: 240 }}>
           Number of shiaijo
-          <select value={courtCount} disabled={busy} onChange={(e) => changeCourtCount(Number(e.target.value))}>
+          <select value={courtCount} disabled={busy} onChange={(e) => changeCourts(Number(e.target.value))}>
             {Array.from({ length: MAX_COURTS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>

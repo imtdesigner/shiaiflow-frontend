@@ -65,7 +65,7 @@ export function createSteps(form = {}, categories = [], seen = {}) {
     step('courts', 'Courts', visited('g-courts'), 'How many shiaijos (courts) will there be?', 'create', 'g-courts'),
     step('link', 'Link', form.custom_link === false || (form.custom_link === true && filled('g-link', form.slug?.trim())),
       'Keep the default public link, or pick a short name (e.g. croatia-open).', 'create', 'g-link'),
-    step('categories', 'Categories', categories.length > 0, 'Add categories — start from a template (Junior A, Kyu M …) or an empty one.', 'create', 'g-categories'),
+    step('categories', 'Categories', categories.length > 0, 'Add a category, then pick a template inside it (Junior A, Kyu, Dan …).', 'create', 'g-categories'),
     ...categorySteps(categories, seen),
     step('create', 'Create', false, 'All set? Create the tournament.', 'create', 'g-create'),
   ];

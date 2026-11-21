@@ -497,6 +497,24 @@ export async function applyCourts(category, tournament) {
 }
 
 /** Change a category's courts (shiaijos / ko_shiaijos) and move its fights. */
+/** Change the number of shiaijos: courts above n drop out of every category and the central courts. */
+export async function changeCourtCount(tournament, categories, n) {
+  const central = tournament.central_shiaijos ?? [];
+  const t = await setTournamentCourts(tournament, { shiaijo_count: n, central_shiaijos: central.filter((s) => s <= n) }, []);
+  for (const c of categories.filter((x) => x.status !== 'cancelled')) {
+    const keep = (list) => (list ? list.filter((s) => s <= n) : null);
+    const shiaijos = keep(c.shiaijos) ?? [];
+    const ko = keep(c.ko_shiaijos);
+    await setCategoryCourts(c, { shiaijos: shiaijos.length ? shiaijos : [1], ko_shiaijos: ko && ko.length ? ko : null }, t);
+  }
+  return t;
+}
+
+/** Delete a tournament with everything in it (owner only, by RLS). */
+export async function deleteTournament(tournamentId) {
+  unwrap(await supabase.from('tournaments').delete().eq('id', tournamentId));
+}
+
 export async function setCategoryCourts(category, fields, tournament) {
   const updated = await updateCategory(category.id, fields);
   await applyCourts(updated, tournament);

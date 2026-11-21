@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
-import { tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
-import { LinkField, ScheduleQuestion, linkReady, usesSchedule } from '../components/TournamentFields';
+import { changeCourtCount, deleteTournament, tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
+import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit, usesSchedule } from '../components/TournamentFields';
 import { daysValue } from '../lib/tournament/days.js';
 import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
-import { DateInput, DateTimeInput } from '../components/EuInputs';
+import { DateTimeInput } from '../components/EuInputs';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -20,12 +20,15 @@ const toLocalInput = (iso) => {
 };
 
 /**
- * Tournament setup: basic data, publishing (home page + public page),
- * registration (open / deadline), how teams register, and the PIN for
- * editors and tables.
+ * Tournament setup, in the same parts as Create: Tournament (name, dates,
+ * schedule), Venue (hall, address, courts), Public page (link, publishing,
+ * logo); then registration and the signup form, the PIN for editors and
+ * tables, and deleting the tournament (owner).
  */
 function EditTournament() {
-  const { tournamentId, tournament, reload, error: loadError, loading } = useTournament();
+  const { tournamentId, tournament, categories, reload, error: loadError, loading } = useTournament();
+  const navigate = useNavigate();
+  const [deleteName, setDeleteName] = useState(null); // typed name while confirming the delete
   const [form, setForm] = useState(null);
   const [pin, setPinState] = useState(null);
   const [role, setRole] = useState(null);
@@ -48,6 +51,8 @@ function EditTournament() {
       registration_deadline: toLocalInput(tournament.registration_deadline),
       days: tournament.days ?? (tournament.start_time ? [{ start: tournament.start_time.slice(0, 5), end: null }] : []),
       slug: tournament.slug ?? '',
+      custom_link: !!tournament.slug,
+      shiaijo_count: tournament.shiaijo_count ?? 2,
       use_schedule: usesSchedule(tournament.days, tournament.start_time),
     });
     setLinkConfirmed(false);
@@ -70,15 +75,17 @@ function EditTournament() {
   const save = (e) => {
     e.preventDefault();
     if (!form.name.trim()) { setMsg({ type: 'error', text: 'Enter the tournament name.' }); return; }
-    if (!linkReady(form.slug, tournament.slug ?? '', linkState, linkConfirmed)) {
+    if (form.custom_link && !linkReady(form.slug, tournament.slug ?? '', linkState, linkConfirmed)) {
       setMsg({ type: 'error', text: 'Check the link name (taken, not allowed, or your earlier tournament uses it — tick to reuse it).' });
       return;
     }
     const days = daysValue(form.start_date, form.end_date || form.start_date, form.use_schedule ? form.days : []);
-    run(() => updateTournament(tournamentId, {
+    run(async () => {
+      if (Number(form.shiaijo_count) !== (tournament.shiaijo_count ?? 2)) await changeCourtCount(tournament, categories, Number(form.shiaijo_count));
+      await updateTournament(tournamentId, {
       days,
       start_time: days[0]?.start || null,
-      slug: form.slug || null,
+      slug: (form.custom_link && form.slug) || null,
       name: form.name.trim(),
       start_date: form.start_date || null,
       end_date: form.end_date || form.start_date || null,
@@ -87,7 +94,17 @@ function EditTournament() {
       city: form.city.trim() || null,
       country: form.country.trim() || null,
       registration_deadline: form.registration_deadline ? new Date(form.registration_deadline).toISOString() : null,
-    }), 'Saved.');
+      });
+    }, 'Saved.');
+  };
+
+  const remove = async () => {
+    setBusy(true); setMsg({ type: '', text: '' });
+    try {
+      await deleteTournament(tournamentId);
+      try { sessionStorage.removeItem('sf-selected-tournament'); } catch { /* ignore */ }
+      navigate('/dashboard');
+    } catch (e) { setMsg({ type: 'error', text: e.message }); setBusy(false); }
   };
 
   const toggle = (field, value, ok) => run(() => updateTournament(tournamentId, { [field]: value }), ok);
@@ -97,7 +114,6 @@ function EditTournament() {
   if (loading || !form) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const deadlinePassed = tournament.registration_deadline && new Date(tournament.registration_deadline) < new Date();
   const regOpen = tournament.registration_open && !deadlinePassed;
   const publicUrl = `${window.location.origin}${tournament.slug ? `/${tournament.slug}` : `/t/${tournamentId}`}`;
@@ -108,7 +124,22 @@ function EditTournament() {
       <BackToDashboard />
       <h2>Edit tournament</h2>
       <p className="tp-subtitle">{tournament.name}</p>
+      <p className="tp-muted guide-note">The setup guide on the right (at the bottom on small screens) shows the next step — click it to jump there.</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
+
+      <form id="g-details" onSubmit={save} onKeyDown={noEnterSubmit}>
+        {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
+        <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
+          <TournamentPart form={form} setForm={setForm} />
+          <VenuePart form={form} setForm={setForm} />
+          <PublicPagePart form={form} setForm={setForm} saved={tournament.slug ?? ''}
+            linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState} />
+          <div className="tp-actions" style={{ marginTop: '-0.5rem', marginBottom: '1.5rem' }}>
+            <button type="submit" className="tp-btn" disabled={busy}>Save</button>
+            <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
+          </div>
+        </fieldset>
+      </form>
 
       <div id="g-publish" className="tp-card">
         <h3>Publishing</h3>
@@ -127,6 +158,16 @@ function EditTournament() {
         {tournament.is_public && <p className="tp-muted">Public page: <a href={publicUrl}>{publicUrl}</a></p>}
       </div>
 
+      <div className="tp-card">
+        <h3>Logo</h3>
+        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
+        {tournament.logo_url && (
+          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
+        )}
+        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
+      </div>
       <div id="g-registration" className="tp-card">
         <h3>Registration</h3>
         <p>
@@ -214,7 +255,7 @@ function EditTournament() {
         <p className="tp-muted">Registrations need no approval; edit or remove them in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.</p>
       </div>
 
-      <div className="tp-card">
+      <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           Before the start the PIN lets editors change the tournament; after the start it opens the scoretables and Manage.
@@ -229,43 +270,26 @@ function EditTournament() {
         </div>
       </div>
 
-      <form id="g-details" className="tp-card" onSubmit={save}>
-        <h3>Tournament</h3>
-        {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
-        <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
-        <div className="tp-grid">
-          <label className="tp-field" style={{ gridColumn: '1 / -1' }}>Name<input value={form.name} onChange={set('name')} required /></label>
-          <label className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
-          <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
-          <label className="tp-field">Venue (hall)<input value={form.venue} onChange={set('venue')} /></label>
-          <label className="tp-field">Address<input value={form.address} onChange={set('address')} placeholder="Street and number" /></label>
-          <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
-          <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
-          <LinkField value={form.slug} saved={tournament.slug ?? ''} name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
-            confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
+      {role === 'owner' && (
+        <div id="g-delete" className="tp-card">
+          <h3>Delete tournament</h3>
+          <p className="tp-muted" style={{ marginTop: 0 }}>Deletes the tournament with its categories, entries, draws and results. This cannot be undone.</p>
+          {deleteName === null ? (
+            <button type="button" className="tp-btn danger" disabled={busy} onClick={() => setDeleteName('')}>Delete tournament…</button>
+          ) : (
+            <div className="tp-grid">
+              <label className="tp-field">
+                <span>Type the tournament name to confirm: <strong>{tournament.name}</strong></span>
+                <input value={deleteName} autoFocus onChange={(e) => setDeleteName(e.target.value)} />
+              </label>
+              <div className="tp-actions">
+                <button type="button" className="tp-btn danger" disabled={busy || deleteName.trim() !== tournament.name.trim()} onClick={remove}>Delete for good</button>
+                <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => setDeleteName(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
-        <div id="g-days">
-          <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
-            startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })} />
-        </div>
-        <p className="tp-muted">Each category's day is set in the Shiaijo plan. The fight plan starts each day at its start time.</p>
-        <div className="tp-actions">
-          <button type="submit" className="tp-btn" disabled={busy}>Save</button>
-          <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
-        </div>
-        </fieldset>
-      </form>
-
-      <div className="tp-card">
-        <h3>Logo</h3>
-        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
-        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
-        {tournament.logo_url && (
-          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
-        )}
-        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
-      </div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,8 @@ export const CATEGORY_TEMPLATES = [
   { ...IND, name: 'Junior B', min_age: 15, max_age: 18, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
   { ...IND, name: 'Kyu W', gender: 'F', max_grade: -1, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
   { ...IND, name: 'Kyu M', gender: 'M', max_grade: -1, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
+  { ...IND, name: 'Kyu', max_grade: -1, pool_fight_seconds: 120, ko_fight_seconds: 180, final_fight_seconds: 180 },
+  { ...IND, name: 'Dan', min_grade: 1, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
   { ...IND, name: 'Dan W', gender: 'F', min_grade: 1, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 240 },
   { ...IND, name: 'Dan M', gender: 'M', min_grade: 1, pool_fight_seconds: 240, ko_fight_seconds: 240, final_fight_seconds: 300 },
   { ...TEAM, name: 'Team juniors', max_age: 18, pool_size: 3, advancing: 1, pool_fight_seconds: 300, ko_fight_seconds: 300, final_fight_seconds: 300 },

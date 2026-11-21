@@ -10,14 +10,17 @@ const num = (v) => (v === '' || v == null ? null : Number(v));
  */
 export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) {
   const v = value ?? {};
-  const [on, setOn] = useState({
+  const has = {
     gender: v.gender != null,
     age: v.min_age != null || v.max_age != null,
     grade: v.min_grade != null || v.max_grade != null,
-  });
+  };
+  // switched on by hand (no value yet), or a value is set (e.g. filled in by a template)
+  const [manual, setOn] = useState(has);
+  const on = { gender: manual.gender || has.gender, age: manual.age || has.age, grade: manual.grade || has.grade };
   const patch = (p) => onChange({ ...v, ...p });
   const toggle = (k, checked) => {
-    setOn({ ...on, [k]: checked });
+    setOn({ ...manual, [k]: checked });
     if (checked && k === 'gender' && !v.gender) patch({ gender: 'M' });
     if (!checked) {
       if (k === 'gender') patch({ gender: null });

@@ -699,7 +699,7 @@ test('teams: 3+1 / 5+2, one dojo, position rules', () => {
 });
 
 test('category copy keeps the setup only', () => {
-  const c = categorySetup({ id: 'x', tournament_id: 'y', status: 'drawn', draw_seed: 5, shiaijos: [1], ...CATEGORY_TEMPLATES[6] });
+  const c = categorySetup({ id: 'x', tournament_id: 'y', status: 'drawn', draw_seed: 5, shiaijos: [1], ...CATEGORY_TEMPLATES.find((t) => t.name === 'Team juniors') });
   assert.equal(c.id, undefined);
   assert.equal(c.draw_seed, undefined);
   assert.equal(c.shiaijos, undefined);

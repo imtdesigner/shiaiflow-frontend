@@ -6,10 +6,9 @@ import FightRules from '../components/FightRules';
 import { createTournament, listCategorySources } from '../lib/api';
 import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
-import { LinkField, ScheduleQuestion, linkReady } from '../components/TournamentFields';
+import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit } from '../components/TournamentFields';
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
-import { DateInput } from '../components/EuInputs';
 import { useGuide } from '../components/GuidePanel';
 
 let nextKey = 1;
@@ -45,10 +44,18 @@ function CreateTournament() {
   // a new category (template or empty) takes the fight rules of the first category of its kind;
   // copies from another tournament keep their own
   const addCategories = (list, inherit = true) => setCategories((cur) => [...cur, ...list.map((c) => {
-    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(c) };
+    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(c), _fresh: c._fresh };
     const first = inherit && cur.find((x) => x.kind === fresh.kind);
     return withKey(first ? copyFields(fresh, first, RULE_FIELDS) : fresh);
   })]);
+  // "Add new": an empty category that offers the templates inside it; a template fills everything in
+  const addNew = () => addCategories([{ ...EMPTY_CATEGORY, _fresh: true }]);
+  const applyTemplate = (key, tpl) => setCategories((cur) => cur.map((c) => {
+    if (c._key !== key) return c;
+    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(tpl), day: c.day ?? 1 };
+    const first = cur.find((x) => x._key !== key && x.kind === fresh.kind && x.name.trim());
+    return { ...(first ? copyFields(fresh, first, RULE_FIELDS) : fresh), _key: key };
+  }));
   const replaceCategory = (key, next) => setCategories((cur) => cur.map((c) => (c._key === key ? { ...next, _key: key } : c)));
   const updateCategory = (key, k, v) => setCategories((cur) => cur.map((c) => {
     if (c._key !== key) return c;
@@ -109,67 +116,19 @@ function CreateTournament() {
       <BackToDashboard />
       <h2>New tournament</h2>
       <p className="tp-subtitle">Details and categories. Everything can be changed later.</p>
+      <p className="tp-muted guide-note">The setup guide on the right (at the bottom on small screens) shows the next step — click it to jump there.</p>
       <Message type="error">{error}</Message>
 
-      <form onSubmit={handleSubmit}>
-        <div className="tp-card">
-          <h3>Tournament</h3>
-          <div className="tp-grid">
-            <label id="g-name" className="tp-field" style={{ gridColumn: '1 / -1' }}>
-              Name
-              <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
-            </label>
-            <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
-            <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
-          </div>
-          <div id="g-days">
-            <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
-              startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })} />
-          </div>
-        </div>
-
-        <div className="tp-card">
-          <h3>Venue</h3>
-          <div className="tp-grid">
-            <label id="g-venue" className="tp-field">Venue (hall)<input value={form.venue} onChange={set('venue')} placeholder="e.g. Sports hall Zamet" /></label>
-            <label className="tp-field">Address<input value={form.address} onChange={set('address')} placeholder="Street and number" /></label>
-            <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
-            <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
-            <label id="g-courts" className="tp-field">
-              Number of courts (shiaijo)
-              <select value={form.shiaijo_count} onChange={set('shiaijo_count')}>
-                {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-          </div>
-        </div>
-
-        <div id="g-link" className="tp-card">
-          <h3>Public page</h3>
-          <p className="tp-muted" style={{ marginTop: 0 }}>
-            Every published tournament has a public page with the setup, entries, draw, schedule and live results, and
-            competitors sign up there. It is listed on the ShiaiFlow home page, so it can always be found from there. Its
-            default link is <strong>{window.location.host}/t/…</strong> followed by a long code.
-          </p>
-          <h4>Customize the link?</h4>
-          <div className="tp-actions" style={{ marginTop: 0 }}>
-            <label className="tp-check"><input type="radio" checked={form.custom_link === false} onChange={() => setForm({ ...form, custom_link: false })} /> No, keep the default</label>
-            <label className="tp-check"><input type="radio" checked={form.custom_link === true} onChange={() => setForm({ ...form, custom_link: true })} /> Yes, a short name (e.g. {window.location.host}/croatia-open)</label>
-          </div>
-          {form.custom_link && (
-            <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
-              confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
-          )}
-        </div>
+      <form onSubmit={handleSubmit} onKeyDown={noEnterSubmit}>
+        <TournamentPart form={form} setForm={setForm} />
+        <VenuePart form={form} setForm={setForm} />
+        <PublicPagePart form={form} setForm={setForm} linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState} />
 
         <div id="g-categories" className="tp-card">
           <h3>Categories</h3>
-          <p className="tp-muted">Start from a template — everything can be changed, the name too — or add an empty one.</p>
+          <p className="tp-muted">Add a category, then pick a template inside it (Junior A, Kyu, Dan …) — everything stays editable, the name too.</p>
           <div className="tp-actions" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            {CATEGORY_TEMPLATES.map((p) => (
-              <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => addCategories([p])}>+ {p.name}</button>
-            ))}
-            <button type="button" className="tp-btn small" onClick={() => addCategories([EMPTY_CATEGORY])}>+ Add new</button>
+            <button type="button" className="tp-btn" onClick={addNew}>+ Add new category</button>
             <button type="button" className="tp-btn secondary small" onClick={sources ? () => setSources(null) : openCopy}>
               {sources ? 'Close copying' : 'Copy from another tournament…'}
             </button>
@@ -216,6 +175,15 @@ function CreateTournament() {
                 <span className="tp-muted">{rulesText(c)}</span>
                 <button type="button" className="tp-btn danger small" style={{ marginLeft: 'auto' }} onClick={() => removeCategory(c._key)}>Remove</button>
               </div>
+
+              {c._fresh && (
+                <div className="ct-templates">
+                  <span className="tp-muted">Start from a template:</span>
+                  {CATEGORY_TEMPLATES.map((p) => (
+                    <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => applyTemplate(c._key, p)}>{p.name}</button>
+                  ))}
+                </div>
+              )}
 
               <div id={`g-cat-${c._key}-who`}>
                 <h4>1 · Who can enter</h4>

@@ -166,3 +166,7 @@
   body.guide-open { padding-bottom: 48px; }
   body.guide-open .back-to-dashboard-icon { bottom: 3.5rem !important; }
 }
+
+/* "the guide is on the right" under the page title — only while the guide is shown */
+.guide-note { display: none; margin-top: -0.75rem; }
+body.guide-open .guide-note { display: block; }

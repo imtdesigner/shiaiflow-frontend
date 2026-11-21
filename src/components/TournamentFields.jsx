@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { linkStatus } from '../lib/api';
 import { daysValue, linkProblem, suggestLink, tournamentDays } from '../lib/tournament/days.js';
-import { TimeInput } from './EuInputs';
+import { DateInput, TimeInput } from './EuInputs';
 import { fmtDay as fmtDayEu } from '../lib/format.js';
 
 const fmtDay = (date) => fmtDayEu(date);
@@ -116,3 +116,81 @@ export function linkReady(value, saved, status, confirmed) {
   if (linkProblem(value)) return false;
   return status === 'free' || (status === 'yours' && confirmed);
 }
+
+/*
+ * The parts of the tournament form, the same in Create and Edit tournament:
+ * Tournament (name, dates, schedule), Venue (hall, address, city, country,
+ * courts), Public page (default or own link; Edit adds logo and publishing).
+ * form = { name, start_date, end_date, use_schedule, days, venue, address,
+ * city, country, shiaijo_count, custom_link, slug }.
+ */
+export function TournamentPart({ form, setForm }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <div className="tp-card">
+      <h3>Tournament</h3>
+      <div className="tp-grid">
+        <label id="g-name" className="tp-field" style={{ gridColumn: '1 / -1' }}>
+          Name
+          <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
+        </label>
+        <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
+        <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
+      </div>
+      <div id="g-days">
+        <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
+          startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })} />
+      </div>
+    </div>
+  );
+}
+
+export function VenuePart({ form, setForm }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <div id="g-venue-part" className="tp-card">
+      <h3>Venue</h3>
+      <div className="tp-grid">
+        <label id="g-venue" className="tp-field">Venue (hall)<input value={form.venue} onChange={set('venue')} placeholder="e.g. Sports hall Zamet" /></label>
+        <label className="tp-field">Address<input value={form.address} onChange={set('address')} placeholder="Street and number" /></label>
+        <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
+        <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
+        <label id="g-courts" className="tp-field">
+          Number of courts (shiaijo)
+          <select value={form.shiaijo_count} onChange={(e) => setForm({ ...form, shiaijo_count: Number(e.target.value) })}>
+            {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+export function PublicPagePart({ form, setForm, saved = '', linkConfirmed, setLinkConfirmed, setLinkState, children }) {
+  const host = window.location.host;
+  return (
+    <div id="g-link" className="tp-card">
+      <h3>Public page</h3>
+      <p className="tp-muted" style={{ marginTop: 0 }}>
+        Every published tournament has a public page with the setup, entries, draw, schedule and live results, and
+        competitors sign up there. It is listed on the ShiaiFlow home page, so it can always be found from there. Its
+        default link is <strong>{host}/t/…</strong> followed by a long code.
+      </p>
+      <h4>Customize the link?</h4>
+      <div className="tp-actions" style={{ marginTop: 0 }}>
+        <label className="tp-check"><input type="radio" checked={form.custom_link === false} onChange={() => setForm({ ...form, custom_link: false })} /> No, keep the default</label>
+        <label className="tp-check"><input type="radio" checked={form.custom_link === true} onChange={() => setForm({ ...form, custom_link: true })} /> Yes, a short name (e.g. {host}/croatia-open)</label>
+      </div>
+      {form.custom_link && (
+        <LinkField value={form.slug} saved={saved} name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
+          confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
+      )}
+      {children}
+    </div>
+  );
+}
+
+/** Enter in a text field must not submit the whole form (it did, half-filled). */
+export const noEnterSubmit = (e) => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'submit') e.preventDefault();
+};
