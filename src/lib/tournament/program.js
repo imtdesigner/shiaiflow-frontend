@@ -26,6 +26,9 @@ export function programOf(t) {
   return Array.isArray(t?.program) && t.program.length ? t.program : DEFAULT_PROGRAM;
 }
 
+/** Items of a day: its own programme (a later day edited on its own), else the tournament's. */
+export const programForDay = (program, day) => (Array.isArray(day?.program) && day.program.length ? day.program : program);
+
 /** 'HH:MM' of a Ref on a day ({ start, end }), or null when its base time is missing. */
 export function refTime(ref, day) {
   if (!ref) return null;

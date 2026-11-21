@@ -31,3 +31,15 @@ test('program: typed time stays fixed, start change moves the rest; own items', 
   assert.equal(refText({ base: 'end', min: -30 }), '30 min before the end');
   assert.equal(programOf({ program: null }), DEFAULT_PROGRAM);
 });
+
+test('program: a later day edited on its own keeps its own items', async () => {
+  const { programForDay } = await import('../src/lib/tournament/program.js');
+  const { daysValue, tournamentDays } = await import('../src/lib/tournament/days.js');
+  const own = updateItem(DEFAULT_PROGRAM, 'lineup', { on: false });
+  const days = daysValue('2027-03-20', '2027-03-21', [{ start: '09:00' }, { start: '10:00', program: own }]);
+  assert.equal(days[1].program, own);
+  const t = tournamentDays({ start_date: '2027-03-20', end_date: '2027-03-21', days });
+  assert.equal(programForDay(DEFAULT_PROGRAM, t[0]), DEFAULT_PROGRAM);
+  assert.equal(dayProgram(programForDay(DEFAULT_PROGRAM, t[1]), t[1]).some((i) => i.key === 'lineup'), false);
+  assert.equal(dayProgram(programForDay(DEFAULT_PROGRAM, t[1]), t[1]).find((i) => i.key === 'hall').fromTime, '08:30');
+});

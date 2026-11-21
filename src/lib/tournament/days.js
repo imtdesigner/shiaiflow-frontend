@@ -33,6 +33,7 @@ export function tournamentDays(t) {
     start: saved[i]?.start ?? (i === 0 ? t?.start_time?.slice(0, 5) ?? null : null),
     end: saved[i]?.end ?? null,
     breaks: saved[i]?.breaks ?? [],
+    program: saved[i]?.program ?? null, // own day programme (later days), else the tournament's
   }));
 }
 
@@ -41,6 +42,7 @@ export function daysValue(startDate, endDate, current = []) {
   const count = dayCount(startDate, endDate);
   return Array.from({ length: count }, (_, i) => ({
     start: current[i]?.start ?? null, end: current[i]?.end ?? null, breaks: current[i]?.breaks ?? [],
+    ...(current[i]?.program ? { program: current[i].program } : {}),
   }));
 }
 

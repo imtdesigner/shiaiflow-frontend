@@ -3,7 +3,7 @@ import { linkStatus } from '../lib/api';
 import { daysValue, linkProblem, suggestLink, tournamentDays } from '../lib/tournament/days.js';
 import { DateInput, TimeInput } from './EuInputs';
 import { fmtDay as fmtDayEu } from '../lib/format.js';
-import { addItem, dayProgram, proposedItem, refText, refTime, updateItem } from '../lib/tournament/program.js';
+import { addItem, dayProgram, programForDay, proposedItem, refTime, updateItem } from '../lib/tournament/program.js';
 
 const fmtDay = (date) => fmtDayEu(date);
 
@@ -55,6 +55,9 @@ export const usesSchedule = (days, startTime) => !!startTime || (Array.isArray(d
  */
 export function ScheduleQuestion({ value, onChange, startDate, endDate, days, onDays, disabled, program, onProgram, programMode = 'proposal' }) {
   const allDays = tournamentDays({ start_date: startDate, end_date: endDate || startDate, days });
+  // day 1 edits the tournament's programme (later days follow it); a later day edited on its own keeps its own
+  const setDayProgram = (i, items) => (i === 0 ? onProgram(items)
+    : onDays(daysValue(startDate, endDate || startDate, days ?? []).map((d, j) => (j === i ? { ...d, program: items } : d))));
   return (
     <div className="td-schedule">
       <h4>Use a schedule?</h4>
@@ -72,8 +75,8 @@ export function ScheduleQuestion({ value, onChange, startDate, endDate, days, on
             ? <DaysEditor startDate={startDate} endDate={endDate} value={days} onChange={onDays} disabled={disabled} />
             : <p className="tp-muted">Pick the dates first — then set the times of each day.</p>}
           {program && onProgram && (programMode === 'editor'
-            ? <ProgramEditor program={program} onChange={onProgram} days={allDays} disabled={disabled} />
-            : <ProgramProposal program={program} onChange={onProgram} days={allDays} disabled={disabled} />)}
+            ? <ProgramEditor program={program} onDayChange={setDayProgram} days={allDays} disabled={disabled} />
+            : <ProgramProposal program={program} onChange={onProgram} onDayChange={setDayProgram} days={allDays} disabled={disabled} />)}
         </div>
       )}
     </div>
@@ -218,7 +221,7 @@ function ProgramDays({ program, days, skipFirst = false }) {
       {multi && <h5 className="td-program-day">Day {d.n}{d.date ? ` · ${fmtDay(d.date)}` : ''}</h5>}
       <table className="tp-table td-program-list">
         <tbody>
-          {dayProgram(program, d).map((it) => (
+          {dayProgram(programForDay(program, d), d).map((it) => (
             <tr key={it.key}>
               <td className="td-program-time">{it.fromTime ?? '—'}{it.toTime ? `–${it.toTime}` : ''}</td>
               <td>{it.label}</td>
@@ -235,10 +238,10 @@ function ProgramDays({ program, days, skipFirst = false }) {
  * shinai check on / off and "Edit now" (the full editor); details later in
  * Edit tournament.
  */
-export function ProgramProposal({ program, onChange, days, disabled }) {
+export function ProgramProposal({ program, onChange, onDayChange, days, disabled }) {
   const [editing, setEditing] = useState(false);
   const day = days[0];
-  if (editing) return <ProgramEditor program={program} onChange={onChange} days={days} disabled={disabled} />;
+  if (editing) return <ProgramEditor program={program} onDayChange={onDayChange} days={days} disabled={disabled} />;
   const shinai = program.find((it) => it.key === 'shinai');
   return (
     <div id="g-program" className="td-program">
@@ -256,18 +259,39 @@ export function ProgramProposal({ program, onChange, days, disabled }) {
 }
 
 /**
- * Edit tournament: every item of the day programme on an equal footing —
- * on / off, name, from / to (a typed time stays fixed; ↺ back to the
- * proposal), remove, add your own.
+ * Edit tournament (and Create → Edit now): every item of the day programme on
+ * an equal footing, one table per day — on / off, name, from / to (a typed
+ * time stays fixed; ↺ back to the proposal), remove, add your own. Day 1 is
+ * the tournament's programme; a later day follows it until edited itself.
  */
-export function ProgramEditor({ program, onChange, days, disabled }) {
-  const day = days[0];
-  const set = (key, patch) => onChange(updateItem(program, key, patch));
-  const ordered = dayProgram(program.map((it) => ({ ...it, on: true })), day).map((it) => program.find((p) => p.key === it.key));
+export function ProgramEditor({ program, onDayChange, days, disabled }) {
   return (
     <div id="g-program" className="td-program">
-      <h4>Day schedule{days.length > 1 ? <span className="tp-muted"> · times of day 1</span> : null}</h4>
-      {!day?.start && <p className="tp-muted">Set the start time of the day — relative times follow it.</p>}
+      <h4>Day schedule</h4>
+      {(days.length ? days : [null]).map((d, i) => (
+        <DayProgramTable key={d?.n ?? 0} day={d} multi={days.length > 1} disabled={disabled}
+          items={i === 0 ? program : programForDay(program, d)}
+          own={i > 0 && Array.isArray(d?.program) && d.program.length > 0}
+          onChange={(items) => onDayChange(i, items)}
+          onFollow={i > 0 ? () => onDayChange(i, null) : null} />
+      ))}
+      <p className="tp-muted">The awards time is an estimate until the categories and entries are known.</p>
+    </div>
+  );
+}
+
+function DayProgramTable({ items, onChange, day, multi, own, onFollow, disabled }) {
+  const set = (key, patch) => onChange(updateItem(items, key, patch));
+  const ordered = dayProgram(items.map((it) => ({ ...it, on: true })), day).map((it) => items.find((p) => p.key === it.key));
+  return (
+    <div className="td-program-dayblock">
+      {multi && (
+        <h5 className="td-program-day">
+          Day {day.n}{day.date ? ` · ${fmtDay(day.date)}` : ''}
+          {own && onFollow && <button type="button" className="tp-btn secondary small" disabled={disabled} onClick={onFollow}>Same as day 1</button>}
+        </h5>
+      )}
+      {!day?.start && <p className="tp-muted">Set the start time of the day first.</p>}
       <table className="tp-table td-program-edit">
         <thead><tr><th /><th>Item</th><th>From</th><th>To</th><th /></tr></thead>
         <tbody>
@@ -282,13 +306,9 @@ export function ProgramEditor({ program, onChange, days, disabled }) {
                   {it.locked ? <span>{refTime(it.from, day) ?? '—'}</span> : (
                     <TimeInput value={refTime(it.from, day)} disabled={disabled} onChange={(v) => set(it.key, { from: v ? { time: v } : proposal?.from ?? { base: 'start', min: -30 } })} />
                   )}
-                  {!it.from?.time && <div className="tp-muted td-program-rel">{refText(it.from)}</div>}
                 </td>
                 <td>
-                  {!it.locked && (
-                    <TimeInput value={refTime(it.to, day)} disabled={disabled} onChange={(v) => set(it.key, { to: v ? { time: v } : null })} />
-                  )}
-                  {it.to && !it.to.time && <div className="tp-muted td-program-rel">{refText(it.to)}</div>}
+                  {!it.locked && <TimeInput value={refTime(it.to, day)} disabled={disabled} onChange={(v) => set(it.key, { to: v ? { time: v } : null })} />}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {proposal && fixed && (
@@ -297,7 +317,7 @@ export function ProgramEditor({ program, onChange, days, disabled }) {
                   )}
                   {!it.locked && (
                     <button type="button" className="tp-btn secondary small" disabled={disabled} title="Remove"
-                      onClick={() => onChange(program.filter((p) => p.key !== it.key))}>✕</button>
+                      onClick={() => onChange(items.filter((p) => p.key !== it.key))}>✕</button>
                   )}
                 </td>
               </tr>
@@ -305,9 +325,8 @@ export function ProgramEditor({ program, onChange, days, disabled }) {
           })}
         </tbody>
       </table>
-      <button type="button" className="tp-btn secondary small" disabled={disabled} onClick={() => onChange(addItem(program))}>+ Add item</button>
-      <ProgramDays program={program} days={days} skipFirst />
-      <p className="tp-muted">Times without a typed value follow the start (or end) of each day. The awards time is an estimate until the categories and entries are known.</p>
+      <button type="button" className="tp-btn secondary small" disabled={disabled} onClick={() => onChange(addItem(items))}>+ Add item</button>
     </div>
   );
 }
+

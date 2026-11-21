@@ -9,7 +9,7 @@ import {
 } from '../lib/api';
 import { OrganizerLine, fmtDate } from '../components/TournamentList';
 import { breakSeconds, clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
-import { dayProgram } from '../lib/tournament/program.js';
+import { dayProgram, programForDay } from '../lib/tournament/program.js';
 import { askedConsents, signupProblems, signupSettings } from '../lib/tournament/signup.js';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
@@ -361,7 +361,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
                   <h4>{days.length > 1 ? `Day ${d.n}` : 'Schedule'}{d.date ? ` · ${fmtDate(d.date)}` : ''}</h4>
                   <table className="tp-table td-program-list">
                     <tbody>
-                      {dayProgram(tournament.program, d).filter((it) => it.fromTime).map((it) => (
+                      {dayProgram(programForDay(tournament.program, d), d).filter((it) => it.fromTime).map((it) => (
                         <tr key={it.key}><td className="td-program-time">{it.fromTime}{it.toTime ? `–${it.toTime}` : ''}</td><td>{it.label}</td></tr>
                       ))}
                     </tbody>
