@@ -16,6 +16,7 @@ import React, { useEffect, useState } from 'react';
 import packageJson from '../package.json';
 import CreateTournament from './pages/CreateTournament';
 import EditTournament from './pages/EditTournament';
+import SetupWizard from './pages/SetupWizard';
 import Brackets from './pages/Brackets';
 import Drawings from './pages/Drawings';
 import Registration from './pages/Registration';
@@ -347,6 +348,14 @@ function AppContent() {
   element={
     <ProtectedRoute>
       <CreateTournament />
+    </ProtectedRoute>
+  } 
+/>
+<Route 
+  path="/tournament/:tournamentId/setup" 
+  element={
+    <ProtectedRoute>
+      <SetupWizard />
     </ProtectedRoute>
   } 
 />

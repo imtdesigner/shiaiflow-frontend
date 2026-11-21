@@ -105,7 +105,7 @@ function CreateTournament() {
         draws_public: false,
         status: 'registration',
       }, categories.map((c) => ({ ...categoryRow(c), day: Math.min(Number(c.day) || 1, lastDay) })));
-      navigate(`/tournament/${t.id}/registration`);
+      navigate(`/tournament/${t.id}/setup?step=signup`);
     } catch (err) {
       setError(err.message);
       setSaving(false);
@@ -208,9 +208,10 @@ function CreateTournament() {
           )}
         </div>
 
+        <p className="tp-muted">Next steps after creating: 2 · Signup setup, 3 · Shiaijo plan.</p>
         <div id="g-create" className="tp-actions">
           <button type="submit" className="tp-btn" disabled={saving}>
-            {saving ? 'Saving…' : 'Create tournament and go to registration'}
+            {saving ? 'Saving…' : 'Create tournament and go to signup setup'}
           </button>
         </div>
       </form>

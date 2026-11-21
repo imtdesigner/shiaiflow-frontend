@@ -502,3 +502,4 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .ts-card { margin-top: 1rem; }
 .ts-card h3 { font-size: 1rem; }
 .et-layout .court-grid { width: 100%; left: 0; transform: none; }
+.wz-steps { margin: 0.5rem 0 1rem; } .wz-done { margin-top: 1.5rem; border-color: #711921; }
