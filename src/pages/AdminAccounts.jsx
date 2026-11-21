@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Message } from '../components/TournamentShell';
-import { accountWaiting, amIAdmin, listOrganizationAccounts, setAccountReview, setAccountVerified } from '../lib/api';
+import { accountWaiting, amIAdmin, listAllAccounts, setAccountReview, setAccountVerified } from '../lib/api';
 import './TournamentPages.css';
 import { fmtDate } from '../lib/format.js';
 
@@ -12,7 +12,7 @@ const KIND = { dojo: 'Dojo', regional: 'National / regional federation', contine
  * Unverified organizations can set up tournaments but not publish or start them.
  * Instead of verifying, an admin can ask for more information or reject, with a
  * note the account sees in its profile and gets by email; the account corrects
- * its data and sends it again.
+ * its data and sends it again. Below, every account grouped by kind.
  */
 function AdminAccounts() {
   const [admin, setAdmin] = useState(null);
@@ -22,7 +22,7 @@ function AdminAccounts() {
   const [answer, setAnswer] = useState(null); // { id, state, note } while writing a note
 
   const reload = useCallback(async () => {
-    try { setAccounts(await listOrganizationAccounts()); } catch (e) { setMsg({ type: 'error', text: e.message }); }
+    try { setAccounts(await listAllAccounts()); } catch (e) { setMsg({ type: 'error', text: e.message }); }
   }, []);
 
   useEffect(() => { amIAdmin().then((a) => { setAdmin(a); if (a) reload(); }); }, [reload]);
@@ -52,20 +52,7 @@ function AdminAccounts() {
   if (admin === null) return <div className="tp-page">Loading…</div>;
   if (!admin) return <div className="tp-page"><Message type="error">This page is for the app admins.</Message></div>;
 
-  const pending = accounts.filter(accountWaiting).length;
-  return (
-    <div className="tp-page">
-      <h2>Accounts to verify</h2>
-      <p className="tp-subtitle">Dojos, federations and former ones turned individual — {pending} waiting for approval</p>
-      <Message type={msg.type || 'info'}>{msg.text}</Message>
-      {accounts.length === 0 ? <p className="tp-muted">No accounts to verify yet.</p> : (
-        <div className="tp-card">
-          <table className="tp-table">
-            <thead>
-              <tr><th>Organization</th><th>Login email</th><th>Website</th><th>Place</th><th>Responsible person</th><th>Status</th><th /></tr>
-            </thead>
-            <tbody>
-              {accounts.map((a) => (
+  const orgRow = (a) => (
                 <tr key={a.id}>
                   <td><strong>{a.name || '—'}</strong><div className="tp-muted">{KIND[a.role]}</div></td>
                   <td>{a.email}</td>
@@ -106,11 +93,62 @@ function AdminAccounts() {
                     )}
                   </td>
                 </tr>
+  );
+
+  const ORG = ['dojo', 'regional', 'continental'];
+  const toReview = accounts.filter((a) => !a.verified_at && (ORG.includes(a.role) || a.needs_review));
+  const reviewed = new Set(toReview.map((a) => a.id));
+  const rest = accounts.filter((a) => !reviewed.has(a.id));
+  const groups = [
+    { title: 'Dojos', list: rest.filter((a) => a.role === 'dojo') },
+    { title: 'National / regional federations', list: rest.filter((a) => a.role === 'regional') },
+    { title: 'Continental federations', list: rest.filter((a) => a.role === 'continental') },
+  ];
+  const people = rest.filter((a) => !ORG.includes(a.role));
+  const pending = toReview.filter(accountWaiting).length;
+  const orgHead = <tr><th>Organization</th><th>Login email</th><th>Website</th><th>Place</th><th>Responsible person</th><th>Status</th><th /></tr>;
+
+  return (
+    <div className="tp-page">
+      <h2>Accounts</h2>
+      <p className="tp-subtitle">{accounts.length} accounts — {pending} waiting for approval</p>
+      <Message type={msg.type || 'info'}>{msg.text}</Message>
+
+      <div className="tp-card">
+        <h3>To verify <span className={`tp-badge ${pending ? 'warn' : 'ok'}`}>{toReview.length}</span></h3>
+        {toReview.length === 0 ? <p className="tp-muted">Nothing waiting.</p> : (
+          <table className="tp-table"><thead>{orgHead}</thead><tbody>{toReview.map(orgRow)}</tbody></table>
+        )}
+      </div>
+
+      {groups.map((g) => (
+        <div key={g.title} className="tp-card">
+          <h3>{g.title} <span className="tp-badge">{g.list.length}</span></h3>
+          {g.list.length === 0 ? <p className="tp-muted">None yet.</p> : (
+            <table className="tp-table"><thead>{orgHead}</thead><tbody>{g.list.map(orgRow)}</tbody></table>
+          )}
+        </div>
+      ))}
+
+      <div className="tp-card">
+        <h3>Individuals <span className="tp-badge">{people.length}</span></h3>
+        {people.length === 0 ? <p className="tp-muted">None yet.</p> : (
+          <table className="tp-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Place</th><th>Dojo</th><th>Joined</th></tr></thead>
+            <tbody>
+              {people.map((a) => (
+                <tr key={a.id}>
+                  <td><strong>{a.name || '—'}</strong>{a.verified_at && a.needs_review && <div className="tp-muted">former dojo / federation, approved</div>}</td>
+                  <td>{a.email}</td>
+                  <td>{[a.city, a.country].filter(Boolean).join(', ') || '—'}</td>
+                  <td>{a.dojo_name || '—'}</td>
+                  <td>{a.created_at ? fmtDate(a.created_at) : '—'}</td>
+                </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

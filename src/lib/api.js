@@ -624,6 +624,14 @@ export async function listOrganizationAccounts() {
   return rows.sort((a, b) => order(a) - order(b));
 }
 
+/** Every account with an email (PIN table devices sign in anonymously and are left out) — admins only. */
+export async function listAllAccounts() {
+  return unwrap(await supabase.from('users')
+    .select('id, email, name, role, city, country, website, dojo_name, contact_name, contact_email, verified_at, needs_review, review_state, review_note, created_at')
+    .neq('email', '')
+    .order('name'));
+}
+
 /** Waiting for the admins = not verified and not answered (more info / rejected). */
 export const accountWaiting = (a) => !a.verified_at && !a.review_state;
 
