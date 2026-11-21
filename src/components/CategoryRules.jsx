@@ -9,7 +9,7 @@ const num = (v) => (v === '' || v == null ? null : Number(v));
  * the limits combine. Used for a category and for one team position.
  * value: { gender, min_age, max_age, min_grade, max_grade }.
  */
-export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) {
+export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false, ageBasis, onAgeBasis }) {
   const v = value ?? {};
   const has = {
     gender: v.gender != null,
@@ -59,6 +59,12 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) 
             to <input type="number" min="0" max="120" value={v.max_age ?? ''} onChange={(e) => patch({ max_age: num(e.target.value) })} />
           </span>
         )}
+        {on.age && onAgeBasis && (
+          <span className="cr-age-basis">
+            <Segmented options={[['birth_year', 'By year of birth'], ['birth_date', 'By exact date of birth']]} value={ageBasis ?? 'birth_year'} onChange={onAgeBasis} />
+            <span className="tp-muted">{ageBasis === 'birth_date' ? 'age on the first day — the signup asks the date of birth' : 'tournament year − year of birth'} · same for all categories</span>
+          </span>
+        )}
       </div>
       <div className="cr-rule">
         <label className="tp-check"><input type="checkbox" checked={on.grade} onChange={(e) => toggle('grade', e.target.checked)} /> Grade</label>
@@ -83,7 +89,7 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
   const team = c.kind === 'team';
   const size = Number(c.team_size || 3);
   const positions = teamPositions(size);
-  const ageLabel = ageBasis === 'birth_date' ? 'Age (on the first day)' : 'Age (in the tournament year)';
+  const ageLabel = 'Age';
   const setPositions = (checked) => onChange({
     ...c,
     position_rules: checked ? positions.map(() => ({ gender: c.gender ?? null, min_age: c.min_age ?? null, max_age: c.max_age ?? null, min_grade: c.min_grade ?? null, max_grade: c.max_grade ?? null })) : null,
@@ -93,16 +99,7 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
   return (
     <div className="cr">
       <p className="tp-muted cr-hint">{team ? 'Every team member must meet these — switch on the limits the category has:' : 'Switch on the limits this category has (all off = anyone can enter):'}</p>
-      <RuleSet value={c} onChange={(v) => onChange({ ...c, ...v })} ageLabel={ageLabel} />
-      {onAgeBasis && (c.min_age != null || c.max_age != null) && (
-        <label className="tp-field cr-age-basis">
-          Age counts <span className="tp-muted">(same for all categories of the tournament)</span>
-          <select value={ageBasis} onChange={(e) => onAgeBasis(e.target.value)}>
-            <option value="birth_year">by birth year (tournament year − birth year)</option>
-            <option value="birth_date">by exact age on the first day (the signup asks the date of birth)</option>
-          </select>
-        </label>
-      )}
+      <RuleSet value={c} onChange={(v) => onChange({ ...c, ...v })} ageLabel={ageLabel} ageBasis={ageBasis} onAgeBasis={onAgeBasis} />
       {team && (
         <div className="cr-team">
           <label className="tp-field">
