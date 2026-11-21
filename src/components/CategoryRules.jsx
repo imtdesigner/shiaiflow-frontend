@@ -102,20 +102,17 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
       <RuleSet value={c} onChange={(v) => onChange({ ...c, ...v })} ageLabel={ageLabel} ageBasis={ageBasis} onAgeBasis={onAgeBasis} />
       {team && (
         <div className="cr-team">
-          <label className="tp-field">
-            Team
-            <select value={size} onChange={(e) => onChange({ ...c, team_size: Number(e.target.value), position_rules: null })}>
-              <option value={3}>3 + 1 reserve</option>
-              <option value={5}>5 + 2 reserves</option>
-            </select>
-          </label>
+          <div className="cr-team-size">
+            <span className="fr-row-label">Team of</span>
+            <Segmented options={[[3, '3'], [5, '5']]} value={size} onChange={(n) => onChange({ ...c, team_size: n, position_rules: null })} />
+          </div>
           <label className="tp-check">
             <input type="checkbox" checked={!!c.team_same_dojo} onChange={(e) => onChange({ ...c, team_same_dojo: e.target.checked })} />
-            All members from the same dojo (e.g. national championships)
+            All members must be from the same dojo
           </label>
           <label className="tp-check">
             <input type="checkbox" checked={!!c.position_rules} onChange={(e) => setPositions(e.target.checked)} />
-            Limits per position (fixed fighting order)
+            Fixed fighting order
           </label>
           {c.position_rules ? (
             <div className="cr-positions">
@@ -129,7 +126,7 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
               <p className="tp-muted">Reserves ({teamReserves(size)}) must fit at least one position.</p>
             </div>
           ) : (
-            <p className="tp-muted">No position limits: teams hand in their fighting order (team list) at the tournament.</p>
+            <p className="tp-muted">Off: each team hands in its fighting order before every match. On: the order is fixed and you can set limits per position (e.g. the youngest as senpo).</p>
           )}
         </div>
       )}

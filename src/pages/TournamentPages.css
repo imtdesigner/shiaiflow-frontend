@@ -472,3 +472,8 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .fr-row .fr-tie { margin: 0; }
 @media (max-width: 700px) { .fr-row-note { margin-left: 0; } }
 .cr-age-basis { display: inline-flex; flex-wrap: wrap; gap: 0.4rem 0.75rem; align-items: center; margin-left: 0.5rem; }
+.ct-category { position: relative; }
+.ct-remove { position: absolute; top: 0.6rem; right: 0.6rem; }
+.ct-category .ct-head { padding-right: 9rem; }
+.cr-team-size { display: flex; align-items: center; gap: 0.9rem; }
+.cr-team-size .fr-row-label { min-width: 0; }

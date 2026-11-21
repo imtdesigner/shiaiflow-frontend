@@ -165,6 +165,8 @@ function CreateTournament() {
           )}
           {categories.map((c) => (
             <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
+              <button type="button" className="tp-btn danger small ct-remove"
+                onClick={() => { if (!c.name.trim() || window.confirm(`Remove the category "${c.name.trim()}"?`)) removeCategory(c._key); }}>Remove category</button>
               <div id={`g-cat-${c._key}-name`} className="ct-head">
                 {c._fresh && (
                   <div className="ct-templates">
@@ -176,7 +178,6 @@ function CreateTournament() {
                 )}
                 <div className="ct-head-name">
                   <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
-                  <button type="button" className="tp-btn danger small" onClick={() => removeCategory(c._key)}>Remove</button>
                 </div>
                 <div>
                   <Segmented options={[['individual', 'Individual'], ['team', 'Team']]} value={c.kind}
