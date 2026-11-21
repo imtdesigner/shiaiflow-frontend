@@ -5,14 +5,15 @@ import {
 } from '../components/TournamentShell';
 import {
   addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
-  saveDraw, setCheckedIn, setDrawsConfirmed, updateCategory, withdrawFromPool,
+  saveDraw, setCheckedIn, setDrawsConfirmed, updateCategory, updateTournament, withdrawFromPool,
 } from '../lib/api';
+import Segmented from '../components/Segmented';
 import { afterFight, myRole } from '../lib/runApi';
 import {
   buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
 import KoBracket from '../components/KoBracket';
-import { entriesOutsideRules, rulesText, teamReserves, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
+import { entriesOutsideRules, rulesText, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
 import { categoryRow } from '../lib/tournament/categoryTemplates.js';
 import CategoryRules from '../components/CategoryRules';
 import FightRules from '../components/FightRules';
@@ -242,7 +243,7 @@ function Drawings() {
   const fightRulesBlock = (afterDraw) => (
             <details style={{ marginTop: '0.75rem' }}>
               <summary className="tp-muted">
-                Fight rules — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
+                Type of tournament — {category.fight_system === 'ippon' ? 'ippon-shobu' : 'sanbon-shobu'}
                 {category.kind === 'team' ? (
                   <>
                     {category.pool_size !== 1 && <>{' · pools: tied match = '}{category.pool_tie === 'encho' ? 'daihyosen' : 'draw'}</>}
@@ -272,7 +273,7 @@ function Drawings() {
                         'ko_hantei', 'daihyosen_encho_seconds', 'daihyosen_hantei', 'ranking_criteria', 'no_hantei_from'];
                       await changeSettings(Object.fromEntries(keys.map((k) => [k, fightDraft[k] ?? null]).filter(([k, v]) => v !== null || !['pool_split', 'fight_system', 'third_place', 'pool_tie', 'pool_hantei', 'ko_hantei', 'daihyosen_hantei'].includes(k))));
                       setFightDraft(null);
-                    }}>Save fight rules</button>
+                    }}>Save type of tournament</button>
                     <button type="button" className="tp-btn secondary small" onClick={() => setFightDraft(null)}>Cancel</button>
                   </div>
                 )}
@@ -441,21 +442,6 @@ function Drawings() {
               <strong style={{ fontSize: '1.4rem' }}>{drawEntries.length}</strong>
               <span className="tp-muted">{entries.filter((e) => e.checked_in).length} marked present so far — presence is checked on the day</span>
             </div>
-            <label className="tp-field">
-              Per pool
-              <select value={category.pool_size} onChange={(e) => changeSetting('pool_size', Number(e.target.value))}>
-                <option value={1}>direct KO</option>
-                {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-            <label className="tp-field">
-              Advancing per pool
-              <select value={category.advancing} disabled={category.pool_size === 1} onChange={(e) => changeSetting('advancing', Number(e.target.value))}>
-                <option value={0}>pools only</option>
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </label>
             <div className="tp-field">
               Shiaijo
               <strong>
@@ -465,10 +451,33 @@ function Drawings() {
               <Link className="tp-muted" to={`/tournament/${tournamentId}/shiaijo`}>Change in Shiaijo plan</Link>
             </div>
           </div>
+          <div className="fr" style={{ marginTop: '0.75rem' }}>
+            <div className="fr-row">
+              <span className="fr-row-label">Pools</span>
+              <Segmented options={[[true, 'Pools, then KO'], [false, 'No pools — KO only']]} value={category.pool_size !== 1}
+                onChange={(on) => changeSettings(on ? { pool_size: 3, advancing: category.advancing || 2 } : { pool_size: 1 })} />
+            </div>
+            {category.pool_size !== 1 && (
+              <>
+                <div className="fr-row">
+                  <span className="fr-row-label">Fighters in one pool</span>
+                  <Segmented options={[2, 3, 4, 5, 6, 7, 8].map((n) => [n, String(n)])} value={category.pool_size} onChange={(n) => changeSetting('pool_size', n)} />
+                </div>
+                <div className="fr-row">
+                  <span className="fr-row-label">Go on to the KO</span>
+                  <Segmented options={[[1, '1 per pool'], [2, '2 per pool']]} value={category.advancing} onChange={(n) => changeSetting('advancing', n)} />
+                  {category.advancing === 0 && <span className="tp-muted">round robin only (small category)</span>}
+                </div>
+              </>
+            )}
+          </div>
           <details style={{ marginTop: '0.75rem' }}>
-            <summary className="tp-muted">Who can enter — {rulesText(category)}{category.kind === 'team' ? ` · team ${category.team_size}+${teamReserves(category.team_size)}${category.team_same_dojo ? ' · one dojo' : ''}${category.position_rules ? ' · limits per position' : ''}` : ''}</summary>
+            <summary className="tp-muted">Who can enter — {rulesText(category)}{category.kind === 'team' ? ` · team of ${category.team_size}${category.team_same_dojo ? ' · same dojo' : ''}${category.position_rules ? ' · fixed fighting order' : ''}` : ''}</summary>
             <div style={{ marginTop: '0.75rem' }}>
               <CategoryRules key={`${category.id}-${rulesDraft ? 'd' : 's'}-${category.team_size}`} category={rulesDraft ?? category} ageBasis={tournament?.age_basis}
+                onAgeBasis={locked ? undefined : async (v) => {
+                  try { await updateTournament(tournamentId, { age_basis: v }); await reloadTournament(); } catch (e) { setMsg({ type: 'error', text: e.message }); }
+                }}
                 onChange={(next) => !locked && setRulesDraft(next)} />
               {rulesDraft && (
                 <div className="tp-actions">

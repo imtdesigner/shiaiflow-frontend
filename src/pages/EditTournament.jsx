@@ -192,24 +192,8 @@ function EditTournament() {
               }} />
           </label>
         </div>
-        <h3 id="g-rules" style={{ marginTop: '1rem' }}>Rules for entering</h3>
-        <div className="tp-grid">
-          <label className="tp-field">
-            Age limits count
-            <select value={tournament.age_basis ?? 'birth_year'} disabled={busy} onChange={(e) => toggle('age_basis', e.target.value)}>
-              <option value="birth_year">by birth year (tournament year − birth year)</option>
-              <option value="birth_date">by exact age on the first day (asks the date of birth)</option>
-            </select>
-          </label>
-          <label className="tp-field tp-check">
-            <input type="checkbox" checked={!!tournament.single_category} disabled={busy}
-              onChange={(e) => toggle('single_category', e.target.checked)} />
-            A competitor may enter only one individual category (of those they qualify for)
-          </label>
-        </div>
-        <p className="tp-muted">Each category's limits (gender, age, grade, team rules) are set on the Drawings page under "Who can enter".</p>
         <h3 id="g-signup" style={{ marginTop: '1rem' }}>Signup form</h3>
-        <p className="tp-muted">Name, club and what the category rules need (gender, birth, grade) are always asked. Switch the rest on as needed.</p>
+        <p className="tp-muted">Name, club and what the category rules need (gender, birth, grade) are always asked. Switch the rest on as needed. Each category's limits — and whether age counts by year or exact date of birth — are set in Drawings under "Who can enter".</p>
         <div className="tp-grid">
           {[['email', 'Competitor email'], ['dojo_email', 'Dojo email']].map(([k, label]) => (
             <label key={k} className="tp-field">
@@ -221,6 +205,11 @@ function EditTournament() {
               </select>
             </label>
           ))}
+          <label id="g-rules" className="tp-field tp-check">
+            <input type="checkbox" checked={!!tournament.single_category} disabled={busy}
+              onChange={(e) => toggle('single_category', e.target.checked)} />
+            A competitor may enter only one individual category (of those they qualify for)
+          </label>
           <label className="tp-field tp-check">
             <input type="checkbox" checked={signup.add_another} disabled={busy} onChange={(e) => saveSignup({ add_another: e.target.checked })} />
             "Add another" — register several people in one go (e.g. a dojo for its members)
