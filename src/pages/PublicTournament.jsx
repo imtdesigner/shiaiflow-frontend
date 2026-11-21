@@ -308,7 +308,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         {[
           tournament.start_date && (tournament.end_date && tournament.end_date !== tournament.start_date
             ? `${fmtDate(tournament.start_date)} – ${fmtDate(tournament.end_date)}` : fmtDate(tournament.start_date)),
-          tournament.venue, tournament.city, tournament.country,
+          tournament.venue, tournament.address, tournament.city, tournament.country,
         ].filter(Boolean).join(' · ')}
         {running && <> · <span className="tp-badge ok">live</span></>}
       </p>

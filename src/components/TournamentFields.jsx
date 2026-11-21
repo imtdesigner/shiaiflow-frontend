@@ -44,6 +44,33 @@ export function DaysEditor({ startDate, endDate, value, onChange, disabled }) {
   );
 }
 
+/** Does the tournament use a schedule (any day with a start time)? */
+export const usesSchedule = (days, startTime) => !!startTime || (Array.isArray(days) && days.some((d) => d?.start));
+
+/**
+ * "Use a schedule?" — with exact start times (and breaks) per day the app
+ * works out when categories and fights start; without, only how long things
+ * take. Yes shows the days with their times.
+ */
+export function ScheduleQuestion({ value, onChange, startDate, endDate, days, onDays, disabled }) {
+  return (
+    <div className="td-schedule">
+      <h4>Use a schedule?</h4>
+      <p className="tp-muted" style={{ marginTop: 0 }}>
+        With the start time of each day (and breaks) ShiaiFlow works out when each category and fight starts.
+        Without a schedule it only shows approximately how long categories take.
+      </p>
+      <div className="tp-actions" style={{ marginTop: 0 }}>
+        <label className="tp-check"><input type="radio" checked={value === true} disabled={disabled} onChange={() => onChange(true)} /> Yes, use a schedule</label>
+        <label className="tp-check"><input type="radio" checked={value === false} disabled={disabled} onChange={() => onChange(false)} /> No, durations only</label>
+      </div>
+      {value === true && (startDate
+        ? <DaysEditor startDate={startDate} endDate={endDate} value={days} onChange={onDays} disabled={disabled} />
+        : <p className="tp-muted">Pick the dates first — then set the times of each day.</p>)}
+    </div>
+  );
+}
+
 /**
  * Own link name: /t/<name>. Checked as you type: free, taken (another
  * organizer) or yours (your earlier tournament uses it — then it can move to

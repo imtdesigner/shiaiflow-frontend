@@ -6,7 +6,7 @@ import FightRules from '../components/FightRules';
 import { createTournament, listCategorySources } from '../lib/api';
 import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
-import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
+import { LinkField, ScheduleQuestion, linkReady } from '../components/TournamentFields';
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
@@ -24,7 +24,7 @@ const withKey = (c) => ({ ...c, _key: nextKey++ });
 function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', start_date: '', end_date: '', venue: '', city: '', country: 'Croatia',
+    name: '', start_date: '', end_date: '', use_schedule: null, venue: '', address: '', city: '', country: 'Croatia',
     shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '',
   });
   const [linkState, setLinkState] = useState(null);
@@ -72,7 +72,7 @@ function CreateTournament() {
     if (!form.name.trim()) { setError('Enter the tournament name.'); return; }
     if (categories.some((c) => !c.name.trim())) { setError('Every category needs a name.'); return; }
     if (!linkReady(form.slug, '', linkState, linkConfirmed)) { setError('Check the link name.'); return; }
-    const days = form.start_date ? daysValue(form.start_date, form.end_date || form.start_date, form.days) : null;
+    const days = form.start_date ? daysValue(form.start_date, form.end_date || form.start_date, form.use_schedule ? form.days : []) : null;
     const lastDay = days ? days.length : 1;
     setSaving(true);
     try {
@@ -81,6 +81,7 @@ function CreateTournament() {
         start_date: form.start_date || null,
         end_date: form.end_date || form.start_date || null,
         venue: form.venue.trim() || null,
+        address: form.address.trim() || null,
         city: form.city.trim() || null,
         country: form.country.trim() || null,
         shiaijo_count: Number(form.shiaijo_count),
@@ -120,13 +121,20 @@ function CreateTournament() {
             </label>
             <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
             <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
-            <label id="g-venue" className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
+          </div>
+          <div id="g-days">
+            <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
+              startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })} />
+          </div>
+        </div>
+
+        <div className="tp-card">
+          <h3>Venue</h3>
+          <div className="tp-grid">
+            <label id="g-venue" className="tp-field">Venue (hall)<input value={form.venue} onChange={set('venue')} placeholder="e.g. Sports hall Zamet" /></label>
+            <label className="tp-field">Address<input value={form.address} onChange={set('address')} placeholder="Street and number" /></label>
             <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
             <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
-            <div id="g-link" style={{ gridColumn: '1 / -1' }}>
-              <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
-                confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
-            </div>
             <label id="g-courts" className="tp-field">
               Number of courts (shiaijo)
               <select value={form.shiaijo_count} onChange={set('shiaijo_count')}>
@@ -134,12 +142,14 @@ function CreateTournament() {
               </select>
             </label>
           </div>
-          {form.start_date && (
-            <div id="g-days">
-              <h4>Days</h4>
-              <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
-            </div>
-          )}
+        </div>
+
+        <div className="tp-card">
+          <h3>Public page and signup</h3>
+          <div id="g-link">
+            <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
+              confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
+          </div>
           <h4>Signup</h4>
           <div id="g-signup-rules" className="tp-grid">
             <label className="tp-field">

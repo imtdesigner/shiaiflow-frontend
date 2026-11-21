@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BackToDashboard, Message, useTournament } from '../components/TournamentShell';
 import { tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
-import { DaysEditor, LinkField, linkReady } from '../components/TournamentFields';
+import { LinkField, ScheduleQuestion, linkReady, usesSchedule } from '../components/TournamentFields';
 import { daysValue } from '../lib/tournament/days.js';
 import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
@@ -42,11 +42,13 @@ function EditTournament() {
       start_date: tournament.start_date ?? '',
       end_date: tournament.end_date ?? '',
       venue: tournament.venue ?? '',
+      address: tournament.address ?? '',
       city: tournament.city ?? '',
       country: tournament.country ?? '',
       registration_deadline: toLocalInput(tournament.registration_deadline),
       days: tournament.days ?? (tournament.start_time ? [{ start: tournament.start_time.slice(0, 5), end: null }] : []),
       slug: tournament.slug ?? '',
+      use_schedule: usesSchedule(tournament.days, tournament.start_time),
     });
     setLinkConfirmed(false);
   }, [tournament]);
@@ -72,7 +74,7 @@ function EditTournament() {
       setMsg({ type: 'error', text: 'Check the link name (taken, not allowed, or your earlier tournament uses it — tick to reuse it).' });
       return;
     }
-    const days = daysValue(form.start_date, form.end_date || form.start_date, form.days);
+    const days = daysValue(form.start_date, form.end_date || form.start_date, form.use_schedule ? form.days : []);
     run(() => updateTournament(tournamentId, {
       days,
       start_time: days[0]?.start || null,
@@ -81,6 +83,7 @@ function EditTournament() {
       start_date: form.start_date || null,
       end_date: form.end_date || form.start_date || null,
       venue: form.venue.trim() || null,
+      address: form.address.trim() || null,
       city: form.city.trim() || null,
       country: form.country.trim() || null,
       registration_deadline: form.registration_deadline ? new Date(form.registration_deadline).toISOString() : null,
@@ -234,16 +237,17 @@ function EditTournament() {
           <label className="tp-field" style={{ gridColumn: '1 / -1' }}>Name<input value={form.name} onChange={set('name')} required /></label>
           <label className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
           <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
-          <label className="tp-field">Venue<input value={form.venue} onChange={set('venue')} /></label>
+          <label className="tp-field">Venue (hall)<input value={form.venue} onChange={set('venue')} /></label>
+          <label className="tp-field">Address<input value={form.address} onChange={set('address')} placeholder="Street and number" /></label>
           <label className="tp-field">City<input value={form.city} onChange={set('city')} /></label>
           <label className="tp-field">Country<input value={form.country} onChange={set('country')} /></label>
           <LinkField value={form.slug} saved={tournament.slug ?? ''} name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
             confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
         </div>
-        <h4 id="g-days">Days</h4>
-        {form.start_date
-          ? <DaysEditor startDate={form.start_date} endDate={form.end_date} value={form.days} onChange={(days) => setForm({ ...form, days })} />
-          : <p className="tp-muted">Set the dates to plan the days.</p>}
+        <div id="g-days">
+          <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
+            startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })} />
+        </div>
         <p className="tp-muted">Each category's day is set in the Shiaijo plan. The fight plan starts each day at its start time.</p>
         <div className="tp-actions">
           <button type="submit" className="tp-btn" disabled={busy}>Save</button>
