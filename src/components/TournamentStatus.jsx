@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Segmented from './Segmented';
 import { useTournamentPhase } from './GuidePanel';
@@ -8,18 +7,6 @@ import { fmtDateTime } from '../lib/format.js';
 /** Which status a phase (guide.js tournamentPhase) is in. */
 const CURRENT = { setup: 'setup', signup: 'signup', draw: 'draws', register: 'register', start: 'register', live: 'running', finished: 'finished', past: 'finished' };
 const ORDER = ['setup', 'published', 'signup', 'draws', 'register', 'running', 'finished'];
-const LABEL = { setup: 'Setup', published: 'Hidden', signup: 'Signup', draws: 'Draws', register: 'Registration', running: 'Running', finished: 'Finished' };
-
-/** Scrolled down the page? (the status column then folds to one line) */
-function useScrolled(limit = 160) {
-  const [scrolled, setScrolled] = useState(() => window.scrollY > limit);
-  useEffect(() => {
-    const on = () => setScrolled(window.scrollY > limit);
-    window.addEventListener('scroll', on, { passive: true });
-    return () => window.removeEventListener('scroll', on);
-  }, [limit]);
-  return scrolled;
-}
 
 /**
  * Edit tournament, left column (owner, 2026-11-22): every status a tournament
@@ -27,10 +14,8 @@ function useScrolled(limit = 160) {
  * confirmed), registration (check-in on the day), running, finished — with the
  * current one marked and the switches right there instead of hidden in the page.
  */
-export default function TournamentStatus({ tournament: t, categories, role, waitingVerification, onChanged, run }) {
+export default function TournamentStatus({ tournament: t, categories, role, waitingVerification, onChanged, run, children }) {
   const { data, phase, reload } = useTournamentPhase(t?.id ?? null);
-  const scrolled = useScrolled();
-  const [open, setOpen] = useState(false);
   if (!t) return null;
   const owner = role === 'owner';
   const live = categories.filter((c) => c.status !== 'cancelled');
@@ -48,18 +33,9 @@ export default function TournamentStatus({ tournament: t, categories, role, wait
     return `ts-step ${i < at ? 'past' : i === at ? 'now' : 'next'}`;
   };
 
-  // scrolled down: only the current status in one line; hover or click opens it again (over PIN and Delete)
-  if (scrolled && !open) {
-    return (
-      <aside className="ts ts-compact" onMouseEnter={() => setOpen(true)} onClick={() => setOpen(true)}>
-        <span className="tp-muted">Status</span> <strong>{LABEL[current]}</strong> <span className="tp-muted">▾</span>
-      </aside>
-    );
-  }
-
   return (
-    <aside className={`ts ${scrolled ? 'ts-floating' : ''}`} onMouseLeave={() => setOpen(false)}>
-      <h3>Tournament status{scrolled && <button type="button" className="ts-fold" onClick={() => setOpen(false)} aria-label="Fold">▴</button>}</h3>
+    <aside className="ts">
+      <h3>Tournament status</h3>
       <ol className="ts-steps">
         <li className={cls('setup')}>
           <strong>Setup</strong>
@@ -121,6 +97,7 @@ export default function TournamentStatus({ tournament: t, categories, role, wait
           <span className="tp-muted">{data?.fights ? `${data.fights.finished} / ${data.fights.total} fights done.` : 'When every fight is done.'}</span>
         </li>
       </ol>
+      {children}
     </aside>
   );
 }

@@ -39,7 +39,7 @@ function EditTournament() {
   const setTab = (t) => setParams(t === 'basics' ? {} : { tab: t }, { replace: true });
   useEffect(() => {
     const ANCHOR_TAB = { 'g-categories': 'categories', 'g-registration': 'signup', 'g-signup': 'signup', 'g-rules': 'signup', 'g-courts': 'shiaijo', 'g-court-cats': 'shiaijo' };
-    const onGo = (e) => { const t = ANCHOR_TAB[e.detail] ?? (String(e.detail).startsWith('g-') ? 'basics' : null); if (t && !['g-publish', 'g-pin', 'g-delete'].includes(e.detail)) setTab(t); };
+    const onGo = (e) => { const t = ANCHOR_TAB[e.detail] ?? (String(e.detail).startsWith('g-') ? 'basics' : null); if (t && !['g-publish', 'g-delete'].includes(e.detail)) setTab(t); };
     window.addEventListener('guide-goto', onGo);
     return () => window.removeEventListener('guide-goto', onGo);
   });
@@ -125,8 +125,8 @@ function EditTournament() {
 
   const toggle = (field, value, ok) => run(() => updateTournament(tournamentId, { [field]: value }), ok);
 
+  if (loadError) return <div className="tp-page"><Message type="error">This tournament does not exist (any more) or you have no access to it.</Message></div>;
   if (loading || !form) return <div className="tp-page">Loading…</div>;
-  if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
   const publicUrl = `${window.location.origin}${tournament.slug ? `/${tournament.slug}` : `/t/${tournamentId}`}`;
   const joinUrl = `${window.location.origin}/join/${tournamentId}`;
@@ -145,25 +145,10 @@ function EditTournament() {
       <div className="et-layout">
         <div className="et-side">
           <TournamentStatus tournament={tournament} categories={categories} role={role} waitingVerification={waitingVerification}
-            onChanged={reload} run={run} />
-      <div id="g-pin" className="tp-card ts-card">
-        <h3>PIN for editors and tables</h3>
-        <p className="tp-muted" style={{ marginTop: 0 }}>
-          Before the start the PIN lets editors change the tournament; after the start it opens the scoretables and Manage.
-          Share <strong>{joinUrl}</strong>.
-        </p>
-        <div className="tp-actions">
-          <strong style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>{pin ?? '—'}</strong>
-          <button type="button" className="tp-btn secondary small" disabled={busy}
-            onClick={() => run(async () => { const p = randomPin(); await setPin(tournamentId, p); setPinState(p); })}>
-            {pin ? 'New PIN' : 'Create PIN'}
-          </button>
-        </div>
-      </div>
-
+            onChanged={reload} run={run}>
       {role === 'owner' && (
-        <div id="g-delete" className="tp-card ts-card">
-          <h3>Delete tournament</h3>
+        <div id="g-delete" className="ts-delete">
+          <h4>Delete tournament</h4>
           <p className="tp-muted" style={{ marginTop: 0 }}>Deletes the tournament with its categories, entries, draws and results. This cannot be undone.</p>
           {deleteName === null ? (
             <button type="button" className="tp-btn danger" disabled={busy} onClick={() => setDeleteName('')}>Delete tournament…</button>
@@ -181,6 +166,7 @@ function EditTournament() {
           )}
         </div>
       )}
+          </TournamentStatus>
         </div>
 
         <div>
@@ -211,6 +197,21 @@ function EditTournament() {
           <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
         )}
         <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
+      </div>
+
+      <div id="g-pin" className="tp-card">
+        <h3>PIN for editors and tables</h3>
+        <p className="tp-muted" style={{ marginTop: 0 }}>
+          Before the start the PIN lets editors change the tournament; after the start it opens the scoretables and Manage.
+          Share <strong>{joinUrl}</strong>.
+        </p>
+        <div className="tp-actions">
+          <strong style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>{pin ?? '—'}</strong>
+          <button type="button" className="tp-btn secondary small" disabled={busy}
+            onClick={() => run(async () => { const p = randomPin(); await setPin(tournamentId, p); setPinState(p); })}>
+            {pin ? 'New PIN' : 'Create PIN'}
+          </button>
+        </div>
       </div>
 
             </>

@@ -28,6 +28,11 @@ export default function SetupWizard() {
     catch (e) { setMsg({ type: 'error', text: e.message }); }
     finally { setBusy(false); }
   };
+  // Done: back to the dashboard with this tournament picked
+  const finish = () => {
+    try { sessionStorage.setItem('sf-selected-tournament', JSON.stringify({ id: tournamentId, name: tournament?.name })); } catch { /* ignore */ }
+    navigate('/dashboard');
+  };
   const go = (s) => { setParams({ step: s }); window.scrollTo({ top: 0 }); };
 
   if (loading) return <div className="tp-page">Loading…</div>;
@@ -62,7 +67,8 @@ export default function SetupWizard() {
             </p>
             <div className="tp-actions">
               <button type="button" className="tp-btn secondary" onClick={() => go('signup')}>Back: signup setup</button>
-              <Link className="tp-btn" to={`/tournament/${tournamentId}/edit`}>Go to Edit tournament</Link>
+              <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/edit`}>Go to Edit tournament</Link>
+              <button type="button" className="tp-btn" onClick={finish}>Done</button>
             </div>
           </div>
         </>

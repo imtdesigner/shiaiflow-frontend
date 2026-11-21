@@ -508,12 +508,10 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .ct-readonly { opacity: 0.85; }
 .ct-save { border-top: 1px dashed #e3ddd0; padding-top: 0.6rem; }
 .ts { z-index: 20; }
-.ts-compact { cursor: pointer; padding: 0.55rem 0.9rem; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
-.ts-compact strong { color: #711921; }
-.ts-floating { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); max-height: calc(100vh - 100px); overflow-y: auto; }
-.ts-fold { float: right; background: none; border: 0; cursor: pointer; color: #8a8378; font-size: 0.9rem; }
 
 /* the left column stays in view; scrolled down, the status is one line and opens over PIN and Delete */
 .et-side { position: sticky; top: 76px; }
-.ts-floating { position: absolute; left: 0; right: 0; top: 0; }
 @media (max-width: 1000px) { .et-side { position: static; } }
+.ts-delete { margin-top: 1.2rem; padding-top: 0.8rem; border-top: 1px dashed #e3ddd0; font-size: 0.85rem; }
+.ts-delete h4 { margin: 0 0 0.3rem; font-size: 0.9rem; }
+.et-side { max-height: calc(100vh - 90px); overflow-y: auto; }
