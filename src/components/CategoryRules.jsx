@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GRADES, hasRule, teamPositions, teamReserves } from '../lib/tournament/eligibility.js';
+import Segmented from './Segmented';
 
 const num = (v) => (v === '' || v == null ? null : Number(v));
 
@@ -17,12 +18,22 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) 
   };
   // switched on by hand (no value yet), or a value is set (e.g. filled in by a template)
   const [manual, setOn] = useState(has);
+  // grade: kyu only (up to 1 kyu), dan only (1 dan and up), or an own range
+  const gradeShape = v.min_grade == null && v.max_grade === -1 ? 'kyu' : v.min_grade === 1 && v.max_grade == null ? 'dan' : (v.min_grade != null || v.max_grade != null) ? 'range' : null;
+  const [rangePicked, setRangePicked] = useState(gradeShape === 'range');
+  const gradeMode = rangePicked ? 'range' : gradeShape;
+  const setGradeMode = (m) => {
+    setRangePicked(m === 'range');
+    if (m === 'kyu') patch({ min_grade: null, max_grade: -1 });
+    if (m === 'dan') patch({ min_grade: 1, max_grade: null });
+  };
   const on = { gender: manual.gender || has.gender, age: manual.age || has.age, grade: manual.grade || has.grade };
   const patch = (p) => onChange({ ...v, ...p });
   const toggle = (k, checked) => {
     setOn({ ...manual, [k]: checked });
     if (checked && k === 'gender' && !v.gender) patch({ gender: 'M' });
     if (!checked) {
+      if (k === 'grade') setRangePicked(false);
       if (k === 'gender') patch({ gender: null });
       if (k === 'age') patch({ min_age: null, max_age: null });
       if (k === 'grade') patch({ min_grade: null, max_grade: null });
@@ -38,11 +49,7 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) 
     <div className={`cr-rules ${compact ? 'compact' : ''}`}>
       <div className="cr-rule">
         <label className="tp-check"><input type="checkbox" checked={on.gender} onChange={(e) => toggle('gender', e.target.checked)} /> Gender</label>
-        {on.gender && (
-          <select value={v.gender ?? 'M'} onChange={(e) => patch({ gender: e.target.value })}>
-            <option value="M">men</option><option value="F">women</option>
-          </select>
-        )}
+        {on.gender && <Segmented options={[['M', 'Men'], ['F', 'Women']]} value={v.gender ?? 'M'} onChange={(g) => patch({ gender: g })} />}
       </div>
       <div className="cr-rule">
         <label className="tp-check"><input type="checkbox" checked={on.age} onChange={(e) => toggle('age', e.target.checked)} /> {ageLabel}</label>
@@ -55,7 +62,12 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) 
       </div>
       <div className="cr-rule">
         <label className="tp-check"><input type="checkbox" checked={on.grade} onChange={(e) => toggle('grade', e.target.checked)} /> Grade</label>
-        {on.grade && <span className="cr-range">from {gradeSelect('min_grade')} to {gradeSelect('max_grade')}</span>}
+        {on.grade && (
+          <span className="cr-grade-modes">
+            <Segmented options={[['kyu', 'Kyu only'], ['dan', 'Dan only'], ['range', 'From – to']]} value={gradeMode} onChange={setGradeMode} />
+            {gradeMode === 'range' && <span className="cr-range">from {gradeSelect('min_grade')} to {gradeSelect('max_grade')}</span>}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -80,7 +92,7 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
 
   return (
     <div className="cr">
-      <p className="tp-muted cr-hint">{team ? 'Every team member must meet these:' : 'Who can enter (switched off = no limit; limits combine):'}</p>
+      <p className="tp-muted cr-hint">{team ? 'Every team member must meet these — switch on the limits the category has:' : 'Switch on the limits this category has (all off = anyone can enter):'}</p>
       <RuleSet value={c} onChange={(v) => onChange({ ...c, ...v })} ageLabel={ageLabel} />
       {onAgeBasis && (c.min_age != null || c.max_age != null) && (
         <label className="tp-field cr-age-basis">

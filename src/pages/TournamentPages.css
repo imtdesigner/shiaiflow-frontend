@@ -441,3 +441,18 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .pt-pool-results { margin-top: 1rem; }
 .pt-pool-results summary { cursor: pointer; color: #711921; font-weight: 600; margin-bottom: 0.5rem; }
 .pt-program { display: flex; flex-wrap: wrap; gap: 0.5rem 2.5rem; margin-bottom: 1rem; } .pt-program h4 { margin: 0.4rem 0 0.2rem; }
+
+/* Segmented buttons: the picked one in colour, the others grey */
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cfc8bb; border-radius: 8px; overflow: hidden; background: #fff; }
+.seg button { border: 0; background: none; padding: 0.35rem 0.9rem; font: inherit; color: #9a948a; cursor: pointer; }
+.seg button + button { border-left: 1px solid #cfc8bb; }
+.seg button.on { background: #711921; color: #fff; font-weight: 600; }
+.seg button:not(.on):hover { color: #5f5a50; background: #f5f1e8; }
+.seg button:disabled { cursor: default; }
+
+/* category head (Create): templates, big name, kind, day */
+.ct-head { display: grid; gap: 0.6rem; margin-bottom: 0.8rem; }
+.ct-head-name { display: flex; gap: 0.75rem; align-items: center; }
+.ct-head-name input { flex: 1; font-size: 1.25rem; font-weight: 600; padding: 0.35rem 0.5rem; }
+.ct-head-label { font-size: 0.8rem; color: #8a8378; margin-right: 0.5rem; }
+.cr-grade-modes { display: inline-flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }

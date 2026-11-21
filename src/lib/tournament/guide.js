@@ -1,3 +1,4 @@
+import { dayCount } from './days.js';
 // Setup guide (owner, 2026-11-20): the tournament timeline
 //   setup → signup → draw → register → start → live → finished → past
 // worked out from the tournament's state, with the steps of the current
@@ -66,7 +67,7 @@ export function createSteps(form = {}, categories = [], seen = {}) {
     step('link', 'Link', form.custom_link === false || (form.custom_link === true && filled('g-link', form.slug?.trim())),
       'Keep the default public link, or pick a short name (e.g. croatia-open).', 'create', 'g-link'),
     step('categories', 'Categories', categories.length > 0, 'Add a category, then pick a template inside it (Junior A, Kyu, Dan …).', 'create', 'g-categories'),
-    ...categorySteps(categories, seen),
+    ...categorySteps(categories, seen, dayCount(form.start_date, form.end_date) > 1),
     step('create', 'Create', false, 'All set? Create the tournament.', 'create', 'g-create'),
   ];
 }
@@ -76,7 +77,7 @@ export function createSteps(form = {}, categories = [], seen = {}) {
  * it), else the first one whose parts were not all visited. A part counts
  * once it has been visited and left.
  */
-function categorySteps(categories, seen) {
+function categorySteps(categories, seen, multiDay = false) {
   const inside = (a) => !!seen.inside?.(a);
   const visited = (a) => !!seen.left?.(a) && !inside(a);
   const parts = (c) => [`g-cat-${c._key}-name`, `g-cat-${c._key}-who`, `g-cat-${c._key}-fights`];
@@ -88,9 +89,9 @@ function categorySteps(categories, seen) {
   const team = c.kind === 'team';
   return [
     step(`cat-name-${c._key}`, label, visited(nameA) && c.name?.trim(),
-      `${label}: check the name${team ? '' : ' and whether it is individual or team'}.`, 'create', nameA),
+      `Name the category, pick individual or team${multiDay ? ' and the day it is fought' : ''}.`, 'create', nameA),
     step(`cat-who-${c._key}`, 'Who', visited(whoA),
-      `${label} — who can enter: gender, age and grade${team ? ', team size and positions' : ''}; switch off what does not limit.`, 'create', whoA),
+      `${label} — who can enter: switch on the limits it has (gender, age, grade${team ? ', team size and positions' : ''}).`, 'create', whoA),
     step(`cat-fights-${c._key}`, 'Fights', visited(fightsA),
       `${label} — how it fights: pool size, how many go on to the KO, fight times and what happens on a tie.`, 'create', fightsA),
   ];

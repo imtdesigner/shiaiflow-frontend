@@ -7,7 +7,9 @@ import { createTournament, listCategorySources } from '../lib/api';
 import { CATEGORY_TEMPLATES, EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
 import { rulesText } from '../lib/tournament/eligibility.js';
 import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit } from '../components/TournamentFields';
-import { dayCount, daysValue } from '../lib/tournament/days.js';
+import { addDays, dayCount, daysValue } from '../lib/tournament/days.js';
+import { fmtDay } from '../lib/format.js';
+import Segmented from '../components/Segmented';
 import './TournamentPages.css';
 import { useGuide } from '../components/GuidePanel';
 import { DEFAULT_PROGRAM } from '../lib/tournament/program.js';
@@ -163,29 +165,31 @@ function CreateTournament() {
           )}
           {categories.map((c) => (
             <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
-              <div id={`g-cat-${c._key}-name`} className="ct-category-head">
-                <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
-                <select value={c.kind} onChange={(e) => updateCategory(c._key, 'kind', e.target.value)}>
-                  <option value="individual">Individual</option>
-                  <option value="team">Team</option>
-                </select>
+              <div id={`g-cat-${c._key}-name`} className="ct-head">
+                {c._fresh && (
+                  <div className="ct-templates">
+                    <span className="ct-head-label">Templates</span>
+                    {CATEGORY_TEMPLATES.map((p) => (
+                      <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => applyTemplate(c._key, p)}>{p.name}</button>
+                    ))}
+                  </div>
+                )}
+                <div className="ct-head-name">
+                  <input value={c.name} placeholder="Category name" onChange={(e) => updateCategory(c._key, 'name', e.target.value)} />
+                  <button type="button" className="tp-btn danger small" onClick={() => removeCategory(c._key)}>Remove</button>
+                </div>
+                <div>
+                  <Segmented options={[['individual', 'Individual'], ['team', 'Team']]} value={c.kind}
+                    onChange={(v) => updateCategory(c._key, 'kind', v)} />
+                </div>
                 {days > 1 && (
-                  <select value={c.day ?? 1} onChange={(e) => updateCategory(c._key, 'day', Number(e.target.value))} title="Day of the category">
-                    {Array.from({ length: days }, (_, i) => <option key={i} value={i + 1}>Day {i + 1}</option>)}
-                  </select>
+                  <div>
+                    <Segmented options={Array.from({ length: days }, (_, i) => [i + 1, `Day ${i + 1}${form.start_date ? ` · ${fmtDay(addDays(form.start_date, i))}` : ''}`])}
+                      value={Number(c.day ?? 1)} onChange={(v) => updateCategory(c._key, 'day', v)} />
+                  </div>
                 )}
                 <span className="tp-muted">{rulesText(c)}</span>
-                <button type="button" className="tp-btn danger small" style={{ marginLeft: 'auto' }} onClick={() => removeCategory(c._key)}>Remove</button>
               </div>
-
-              {c._fresh && (
-                <div className="ct-templates">
-                  <span className="tp-muted">Start from a template:</span>
-                  {CATEGORY_TEMPLATES.map((p) => (
-                    <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => applyTemplate(c._key, p)}>{p.name}</button>
-                  ))}
-                </div>
-              )}
 
               <div id={`g-cat-${c._key}-who`}>
                 <h4>1 · Who can enter</h4>
