@@ -352,6 +352,18 @@
 /* Tournament days / link (TournamentFields.jsx) */
 .td-days { max-width: 44rem; }
 .td-days input[type='time'] { width: 7.5rem; }
+/* days + day programme: side by side (Create: the proposal beside the days), editor below in Edit */
+.td-schedule-row { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: flex-start; }
+.td-schedule-row > .td-days { flex: 0 1 auto; width: auto; }
+.td-schedule-row.editor { flex-direction: column; }
+.td-program { flex: 1 1 15rem; max-width: 40rem; padding: 0.6rem 0.9rem; background: #faf8f3; border-radius: 6px; }
+.td-program h4 { margin: 0 0 0.4rem; }
+.td-program-list td { padding: 0.15rem 0.6rem 0.15rem 0; border: 0; }
+.td-program-time { white-space: nowrap; font-variant-numeric: tabular-nums; color: #711921; font-weight: 600; }
+.td-program-edit td:nth-child(2) input { width: 15rem; max-width: 100%; }
+.td-program-rel { font-size: 0.75rem; }
+.td-program-off td { opacity: 0.45; }
+
 .tp-error-text { color: #a12020; font-size: 0.9em; }
 .tp-ok-text { color: #1d5e12; font-size: 0.9em; }
 .tp-logo-preview { max-height: 4rem; max-width: 10rem; object-fit: contain; display: block; margin: 0.4rem 0; }
@@ -427,3 +439,4 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .pt-cats { margin-top: 1.5rem; }
 .pt-pool-results { margin-top: 1rem; }
 .pt-pool-results summary { cursor: pointer; color: #711921; font-weight: 600; margin-bottom: 0.5rem; }
+.pt-program { display: flex; flex-wrap: wrap; gap: 0.5rem 2.5rem; margin-bottom: 1rem; } .pt-program h4 { margin: 0.4rem 0 0.2rem; }

@@ -4,6 +4,7 @@ import { BackToDashboard, Message, useTournament } from '../components/Tournamen
 import { changeCourtCount, deleteTournament, tournamentOrganizers, updateTournament, uploadLogo } from '../lib/api';
 import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit, usesSchedule } from '../components/TournamentFields';
 import { daysValue } from '../lib/tournament/days.js';
+import { programOf } from '../lib/tournament/program.js';
 import { CONSENTS, signupSettings } from '../lib/tournament/signup.js';
 import { getPin, myRole, setPin } from '../lib/runApi';
 import './TournamentPages.css';
@@ -52,6 +53,7 @@ function EditTournament() {
       days: tournament.days ?? (tournament.start_time ? [{ start: tournament.start_time.slice(0, 5), end: null }] : []),
       slug: tournament.slug ?? '',
       custom_link: !!tournament.slug,
+      program: programOf(tournament),
       shiaijo_count: tournament.shiaijo_count ?? 2,
       use_schedule: usesSchedule(tournament.days, tournament.start_time),
     });
@@ -85,6 +87,7 @@ function EditTournament() {
       await updateTournament(tournamentId, {
       days,
       start_time: days[0]?.start || null,
+      program: form.use_schedule ? form.program : null,
       slug: (form.custom_link && form.slug) || null,
       name: form.name.trim(),
       start_date: form.start_date || null,
@@ -130,7 +133,7 @@ function EditTournament() {
       <form id="g-details" onSubmit={save} onKeyDown={noEnterSubmit}>
         {tournament.draws_confirmed && role !== 'owner' && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
         <fieldset disabled={tournament.draws_confirmed && role !== 'owner'} style={{ border: 0, padding: 0, margin: 0 }}>
-          <TournamentPart form={form} setForm={setForm} />
+          <TournamentPart form={form} setForm={setForm} programMode="editor" />
           <VenuePart form={form} setForm={setForm} />
           <PublicPagePart form={form} setForm={setForm} saved={tournament.slug ?? ''}
             linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState} />

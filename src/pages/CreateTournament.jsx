@@ -10,6 +10,7 @@ import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit } f
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { useGuide } from '../components/GuidePanel';
+import { DEFAULT_PROGRAM } from '../lib/tournament/program.js';
 
 let nextKey = 1;
 const withKey = (c) => ({ ...c, _key: nextKey++ });
@@ -24,7 +25,7 @@ function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', start_date: '', end_date: '', use_schedule: null, venue: '', address: '', city: '', country: 'Croatia',
-    shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '', custom_link: null,
+    shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '', custom_link: null, program: DEFAULT_PROGRAM,
   });
   const [linkState, setLinkState] = useState(null);
   const [linkConfirmed, setLinkConfirmed] = useState(false);
@@ -95,6 +96,7 @@ function CreateTournament() {
         age_basis: form.age_basis,
         days,
         start_time: days?.[0]?.start || null,
+        program: form.use_schedule ? form.program : null,
         slug: (form.custom_link && form.slug) || null,
         single_category: form.single_category,
         is_public: false,

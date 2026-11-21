@@ -9,6 +9,7 @@ import {
 } from '../lib/api';
 import { OrganizerLine, fmtDate } from '../components/TournamentList';
 import { breakSeconds, clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
+import { dayProgram } from '../lib/tournament/program.js';
 import { askedConsents, signupProblems, signupSettings } from '../lib/tournament/signup.js';
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
@@ -353,6 +354,22 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
             {' · '}registration {regOpen ? 'open' : 'closed'}
             {tournament.registration_deadline && ` (deadline ${fmtDateTime(tournament.registration_deadline)})`}
           </p>
+          {tournament.program && days.some((d) => d.start) && (
+            <div className="pt-program">
+              {days.map((d) => (
+                <div key={d.n}>
+                  <h4>{days.length > 1 ? `Day ${d.n}` : 'Schedule'}{d.date ? ` · ${fmtDate(d.date)}` : ''}</h4>
+                  <table className="tp-table td-program-list">
+                    <tbody>
+                      {dayProgram(tournament.program, d).filter((it) => it.fromTime).map((it) => (
+                        <tr key={it.key}><td className="td-program-time">{it.fromTime}{it.toTime ? `–${it.toTime}` : ''}</td><td>{it.label}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )}
           <table className="tp-table">
             <thead><tr><th>Category</th>{days.length > 1 && <th>Day</th>}<th>Who</th><th>Type</th><th>Format</th><th>Fight time</th><th>Entries</th></tr></thead>
             <tbody>
