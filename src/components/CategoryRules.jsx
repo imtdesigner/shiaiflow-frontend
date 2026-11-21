@@ -63,7 +63,7 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false }) 
  * 5+2), one dojo only, and optional limits per position (then the fighting
  * order is fixed; off = the team list is handed in at the tournament).
  */
-export default function CategoryRules({ category, onChange, ageBasis = 'birth_year' }) {
+export default function CategoryRules({ category, onChange, ageBasis = 'birth_year', onAgeBasis }) {
   const c = category;
   const team = c.kind === 'team';
   const size = Number(c.team_size || 3);
@@ -79,6 +79,15 @@ export default function CategoryRules({ category, onChange, ageBasis = 'birth_ye
     <div className="cr">
       <p className="tp-muted cr-hint">{team ? 'Every team member must meet these:' : 'Who can enter (switched off = no limit; limits combine):'}</p>
       <RuleSet value={c} onChange={(v) => onChange({ ...c, ...v })} ageLabel={ageLabel} />
+      {onAgeBasis && (c.min_age != null || c.max_age != null) && (
+        <label className="tp-field cr-age-basis">
+          Age counts <span className="tp-muted">(same for all categories of the tournament)</span>
+          <select value={ageBasis} onChange={(e) => onAgeBasis(e.target.value)}>
+            <option value="birth_year">by birth year (tournament year − birth year)</option>
+            <option value="birth_date">by exact age on the first day (the signup asks the date of birth)</option>
+          </select>
+        </label>
+      )}
       {team && (
         <div className="cr-team">
           <label className="tp-field">

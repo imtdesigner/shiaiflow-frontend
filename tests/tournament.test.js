@@ -1040,7 +1040,7 @@ test('setup guide: phase of the tournament timeline', () => {
 
 test('setup guide: steps and the current hint', () => {
   const create = createSteps({ name: 'Open', start_date: '', venue: '' }, []);
-  assert.deepEqual(create.map((s) => s.done), [true, false, false, false, false, false, false, false, false]);
+  assert.deepEqual(create.map((s) => s.done), [true, false, false, false, false, false, false, false]);
   assert.equal(currentStep(create).key, 'dates');
   // typing in a field keeps the hint there; fields with a default count once visited
   const typing = createSteps({ name: 'Open' }, [], { inside: (a) => a === 'g-name', left: () => false });
@@ -1053,12 +1053,12 @@ test('setup guide: steps and the current hint', () => {
   // categories: the one being edited gets its own steps (name, who can enter, fights)
   const cats = [{ _key: 'a', name: 'Junior A', kind: 'individual' }, { _key: 'b', name: 'Kyu M', kind: 'individual' }];
   const left = new Set(['g-name', 'g-dates', 'g-venue', 'g-link', 'g-courts', 'g-days', 'g-signup-rules', 'g-cat-a-name', 'g-cat-a-who']);
-  const withCats = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, venue: 'Hall' }, cats,
+  const withCats = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, custom_link: false, venue: 'Hall' }, cats,
     { inside: (a) => a === 'g-cat-a' || a === 'g-cat-a-fights', left: (a) => left.has(a) });
   assert.equal(currentStep(withCats).key, 'cat-fights-a');
   assert.match(currentStep(withCats).hint, /^Junior A — how it fights/);
   left.add('g-cat-a-fights');
-  const next = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, venue: 'Hall' }, cats, { inside: () => false, left: (a) => left.has(a) });
+  const next = createSteps({ name: 'Open', start_date: '2027-03-20', use_schedule: true, custom_link: false, venue: 'Hall' }, cats, { inside: () => false, left: (a) => left.has(a) });
   assert.equal(currentStep(next).key, 'cat-name-b');
   const t = { name: 'Open', start_date: '2027-03-20', venue: 'Hall', days: [{ start: null }], is_public: false };
   const setup = phaseSteps('setup', t, { categories: [{ status: 'registration' }] });

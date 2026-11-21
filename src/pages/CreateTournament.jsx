@@ -25,7 +25,7 @@ function CreateTournament() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', start_date: '', end_date: '', use_schedule: null, venue: '', address: '', city: '', country: 'Croatia',
-    shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '',
+    shiaijo_count: 2, age_basis: 'birth_year', single_category: false, days: [], slug: '', custom_link: null,
   });
   const [linkState, setLinkState] = useState(null);
   const [linkConfirmed, setLinkConfirmed] = useState(false);
@@ -71,7 +71,7 @@ function CreateTournament() {
     setError('');
     if (!form.name.trim()) { setError('Enter the tournament name.'); return; }
     if (categories.some((c) => !c.name.trim())) { setError('Every category needs a name.'); return; }
-    if (!linkReady(form.slug, '', linkState, linkConfirmed)) { setError('Check the link name.'); return; }
+    if (form.custom_link && !linkReady(form.slug, '', linkState, linkConfirmed)) { setError('Check the link name.'); return; }
     const days = form.start_date ? daysValue(form.start_date, form.end_date || form.start_date, form.use_schedule ? form.days : []) : null;
     const lastDay = days ? days.length : 1;
     setSaving(true);
@@ -88,7 +88,7 @@ function CreateTournament() {
         age_basis: form.age_basis,
         days,
         start_time: days?.[0]?.start || null,
-        slug: form.slug || null,
+        slug: (form.custom_link && form.slug) || null,
         single_category: form.single_category,
         is_public: false,
         status: 'registration',
@@ -144,26 +144,22 @@ function CreateTournament() {
           </div>
         </div>
 
-        <div className="tp-card">
-          <h3>Public page and signup</h3>
-          <div id="g-link">
+        <div id="g-link" className="tp-card">
+          <h3>Public page</h3>
+          <p className="tp-muted" style={{ marginTop: 0 }}>
+            Every published tournament has a public page with the setup, entries, draw, schedule and live results, and
+            competitors sign up there. It is listed on the ShiaiFlow home page, so it can always be found from there. Its
+            default link is <strong>{window.location.host}/t/…</strong> followed by a long code.
+          </p>
+          <h4>Customize the link?</h4>
+          <div className="tp-actions" style={{ marginTop: 0 }}>
+            <label className="tp-check"><input type="radio" checked={form.custom_link === false} onChange={() => setForm({ ...form, custom_link: false })} /> No, keep the default</label>
+            <label className="tp-check"><input type="radio" checked={form.custom_link === true} onChange={() => setForm({ ...form, custom_link: true })} /> Yes, a short name (e.g. {window.location.host}/croatia-open)</label>
+          </div>
+          {form.custom_link && (
             <LinkField value={form.slug} saved="" name={form.name} onChange={(v) => setForm({ ...form, slug: v })}
               confirmed={linkConfirmed} onConfirm={setLinkConfirmed} onStatus={setLinkState} />
-          </div>
-          <h4>Signup</h4>
-          <div id="g-signup-rules" className="tp-grid">
-            <label className="tp-field">
-              Age limits count
-              <select value={form.age_basis} onChange={set('age_basis')}>
-                <option value="birth_year">by birth year (tournament year − birth year)</option>
-                <option value="birth_date">by exact age on the first day (asks the date of birth)</option>
-              </select>
-            </label>
-            <label className="tp-field tp-check">
-              <input type="checkbox" checked={form.single_category} onChange={set('single_category')} />
-              A competitor may enter only one individual category (of those they qualify for)
-            </label>
-          </div>
+          )}
         </div>
 
         <div id="g-categories" className="tp-card">
@@ -198,6 +194,12 @@ function CreateTournament() {
           )}
 
           {categories.length === 0 && <p className="tp-muted">No categories yet.</p>}
+          {categories.filter((c) => c.kind !== 'team').length > 1 && (
+            <label className="tp-field tp-check">
+              <input type="checkbox" checked={form.single_category} onChange={set('single_category')} />
+              A competitor may enter only one individual category (of those they qualify for)
+            </label>
+          )}
           {categories.map((c) => (
             <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
               <div id={`g-cat-${c._key}-name`} className="ct-category-head">
@@ -217,7 +219,8 @@ function CreateTournament() {
 
               <div id={`g-cat-${c._key}-who`}>
                 <h4>1 · Who can enter</h4>
-                <CategoryRules category={c} ageBasis={form.age_basis} onChange={(next) => replaceCategory(c._key, next)} />
+                <CategoryRules category={c} ageBasis={form.age_basis} onAgeBasis={(v) => setForm({ ...form, age_basis: v })}
+                  onChange={(next) => replaceCategory(c._key, next)} />
               </div>
 
               <div id={`g-cat-${c._key}-fights`}>
