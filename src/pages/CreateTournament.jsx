@@ -157,12 +157,6 @@ function CreateTournament() {
           )}
 
           {categories.length === 0 && <p className="tp-muted">No categories yet.</p>}
-          {categories.filter((c) => c.kind !== 'team').length > 1 && (
-            <label className="tp-field tp-check">
-              <input type="checkbox" checked={form.single_category} onChange={set('single_category')} />
-              A competitor may enter only one individual category (of those they qualify for)
-            </label>
-          )}
           {categories.map((c) => (
             <div key={c._key} id={`g-cat-${c._key}`} className="ct-category">
               <button type="button" className="tp-btn danger small ct-remove"
@@ -206,6 +200,11 @@ function CreateTournament() {
               <p className="tp-muted">The KO bracket can be adjusted per category in the bracket editor.</p>
             </div>
           ))}
+          {categories.length > 0 && (
+            <div className="tp-actions">
+              <button type="button" className="tp-btn secondary" onClick={addNew}>+ Add one more category</button>
+            </div>
+          )}
         </div>
 
         <div id="g-create" className="tp-actions">
