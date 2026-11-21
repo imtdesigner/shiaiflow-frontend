@@ -8,7 +8,7 @@ const CRITERIA = {
   draws: 'Draws (more)',
   scored: 'Ippons scored (more)',
   conceded: 'Ippons conceded (fewer)',
-  headToHead: 'Head-to-head (who won their fight)',
+  headToHead: 'Head-to-head (direct match)',
 };
 
 const min = (s) => (s ? String(s / 60) : '');

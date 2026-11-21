@@ -348,7 +348,7 @@
 .fr-tie .cr-range input { width: 4.5rem; }
 .fr-criteria { margin: 0 0 0.5rem; padding-left: 1.4rem; }
 .fr-criteria li { margin-bottom: 0.25rem; }
-.fr-criteria li span { display: inline-block; min-width: 13rem; }
+.fr-criteria li span { display: inline-block; width: 15.5rem; vertical-align: middle; }
 .fr-criteria .tp-btn { margin-left: 0.25rem; padding: 0.1rem 0.45rem; }
 
 /* Tournament days / link (TournamentFields.jsx) */
