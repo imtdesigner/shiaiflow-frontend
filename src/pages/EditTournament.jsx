@@ -143,7 +143,7 @@ function EditTournament() {
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 
       <div className="et-layout">
-        <div>
+        <div className="et-side">
           <TournamentStatus tournament={tournament} categories={categories} role={role} waitingVerification={waitingVerification}
             onChanged={reload} run={run} />
       <div id="g-pin" className="tp-card ts-card">

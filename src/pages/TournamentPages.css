@@ -486,7 +486,7 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 /* Edit tournament: status column on the left, tabs on top */
 .et-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 @media (max-width: 1000px) { .et-layout { grid-template-columns: 1fr; } }
-.ts { position: sticky; top: 80px; background: #fffdf7; border: 1px solid #e3ddd0; border-radius: 10px; padding: 0.9rem 1rem; }
+.ts { position: relative; background: #fffdf7; border: 1px solid #e3ddd0; border-radius: 10px; padding: 0.9rem 1rem; }
 .ts h3 { margin: 0 0 0.6rem; font-size: 1rem; }
 .ts-steps { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid #e3ddd0; display: grid; gap: 0.9rem; }
 .ts-step { position: relative; display: grid; gap: 0.3rem; font-size: 0.85rem; }
@@ -507,3 +507,13 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .ct-remove-note { font-size: 0.75rem; max-width: 8.5rem; text-align: right; }
 .ct-readonly { opacity: 0.85; }
 .ct-save { border-top: 1px dashed #e3ddd0; padding-top: 0.6rem; }
+.ts { z-index: 20; }
+.ts-compact { cursor: pointer; padding: 0.55rem 0.9rem; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+.ts-compact strong { color: #711921; }
+.ts-floating { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); max-height: calc(100vh - 100px); overflow-y: auto; }
+.ts-fold { float: right; background: none; border: 0; cursor: pointer; color: #8a8378; font-size: 0.9rem; }
+
+/* the left column stays in view; scrolled down, the status is one line and opens over PIN and Delete */
+.et-side { position: sticky; top: 76px; }
+.ts-floating { position: absolute; left: 0; right: 0; top: 0; }
+@media (max-width: 1000px) { .et-side { position: static; } }
