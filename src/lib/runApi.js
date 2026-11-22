@@ -23,7 +23,7 @@ export async function listRunFights(categoryIds) {
 }
 
 export async function listEvents(matchId) {
-  return unwrap(await supabase.from('score_events').select('id, bout_id, side, type, created_at').eq('match_id', matchId).order('id'));
+  return unwrap(await supabase.from('score_events').select('id, client_id, bout_id, side, type, created_at').eq('match_id', matchId).order('id'));
 }
 
 async function setSeqs(map) {
@@ -52,6 +52,24 @@ export async function addEvent(matchId, side, type, boutId = null) {
 
 export async function deleteEvent(eventId) {
   unwrap(await supabase.from('score_events').delete().eq('id', eventId));
+}
+
+/**
+ * One queued scoretable click (lib/outbox.js), idempotent so it can be sent again:
+ * a point carries its client id, a timer change absolute values, an undo a known event.
+ */
+export async function sendScoreOp(op) {
+  if (op.kind === 'event') {
+    unwrap(await supabase.from('score_events').upsert(
+      { match_id: op.matchId, side: op.side, type: op.type, bout_id: op.boutId ?? null, client_id: op.clientId },
+      { onConflict: 'client_id', ignoreDuplicates: true },
+    ));
+  } else if (op.kind === 'delete') {
+    const q = supabase.from('score_events').delete();
+    unwrap(await (op.clientId ? q.eq('client_id', op.clientId) : q.eq('id', op.eventId)));
+  } else if (op.kind === 'timer') {
+    unwrap(await supabase.from('matches').update({ timer_started_at: op.startedAt, timer_elapsed_ms: op.elapsedMs }).eq('id', op.matchId));
+  }
 }
 
 /** Shared timer: elapsed ms + running since; every screen computes the same clock. */

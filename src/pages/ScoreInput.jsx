@@ -5,10 +5,11 @@ import {
 } from '../components/TournamentShell';
 import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
-  addDaihyosen, addEvent, boutOf, confirmLineups, deleteEvent, finishBout, finishFight, listEvents, listMatchBouts,
+  addDaihyosen, boutOf, confirmLineups, finishBout, finishFight, listEvents, listMatchBouts,
   listRunFights, listTeamMembers, myRole, previousLineup, reopenBout, reopenFight,
-  setFightFields, startBout, startEncho, startFight, subscribeFights, timerStart, timerStop,
+  sendScoreOp, setFightFields, startBout, startEncho, startFight, subscribeFights,
 } from '../lib/runApi';
+import { createOutbox, eventsWithOps, fightsWithOps } from '../lib/outbox.js';
 import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
 import {
   POSITION_LABELS, boutRows, defaultLineup, teamMatchStep,
@@ -55,10 +56,13 @@ function ScoreInput() {
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [now, setNow] = useState(Date.now());
   const stopping = useRef(null);
-  // Score and timer actions show at once and are sent in order in the background,
-  // so fast clicks are never lost; screens refresh once the queue is empty.
-  const queueRef = useRef(Promise.resolve());
-  const pendingRef = useRef(0);
+  // Score and timer clicks show at once and go to a queue on this device (lib/outbox.js):
+  // sent in order, kept through a network drop or a page reload, sent again when back online.
+  const outboxRef = useRef(null);
+  const [box, setBox] = useState({ size: 0, sending: false, offline: false, error: null });
+  const waiting = () => (outboxRef.current?.size() ?? 0) > 0;
+  const ops = () => outboxRef.current?.pending() ?? [];
+  const cacheKey = `sf-st-cache-${tournamentId}`;
 
   const manager = role === 'owner' || role === 'organizer';
   const court = Number(params.get('court') ?? 1);
@@ -73,16 +77,24 @@ function ScoreInput() {
     const ids = drawn.map((c) => c.id);
     try {
       const [fs, ens] = await Promise.all([listRunFights(ids), listEntriesFor(ids)]);
-      setFights(fs);
+      setFights(fightsWithOps(fs, ops()));
       setEntries(ens);
-    } catch (e) { setMsg({ type: 'error', text: e.message }); }
-  }, [drawn]);
+      try { localStorage.setItem(cacheKey, JSON.stringify({ fights: fs, entries: ens })); } catch { /* full */ }
+    } catch (e) {
+      // no connection: carry on with what this device saw last
+      try {
+        const c = JSON.parse(localStorage.getItem(cacheKey) ?? 'null');
+        if (c) { setFights(fightsWithOps(c.fights, ops())); setEntries(c.entries); return; }
+      } catch { /* nothing cached */ }
+      setMsg({ type: 'error', text: e.message });
+    }
+  }, [drawn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { reload(); }, [reload]);
   // live changes: only the fights (entries do not change during a fight)
   const reloadFights = useCallback(async () => {
-    try { setFights(await listRunFights(drawn.map((c) => c.id))); } catch (e) { setMsg({ type: 'error', text: e.message }); }
-  }, [drawn]);
+    try { setFights(fightsWithOps(await listRunFights(drawn.map((c) => c.id)), ops())); } catch { /* offline: keep what is on screen */ }
+  }, [drawn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
   const fight = useMemo(() => {
@@ -97,13 +109,20 @@ function ScoreInput() {
   shownId.current = fight?.id ?? null;
   const reloadEvents = useCallback(async () => {
     if (!fight) { setEvents([]); setBouts([]); return; }
-    if (pendingRef.current > 0) return; // local clicks not saved yet — refresh after the queue
     const id = fight.id;
+    const key = `sf-st-events-${id}`;
     try {
       const [evs, bs] = await Promise.all([listEvents(id), isTeamFight ? listMatchBouts(id) : []]);
       if (shownId.current !== id) return;
-      setEvents(evs); setBouts(bs); setLoadedFor(id);
-    } catch (e) { setMsg({ type: 'error', text: e.message }); }
+      setEvents(eventsWithOps(evs, ops(), id)); setBouts(bs); setLoadedFor(id);
+      try { localStorage.setItem(key, JSON.stringify({ evs, bs })); } catch { /* full */ }
+    } catch (e) {
+      try {
+        const c = JSON.parse(localStorage.getItem(key) ?? 'null');
+        if (c && shownId.current === id) { setEvents(eventsWithOps(c.evs, ops(), id)); setBouts(c.bs); setLoadedFor(id); return; }
+      } catch { /* nothing cached */ }
+      setMsg({ type: 'error', text: e.message });
+    }
   }, [fight?.id, isTeamFight]); // eslint-disable-line react-hooks/exhaustive-deps
   // another fight on screen: start empty, never with the previous fight's score
   useEffect(() => { setEvents([]); setBouts([]); setPending(null); }, [fight?.id]);
@@ -140,7 +159,7 @@ function ScoreInput() {
 
   // realtime: other screens on this court (and the manager) see the same
   useEffect(() => subscribeFights(tournamentId, () => {
-    if (pendingRef.current > 0) return; // our own clicks are still being saved
+    if (waiting()) return; // our own clicks are still being saved
     reloadFights(); reloadEvents();
   }, 150), [tournamentId, reloadFights, reloadEvents]);
 
@@ -182,7 +201,11 @@ function ScoreInput() {
 
   const run = async (fn) => {
     setBusy(true); setMsg({ type: '', text: '' });
-    try { await queueRef.current; const out = await fn(); await reload(); await reloadEvents(); return out; }
+    try {
+      await outboxRef.current?.flush();
+      if (waiting()) throw new Error('No connection — the score is saved on this device and sent when the connection is back. Starting or finishing a fight needs the connection.');
+      const out = await fn(); await reload(); await reloadEvents(); return out;
+    }
     catch (e) { setMsg({ type: 'error', text: e.message }); return null; }
     finally { setBusy(false); }
   };
@@ -191,27 +214,43 @@ function ScoreInput() {
   useEffect(() => {
     if (!fight?.timer_started_at || remaining == null || remaining > 0 || stopping.current === fight.id) return;
     stopping.current = fight.id;
-    timerStop(fight).then(() => { stopping.current = null; reload(); });
-  }, [fight, remaining, reload]);
+    const f = fight;
+    const ms = Math.round(f.timer_elapsed_ms + (Date.now() - new Date(f.timer_started_at).getTime()));
+    patchFight(f.id, { timer_elapsed_ms: ms, timer_started_at: null });
+    outboxRef.current?.push({ kind: 'timer', matchId: f.id, startedAt: null, elapsedMs: ms });
+    stopping.current = null;
+  }, [fight, remaining]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const patchFight = (id, fields) => setFights((fs) => fs.map((f) => (f.id === id ? { ...f, ...fields } : f)));
 
-  /** Queue a server call; the screen was already updated by the caller. */
-  const enqueue = (fn) => {
-    pendingRef.current += 1;
-    queueRef.current = queueRef.current
-      .then(fn)
-      .catch((e) => setMsg({ type: 'error', text: e.message }))
-      .finally(() => {
-        pendingRef.current -= 1;
-        if (pendingRef.current === 0) { reload(); reloadEvents(); }
-      });
-  };
+  // the queue for this tournament: created once, sends what an earlier visit left, refreshes when empty
+  const refreshRef = useRef(() => {});
+  refreshRef.current = () => { reload(); reloadEvents(); };
+  useEffect(() => {
+    let had = 0;
+    const ob = createOutbox({
+      key: `sf-outbox-${tournamentId}`, storage: localStorage, send: sendScoreOp,
+      onChange: (st) => {
+        setBox(st);
+        if (st.error) setMsg({ type: 'error', text: `Not saved: ${st.error}` });
+        if (had > 0 && st.size === 0 && !st.sending) refreshRef.current();
+        had = st.size;
+      },
+    });
+    outboxRef.current = ob;
+    setBox({ size: ob.size(), sending: false, offline: false, error: null });
+    ob.flush();
+    const online = () => ob.flush();
+    window.addEventListener('online', online);
+    return () => { window.removeEventListener('online', online); ob.stop(); };
+  }, [tournamentId]);
 
+  /** Stop the clock on screen and queue the stop (absolute value, so it can be sent later). */
   const stopClock = (f) => {
     if (!f.timer_started_at) return;
     const ms = Math.round(f.timer_elapsed_ms + (Date.now() - new Date(f.timer_started_at).getTime()));
     patchFight(f.id, { timer_elapsed_ms: ms, timer_started_at: null });
+    outboxRef.current?.push({ kind: 'timer', matchId: f.id, startedAt: null, elapsedMs: ms });
   };
 
   const confirmPoint = () => { const p = pending; setPending(null); if (p) point(p.side, p.type); };
@@ -220,39 +259,34 @@ function ScoreInput() {
     const f = fight;
     const boutId = teamBout?.id ?? null;
     stopClock(f); // yame on every point
-    setEvents((ev) => [...ev, { id: `local-${Date.now()}-${ev.length}`, bout_id: boutId, side, type }]);
-    enqueue(async () => {
-      if (f.timer_started_at) await timerStop(f);
-      await addEvent(f.id, side, type, boutId);
-    });
+    const clientId = crypto.randomUUID();
+    setEvents((ev) => [...ev, { id: clientId, client_id: clientId, bout_id: boutId, side, type }]);
+    outboxRef.current?.push({ kind: 'event', matchId: f.id, clientId, side, type, boutId });
   };
 
   const hajime = () => {
     const f = fight;
     const startedAt = new Date().toISOString();
     patchFight(f.id, { timer_started_at: startedAt });
-    enqueue(() => timerStart(f));
+    outboxRef.current?.push({ kind: 'timer', matchId: f.id, startedAt, elapsedMs: f.timer_elapsed_ms });
   };
 
   const yame = () => {
     const f = fight;
     stopClock(f);
-    enqueue(() => timerStop(f));
   };
 
   const undo = () => {
     const id = fight.id;
     const boutId = teamBout?.id ?? null;
     const mine = (e) => (e.bout_id ?? null) === boutId;
-    setEvents((ev) => {
-      const i = ev.map(mine).lastIndexOf(true);
-      return i < 0 ? ev : [...ev.slice(0, i), ...ev.slice(i + 1)];
-    });
-    enqueue(async () => {
-      const saved = (await listEvents(id)).filter(mine);
-      const last = saved[saved.length - 1];
-      if (last) await deleteEvent(last.id);
-    });
+    const i = events.map(mine).lastIndexOf(true);
+    if (i < 0) return;
+    const last = events[i];
+    setEvents((ev) => ev.filter((e) => e !== last));
+    outboxRef.current?.push(last.client_id
+      ? { kind: 'delete', matchId: id, clientId: last.client_id }
+      : { kind: 'delete', matchId: id, eventId: last.id });
   };
 
   const finish = (extra = {}) => run(async () => {
@@ -365,6 +399,10 @@ function ScoreInput() {
       <BackToDashboard />
       <div className="st-head">
         <h2>Shiaijo {court}</h2>
+        <span className={`st-net ${box.offline ? 'off' : box.size ? 'wait' : 'on'}`}
+          title={box.offline ? 'No connection — clicks are kept on this device and sent when it is back' : box.size ? 'Saving…' : 'Connected, everything saved'}>
+          {box.offline ? `● Offline — ${box.size} click${box.size === 1 ? '' : 's'} waiting` : box.size ? `● Saving ${box.size}…` : '● Online'}
+        </span>
         <select value={court} onChange={(e) => { setParams({ court: e.target.value }); setPickedId(null); }}>
           {courts.map((n) => <option key={n} value={n}>Shiaijo {n}</option>)}
         </select>
