@@ -155,7 +155,7 @@ function ShiaijoPlan({ embedded = false }) {
           </div>
           <div className="fr-row">
             <span className="fr-row-label">Timer</span>
-            <Segmented options={[[true, 'The scoretable runs the timer'], [false, 'Separate timekeeper']]} value={tournament?.use_timer ?? true}
+            <Segmented options={[[true, 'The scoretable runs the countdown (start / stop at the table)'], [false, 'Separate timekeeper (the table only presses Time up)']]} value={tournament?.use_timer ?? true}
               disabled={busy} onChange={(v) => run(() => updateTournament(tournamentId, { use_timer: v }))} />
           </div>
           <div className="fr-row">

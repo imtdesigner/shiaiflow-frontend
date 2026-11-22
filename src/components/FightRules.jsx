@@ -116,8 +116,8 @@ export default function FightRules({ category, onChange, hidePools = false, stru
               onChange={(e) => set({ pool_fight_seconds: sec(e.target.value, c.pool_fight_seconds) })} /> min</span>
           </Row>
           {!hidePools && (
-            <Row label="Go on to the KO">
-              <Segmented options={[[1, '1 per pool'], [2, '2 per pool']]} value={advancing}
+            <Row label="From each pool to the KO">
+              <Segmented options={[[1, 'Winner only (1 per pool)'], [2, 'Winner and runner-up (2 per pool)']]} value={advancing}
                 onChange={(n) => set({ advancing: n })} disabled={structureLocked} />
             </Row>
           )}

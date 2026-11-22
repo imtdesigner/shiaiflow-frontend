@@ -12,18 +12,11 @@ import { GRADES, entriesOutsideRules, gradeLabel, ineligibleReason, tournamentAg
 import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
 import StartTournament from '../components/StartTournament';
+import { parseBulk } from '../lib/tournament/bulk.js';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
 };
-
-/** "Last name; First name; Club; Grade" per line (also tab- or comma-separated). */
-function parseBulk(text) {
-  return text.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
-    const parts = line.split(/\t|;|,/).map((p) => p.trim());
-    return { last_name: parts[0] ?? '', first_name: parts[1] ?? '', club: parts[2] ?? '', grade: parts[3] ?? '', checked_in: true };
-  }).filter((p) => p.last_name);
-}
 
 function Registration() {
   const { tournamentId, tournament, categories, reload: reloadTournament, error: loadError, loading } = useTournament();
@@ -195,9 +188,13 @@ function Registration() {
               <details style={{ marginTop: '1rem' }}>
                 <summary className="tp-muted">Bulk entry (paste a list)</summary>
                 <label className="tp-field" style={{ marginTop: '0.75rem' }}>
-                  One competitor per line: Last name; First name; Club; Grade
-                  <textarea value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder={'RENDULIĆ; Ivan; KK Rijeka; 3 dan\nMERLAK; Lovro; KK Rijeka'} />
+                  One competitor per line: Last name; First name; Club; Gender (M / F); {tournament?.age_basis === 'birth_date' ? 'Date of birth (DD.MM.YYYY)' : 'Year of birth'}; Grade
+                  <textarea value={bulk} onChange={(e) => setBulk(e.target.value)}
+                    placeholder={tournament?.age_basis === 'birth_date'
+                      ? 'RENDULIĆ; Ivan; KK Rijeka; M; 14.03.2009; 1 kyu\nMERLAK; Lovro; KK Rijeka; M; 02.11.2010; mudan'
+                      : 'RENDULIĆ; Ivan; KK Rijeka; M; 2009; 1 kyu\nMERLAK; Lovro; KK Rijeka; M; 2010; mudan'} />
                 </label>
+                <p className="tp-muted" style={{ marginTop: 0 }}>Separated by ; or tab (a copy from Excel works). This category needs: {rulesText(category)}. Empty fields are allowed — entries that don't fit get a warning.</p>
                 <div className="tp-actions">
                   <button type="button" className="tp-btn secondary" onClick={addBulk} disabled={busy || !bulk.trim()}>
                     Add {parseBulk(bulk).length || ''} competitors

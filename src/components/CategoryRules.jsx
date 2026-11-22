@@ -57,12 +57,14 @@ export function RuleSet({ value, onChange, ageLabel = 'Age', compact = false, ag
           <span className="cr-range">
             from <input type="number" min="0" max="120" value={v.min_age ?? ''} onChange={(e) => patch({ min_age: num(e.target.value) })} />
             to <input type="number" min="0" max="120" value={v.max_age ?? ''} onChange={(e) => patch({ max_age: num(e.target.value) })} />
+            <span className="tp-muted">years, both included</span>
           </span>
         )}
         {on.age && onAgeBasis && (
           <span className="cr-age-basis">
-            <Segmented options={[['birth_year', 'By year of birth'], ['birth_date', 'By exact date of birth']]} value={ageBasis ?? 'birth_year'} onChange={onAgeBasis} />
-            <span className="tp-muted">{ageBasis === 'birth_date' ? 'age on the first day — the signup asks the date of birth' : 'tournament year − year of birth'} · same for all categories</span>
+            <span className="tp-muted">Age counted by</span>
+            <Segmented options={[['birth_year', 'Year of birth'], ['birth_date', 'Exact date of birth']]} value={ageBasis ?? 'birth_year'} onChange={onAgeBasis} />
+            <span className="tp-muted">{ageBasis === 'birth_date' ? 'the signup asks the full date of birth; age on the first day of the tournament' : 'the signup asks only the year of birth; age = tournament year − year of birth'} · same for all categories</span>
           </span>
         )}
       </div>

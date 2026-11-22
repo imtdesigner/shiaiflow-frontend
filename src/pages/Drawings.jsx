@@ -464,8 +464,8 @@ function Drawings() {
                   <Segmented options={[2, 3, 4, 5, 6, 7, 8].map((n) => [n, String(n)])} value={category.pool_size} onChange={(n) => changeSetting('pool_size', n)} />
                 </div>
                 <div className="fr-row">
-                  <span className="fr-row-label">Go on to the KO</span>
-                  <Segmented options={[[1, '1 per pool'], [2, '2 per pool']]} value={category.advancing} onChange={(n) => changeSetting('advancing', n)} />
+                  <span className="fr-row-label">From each pool to the KO</span>
+                  <Segmented options={[[1, 'Winner only (1 per pool)'], [2, 'Winner and runner-up (2 per pool)']]} value={category.advancing} onChange={(n) => changeSetting('advancing', n)} />
                   {category.advancing === 0 && <span className="tp-muted">round robin only (small category)</span>}
                 </div>
               </>

@@ -75,7 +75,7 @@ function Home () {
   );
 }
 
-function Dashboard() {
+function Dashboard({ pinOnly = false }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState(() => {
@@ -88,8 +88,16 @@ function Dashboard() {
   const { phase } = useTournamentPhase(selectedTournament?.id ?? null);
 
   useEffect(() => {
-    listMyTournaments().then(setTournaments).catch(() => setTournaments([]));
-  }, []);
+    listMyTournaments().then((list) => {
+      setTournaments(list);
+      // a PIN-only device works on one tournament: pick it right away
+      if (pinOnly && list.length === 1) {
+        const only = { id: list[0].id, name: list[0].name };
+        setSelectedTournament(only);
+        try { sessionStorage.setItem('sf-selected-tournament', JSON.stringify(only)); } catch { /* ignore */ }
+      }
+    }).catch(() => setTournaments([]));
+  }, [pinOnly]);
 
   const handleNavigation = (path) => {
     if (path === '/create-tournament') {
@@ -120,12 +128,14 @@ function Dashboard() {
       <AccountBanner />
 
       <div className="dashboard-main">
-        <div className="create-container special-font">
-          <div className="icon-label" onClick={() => handleNavigation('/create-tournament')}>
-            <img src={createIcon} alt="Create Tournament" />
-            <p>Create Tournament</p>
+        {!pinOnly && (
+          <div className="create-container special-font">
+            <div className="icon-label" onClick={() => handleNavigation('/create-tournament')}>
+              <img src={createIcon} alt="Create Tournament" />
+              <p>Create Tournament</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="tournament-dropdown">
           <img
@@ -139,7 +149,7 @@ function Dashboard() {
           {showDropdown && (
             <ul className="dropdown-list">
               {tournaments.length === 0 && (
-                <li onClick={() => navigate('/create-tournament')}>No tournaments yet — create your first one</li>
+                <li onClick={() => !pinOnly && navigate('/create-tournament')}>{pinOnly ? 'No tournament yet — join one with its PIN' : 'No tournaments yet — create your first one'}</li>
               )}
               {tournaments.map((t) => (
                 <li key={t.id} onClick={() => handleTournamentSelect(t)}>
@@ -252,7 +262,7 @@ function AppContent() {
 
   // Table devices (owner, 2026-11-20): who joined a tournament through the Table door
   // gets only its scoretables (and Manage = pick the shiaijo); a device that only
-  // has table roles (anonymous PIN sign-in) gets no dashboard, profile or guide.
+  // has table roles (PIN through the Table door) gets no dashboard, profile or guide.
   const [memberships, setMemberships] = useState(null); // [{ tournament_id, role }]
   useEffect(() => {
     if (!session) { setMemberships([]); return; }
@@ -260,8 +270,11 @@ function AppContent() {
       .then(({ data }) => setMemberships(data ?? []));
   }, [session, location.pathname]);
   const scorerIn = new Set((memberships ?? []).filter((m) => m.role === 'scorer').map((m) => m.tournament_id));
-  const tableOnly = !!session?.user?.is_anonymous && scorerIn.size > 0
-    && (memberships ?? []).every((m) => m.role === 'scorer');
+  // a device whose only roles are tables (PIN through the Table door) — with or without an account —
+  // gets just the scoretable; owning or editing any tournament gives the full app back
+  const tableOnly = scorerIn.size > 0 && (memberships ?? []).every((m) => m.role === 'scorer');
+  // signed in only with a PIN (no account): works on its tournament only — no create, profile or admin
+  const pinOnly = !!session?.user?.is_anonymous;
   const tableHome = tableOnly ? `/tournament/${[...scorerIn][0]}/manage` : null;
   const routeTournament = location.pathname.match(/^\/tournament\/([^/]+)\/([a-z-]+)/);
   const tableRedirect = (() => {
@@ -269,6 +282,7 @@ function AppContent() {
       return `/tournament/${routeTournament[1]}/manage`;
     }
     if (tableOnly && /^\/(dashboard|profile|create-tournament|admin)/.test(location.pathname)) return tableHome;
+    if (pinOnly && /^\/(profile|create-tournament|admin)/.test(location.pathname)) return '/dashboard';
     return null;
   })();
   // tournament pages wait for the roles, so a table never sees a page it may not use
@@ -294,7 +308,7 @@ function AppContent() {
         {tableOnly ? <Link to={tableHome}>Scoretable</Link> : (
           <>
             <Link to="/dashboard">Dashboard</Link>
-            <Link to="/profile">Profile</Link>
+            {!pinOnly && <Link to="/profile">Profile</Link>}
           </>
         )}
         {isAdmin && (
@@ -332,7 +346,7 @@ function AppContent() {
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Dashboard pinOnly={pinOnly} />
             </ProtectedRoute>
           } 
         />
