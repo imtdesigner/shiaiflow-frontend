@@ -5,7 +5,9 @@ body {
     font-family: 'Quicksand', sans-serif;
     box-sizing: border-box;
   }
-  background-image: url('./background.jpg');
+  /* the yellow softened by a cream layer (owner, 2026-11-22: too strong for the eyes) */
+  background-image: linear-gradient(rgba(255, 251, 240, 0.55), rgba(255, 251, 240, 0.55)), url('./background.jpg');
+  background-attachment: fixed;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -40,7 +42,7 @@ html, body {
   font-size: 0.8rem;
   margin-top: 3rem;
   opacity: 0.6;
-  color: white;
+  color: #4a2a1e;
   font-style: italic;
 }
 
@@ -58,7 +60,7 @@ html, body {
   justify-content: center;
   min-height: 100vh;
   text-align: center;
-  color: white;
+  color: #4a2a1e;
   padding: 0 1rem;
 }
 
@@ -77,7 +79,7 @@ html, body {
 .page {
   text-align: center;
   margin-top: 20vh;
-  color: white;
+  color: #4a2a1e;
   font-size: 1.5rem;
 }
 
@@ -306,7 +308,7 @@ html, body {
   bottom: 5px;
   right: 10px;
   font-size: 0.7rem;
-  color: white;
+  color: #4a2a1e;
   opacity: 0.5;
   font-family: 'Segoe UI', sans-serif;
   z-index: 999;
@@ -315,7 +317,7 @@ html, body {
 .dashboard {
   text-align: center;
   margin-top: 20vh;
-  color: white;
+  color: #4a2a1e;
   font-size: 1.2rem;
   padding: 2rem;
   text-align: center;
