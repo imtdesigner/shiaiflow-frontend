@@ -24,6 +24,7 @@ import './TournamentPages.css';
 import './Scoreinput.css';
 
 const POINTS = ['M', 'K', 'D', 'T'];
+const POINT_NAME = { M: 'Men', K: 'Kote', D: 'Do', T: 'Tsuki' };
 const ORDER = ['senpo', 'jiho', 'chuken', 'fukusho', 'taisho', 'daihyosen'];
 const mmss = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -44,6 +45,8 @@ function ScoreInput() {
   const [entries, setEntries] = useState([]);
   const [events, setEvents] = useState([]);
   const [bouts, setBouts] = useState([]); // team match: position bouts of the current match
+  // a point waits for the table's confirmation (after the chief referee's call): the time keeps running until then
+  const [pending, setPending] = useState(null); // { side, type }
   const [loadedFor, setLoadedFor] = useState(null); // fight whose events / bouts are loaded
   const [teamInfo, setTeamInfo] = useState(null); // team match: { red, white: { name, members } } + lineup defaults
   const [pickedId, setPickedId] = useState(null);
@@ -103,7 +106,7 @@ function ScoreInput() {
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
   }, [fight?.id, isTeamFight]); // eslint-disable-line react-hooks/exhaustive-deps
   // another fight on screen: start empty, never with the previous fight's score
-  useEffect(() => { setEvents([]); setBouts([]); }, [fight?.id]);
+  useEffect(() => { setEvents([]); setBouts([]); setPending(null); }, [fight?.id]);
 
   // team match: both teams' members (lineup choices, names) and the proposed lineups
   useEffect(() => {
@@ -210,6 +213,8 @@ function ScoreInput() {
     const ms = Math.round(f.timer_elapsed_ms + (Date.now() - new Date(f.timer_started_at).getTime()));
     patchFight(f.id, { timer_elapsed_ms: ms, timer_started_at: null });
   };
+
+  const confirmPoint = () => { const p = pending; setPending(null); if (p) point(p.side, p.type); };
 
   const point = (side, type) => {
     const f = fight;
@@ -345,7 +350,10 @@ function ScoreInput() {
       </div>
       {unit.status === 'running' && !status?.over && (
         <div className="st-buttons">
-          {POINTS.map((p) => <button key={p} type="button" className={`st-btn ippon ${side}`} onClick={() => point(side, p)}>{p}</button>)}
+          {POINTS.map((p) => (
+            <button key={p} type="button" className={`st-btn ippon ${side} ${pending?.side === side && pending.type === p ? 'pending' : ''}`}
+              onClick={() => setPending({ side, type: p })}>{p}</button>
+          ))}
           <button type="button" className={`st-btn hansoku ippon ${side}`} onClick={() => point(side, 'hansoku')}>▲ Hansoku</button>
         </div>
       )}
@@ -435,6 +443,16 @@ function ScoreInput() {
             </div>
             {sideBlock('white')}
           </div>
+
+          {pending && unit.status === 'running' && !status?.over && (
+            <div className={`st-confirm ${pending.side}`}>
+              <span><strong>{POINT_NAME[pending.type]} ({pending.type})</strong> for {pending.side === 'red' ? 'red' : 'white'} — {unitName(pending.side)}?</span>
+              <button type="button" className="st-btn go" onClick={confirmPoint}>✓ Confirm</button>
+              <button type="button" className="st-btn" onClick={() => setPending(null)}>✕ Cancel</button>
+              <span className="st-confirm-note">The time keeps running until you confirm.</span>
+            </div>
+          )}
+
 
           <div className="tp-actions st-actions">
             {unit.status === 'scheduled' && (

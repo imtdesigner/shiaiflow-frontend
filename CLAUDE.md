@@ -30,6 +30,7 @@ Talk to the owner in Croatian; code, commits, code comments and all UI text in E
   - Start button (`StartTournament.jsx`) in Registration (below the check-in) and Manage, with a readiness table per category (drawn, present x / y); confirm dialog. Manager (owner/organizer) starts the tournament → `matches.court_seq` freezes the order per court; manager does admin changes and corrections (reopen a finished fight) — scorers cannot.
   - One scorer per shiaijo, several screens in parallel (realtime); the table picks its shiaijo.
   - Timer built in (hajime / yame, stops on every point; shared via `timer_elapsed_ms` + `timer_started_at`); `tournaments.use_timer` off = separate timekeeper, scorer presses "Time up".
+  - A point is confirmed (owner, 2026-11-22): clicking M / K / D / T shows "Kote (K) for red?" with Confirm / Cancel; the time keeps running and stops only on Confirm (tables clicked on the first flag, before the chief referee's call). Hansoku stays one click.
   - Scoring letters: M K D T, I = ippon from opponent's 2nd hansoku, HH = hantei, OO = fusen-gachi; HH and OO are a 2–0 win. Two ippons end a fight; in encho / ipponshobu the first point wins.
   - Per category, separately pools / KO: pool tie → hikiwake or encho (`pool_tie`), encho length (null = until a point), hantei after encho. KO never draws.
   - Starting a fight further down the queue moves the skipped ones below it. KO fights may start as soon as both fighters are known (no waiting for all pools).
