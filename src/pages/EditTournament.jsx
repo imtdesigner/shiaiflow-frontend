@@ -214,6 +214,17 @@ function EditTournament() {
         </div>
       </div>
 
+      <div id="g-spirit" className="tp-card">
+        <h3>Fighting spirit</h3>
+        <div className="fr-row">
+          <Segmented options={[[true, 'Yes'], [false, 'No']]} value={tournament.fighting_spirit !== false} disabled={busy}
+            onChange={(v) => toggle('fighting_spirit', v, v ? 'Fighting spirit on.' : 'Fighting spirit off.')} />
+        </div>
+        <p className="cr-option-hint">
+          One person per category (in team categories one team member). After its last fight of a category each table asks the
+          shinpan and proposes one; you confirm it on the Results page, which prints it with the places.
+        </p>
+      </div>
             </>
           )}
 

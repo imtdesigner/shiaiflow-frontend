@@ -7,7 +7,7 @@ import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
   addDaihyosen, boutOf, confirmLineups, finishBout, finishFight, listEvents, listMatchBouts,
   listRunFights, listTeamMembers, myRole, previousLineup, reopenBout, reopenFight,
-  sendScoreOp, setFightFields, startBout, startEncho, startFight, subscribeFights,
+  listFightingSpirit, proposeFightingSpirit, sendScoreOp, setFightFields, startBout, startEncho, startFight, subscribeFights,
 } from '../lib/runApi';
 import { createOutbox, eventsWithOps, fightsWithOps } from '../lib/outbox.js';
 import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
@@ -16,6 +16,8 @@ import {
 } from '../lib/tournament/team.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { fightMarks } from '../lib/tournament/poolView.js';
+import { SpiritPopup } from '../components/FightingSpirit';
+import { lastFightOnCourt } from '../lib/tournament/results.js';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
@@ -365,6 +367,26 @@ function ScoreInput() {
   const entryNameById = (id) => { const e = entries.find((x) => x.id === id); return e ? entryName(e) : '—'; };
   const courts = Array.from({ length: tournament?.shiaijo_count ?? 2 }, (_, i) => i + 1);
 
+  // Fighting spirit: after the table's last fight of a category on this shiaijo, ask once
+  const spiritOn = tournament?.fighting_spirit !== false && tournament?.status === 'running';
+  const doneCats = spiritOn ? drawn.filter((c) => lastFightOnCourt(fights, c.id, court)).map((c) => c.id) : [];
+  const doneKey = doneCats.join();
+  const [proposals, setProposals] = useState(null);
+  const laterKey = `sf-spirit-later-${tournamentId}-${court}`;
+  const [later, setLater] = useState(() => { try { return JSON.parse(sessionStorage.getItem(laterKey) ?? '[]'); } catch { return []; } });
+  useEffect(() => {
+    if (!doneKey) { setProposals([]); return; }
+    listFightingSpirit(doneKey.split(',')).then(setProposals).catch(() => {});
+  }, [doneKey, court]);
+  const spiritCat = proposals && fight?.status !== 'running'
+    ? drawn.find((c) => doneCats.includes(c.id) && !later.includes(c.id) && !proposals.some((p) => p.category_id === c.id && p.shiaijo === court))
+    : null;
+  const spiritLater = (id) => {
+    const next = [...later, id];
+    setLater(next);
+    try { sessionStorage.setItem(laterKey, JSON.stringify(next)); } catch { /* private mode */ }
+  };
+
   if (loading) return <div className="tp-page">Loading…</div>;
   if (loadError) return <div className="tp-page"><Message type="error">{loadError}</Message></div>;
 
@@ -551,6 +573,14 @@ function ScoreInput() {
             </button>
           ))}
         </div>
+      )}
+      {spiritCat && (
+        <SpiritPopup key={spiritCat.id} category={spiritCat} court={court} onLater={() => spiritLater(spiritCat.id)}
+          onSave={async (id) => {
+            await proposeFightingSpirit(spiritCat.id, court, id);
+            setProposals((p) => [...(p ?? []), { category_id: spiritCat.id, shiaijo: court, competitor_id: id }]);
+            setMsg({ type: 'success', text: id ? `Fighting spirit proposal for ${spiritCat.name} sent to the organizer.` : `No Fighting spirit proposal for ${spiritCat.name}.` });
+          }} />
       )}
       {shownPool && (
         <div className="st-popup-back" onClick={() => setShownPool(null)} role="presentation">

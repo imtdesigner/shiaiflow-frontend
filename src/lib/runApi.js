@@ -323,3 +323,23 @@ export function subscribeFights(tournamentId, onChange, wait = 250) {
     .subscribe();
   return () => { clearTimeout(timer); supabase.removeChannel(channel); };
 }
+
+// --- Fighting spirit (one per category; tables propose, the organizer decides) ---
+
+export async function listFightingSpirit(categoryIds) {
+  if (!categoryIds.length) return [];
+  return unwrap(await supabase.from('fighting_spirit_proposals').select('category_id, shiaijo, competitor_id, created_at').in('category_id', categoryIds));
+}
+
+/** The table's proposal for a category (competitorId null = skipped). */
+export async function proposeFightingSpirit(categoryId, shiaijo, competitorId) {
+  unwrap(await supabase.from('fighting_spirit_proposals').upsert(
+    { category_id: categoryId, shiaijo, competitor_id: competitorId, created_at: new Date().toISOString() },
+    { onConflict: 'category_id,shiaijo' },
+  ));
+}
+
+/** The organizer's pick (null = back to the tables' proposal). */
+export async function setFightingSpirit(categoryId, competitorId) {
+  unwrap(await supabase.from('categories').update({ fighting_spirit_competitor_id: competitorId }).eq('id', categoryId));
+}

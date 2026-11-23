@@ -109,6 +109,8 @@ function Manage() {
         <div className="tp-actions">
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`}>Fight plan</Link>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/shiaijo`}>Shiaijo plan</Link>
+          <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/results`}>Results{tournament?.fighting_spirit !== false ? ' + Fighting spirit' : ''}</Link>
+          <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/paper`}>Paper backup</Link>
         </div>
         {running && <p className="tp-muted">Running: scoretables and court displays are live. Categories drawn later are added at the end of their courts.</p>}
       </div>

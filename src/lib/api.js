@@ -303,7 +303,7 @@ export async function removeEntry(entryId) {
 export async function listPools(categoryIds) {
   if (!categoryIds.length) return [];
   return unwrap(await supabase.from('pools')
-    .select('id, number, category_id, pool_entries(entry_id, position)')
+    .select('id, number, category_id, pool_entries(entry_id, position, final_place)')
     .in('category_id', categoryIds)
     .order('number'));
 }

@@ -25,6 +25,8 @@ import Shinpan from './pages/Shinpan';
 import ScoreInput from './pages/ScoreInput';
 import ShiaijoPlan from './pages/ShiaijoPlan';
 import FightPlan from './pages/FightPlan';
+import Results from './pages/Results';
+import PaperBackup from './pages/PaperBackup';
 import JoinCourt from './pages/JoinCourt';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
@@ -421,6 +423,8 @@ function AppContent() {
     </ProtectedRoute>
   }
 />
+<Route path="/tournament/:tournamentId/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+<Route path="/tournament/:tournamentId/paper" element={<ProtectedRoute><PaperBackup /></ProtectedRoute>} />
 <Route
   path="/tournament/:tournamentId/shiaijo"
   element={
