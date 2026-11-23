@@ -150,3 +150,12 @@
   display: none;
 }
 .review-note { margin: 0.5rem 0; padding: 0.4rem 0.75rem; border-left: 3px solid currentColor; font-style: italic; white-space: pre-wrap; }
+
+/* Club / federation logo at signup (2026-11-23) */
+.signup-logo { display: flex; gap: 0.8rem; align-items: center; margin: 0.4rem 0; text-align: left; }
+.signup-logo-box {
+  flex: 0 0 72px; width: 72px; height: 72px; border: 2px dashed #c9b9a0; border-radius: 8px; background: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; color: #8a7a68; font-size: 0.85rem;
+}
+.signup-logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.signup-logo-remove { background: none; border: 0; color: #b23a2a; text-decoration: underline; cursor: pointer; padding: 0; width: auto; font-size: inherit; }

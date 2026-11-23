@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { linkStatus } from '../lib/api';
 import { daysValue, linkProblem, suggestLink, tournamentDays } from '../lib/tournament/days.js';
 import { DateInput, TimeInput } from './EuInputs';
@@ -136,24 +136,64 @@ export function linkReady(value, saved, status, confirmed) {
  * form = { name, start_date, end_date, use_schedule, days, venue, address,
  * city, country, shiaijo_count, custom_link, slug }.
  */
-export function TournamentPart({ form, setForm, programMode = 'proposal' }) {
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+/** A start date in the past: refused for a new tournament, only a warning when editing (unless unchanged). */
+export const startInPast = (start, saved = null) => !!start && start < todayIso() && start !== saved;
+
+export function TournamentPart({ form, setForm, programMode = 'proposal', savedStart = null, logo = null }) {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const creating = programMode === 'proposal';
+  const past = startInPast(form.start_date, savedStart);
   return (
     <div className="tp-card">
       <h3>Tournament</h3>
       <div className="tp-grid">
-        <label id="g-name" className="tp-field" style={{ gridColumn: '1 / -1' }}>
-          Name
-          <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
-        </label>
-        <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} onChange={(v) => setForm({ ...form, start_date: v ?? '' })} /></label>
+        <div className="tf-name-row" style={{ gridColumn: '1 / -1' }}>
+          <label id="g-name" className="tp-field">
+            Name
+            <input value={form.name} onChange={set('name')} placeholder="e.g. Croatian Kendo Championship 2027" required />
+          </label>
+          {logo && <LogoPicker {...logo} />}
+        </div>
+        <label id="g-dates" className="tp-field">Start date<DateInput value={form.start_date || null} min={creating ? todayIso() : undefined} onChange={(v) => setForm({ ...form, start_date: v ?? '', end_date: form.end_date && v && form.end_date < v ? v : form.end_date })} /></label>
         <label className="tp-field">End date<DateInput value={form.end_date || null} min={form.start_date || undefined} onChange={(v) => setForm({ ...form, end_date: v ?? '' })} /></label>
       </div>
+      {past && (
+        <p className={`tp-message ${creating ? 'error' : 'info'}`}>
+          {creating ? 'The start date is in the past — pick today or a later day.' : 'The start date is in the past. Fine for correcting an earlier tournament; for a new edition, create a new tournament.'}
+        </p>
+      )}
       <div id="g-days">
         <ScheduleQuestion value={form.use_schedule} onChange={(v) => setForm({ ...form, use_schedule: v })}
           startDate={form.start_date} endDate={form.end_date} days={form.days} onDays={(days) => setForm({ ...form, days })}
           program={form.program} onProgram={(program) => setForm({ ...form, program })} programMode={programMode} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Tournament logo beside the name: a small box with the logo (or "+ Logo"),
+ * click to choose a file; ✕ removes it. url = current logo (or a local preview).
+ */
+export function LogoPicker({ url, onFile, onRemove, onError, busy }) {
+  const input = useRef(null);
+  return (
+    <div className="tf-logo">
+      <span className="tf-logo-label">Logo</span>
+      <button type="button" className="tf-logo-box" disabled={busy} onClick={() => input.current?.click()}
+        title="PNG, JPG, WebP or SVG, up to 2 MB — shown on the public page and the tournament lists">
+        {url ? <img src={url} alt="Tournament logo" /> : <span>+ Logo</span>}
+      </button>
+      {url && <button type="button" className="tf-logo-remove" disabled={busy} onClick={onRemove} title="Remove the logo">✕</button>}
+      <input ref={input} type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          if (f.size > 2 * 1024 * 1024) { onError?.('The logo is bigger than 2 MB.'); return; }
+          onFile(f);
+        }} />
     </div>
   );
 }

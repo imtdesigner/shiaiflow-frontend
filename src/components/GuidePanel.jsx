@@ -40,6 +40,8 @@ const PAGES = {
   manage: (id) => `/tournament/${id}/manage`,
   brackets: (id) => `/tournament/${id}/brackets`,
   fights: (id) => `/tournament/${id}/fights`,
+  results: (id) => `/tournament/${id}/results`,
+  paper: (id) => `/tournament/${id}/paper`,
 };
 
 /** Pages of a tournament opened on this device (steps that only ask to check a page). */

@@ -10,6 +10,7 @@ import {
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
 import { publicPath } from '../lib/tournament/days.js';
+import HallSetup from '../components/HallSetup';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import StartTournament from '../components/StartTournament';
 import './TournamentPages.css';
@@ -114,6 +115,8 @@ function Manage() {
         </div>
         {running && <p className="tp-muted">Running: scoretables and court displays are live. Categories drawn later are added at the end of their courts.</p>}
       </div>
+
+      <HallSetup tournamentId={tournamentId} courts={courts.length} />
 
       <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>

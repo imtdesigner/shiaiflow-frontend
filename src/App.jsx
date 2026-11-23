@@ -34,6 +34,7 @@ import ProtectedRoute from './ProtectRoute'; // import it
 import ProfilePage from './pages/ProfilePage'; // at top with other imports
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { supabase } from './supabaseClient';
+import { flushPendingLogo } from './lib/pendingLogo';
 import { AccountBanner } from './components/AccountStatus';
 import { accountWaiting, amIAdmin, listMyTournaments, listOrganizationAccounts, listPublicTournaments } from './lib/api';
 import AdminAccounts from './pages/AdminAccounts';
@@ -230,7 +231,8 @@ function AppContent() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (event === 'SIGNED_IN') flushPendingLogo(currentSession);
       if (isMounted) {
         setSession(currentSession);
         setIsAuthLoading(false);

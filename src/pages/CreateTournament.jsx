@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackToDashboard, Message } from '../components/TournamentShell';
 import CategoryCard from '../components/CategoryCard';
-import { createTournament, listCategorySources } from '../lib/api';
+import { createTournament, listCategorySources, uploadLogo } from '../lib/api';
 import { EMPTY_CATEGORY, RULE_FIELDS, categoryRow, categorySetup, copyFields } from '../lib/tournament/categoryTemplates.js';
-import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit } from '../components/TournamentFields';
+import { PublicPagePart, TournamentPart, VenuePart, linkReady, noEnterSubmit, startInPast } from '../components/TournamentFields';
 import { dayCount, daysValue } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { useGuide } from '../components/GuidePanel';
@@ -32,6 +32,7 @@ function CreateTournament() {
   const [sourceQuery, setSourceQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [logo, setLogo] = useState(null); // { file, url } chosen before the tournament exists
 
   // the setup guide follows the form while it is filled in
   const { setCreate } = useGuide();
@@ -67,6 +68,8 @@ function CreateTournament() {
     e.preventDefault();
     setError('');
     if (!form.name.trim()) { setError('Enter the tournament name.'); return; }
+    if (startInPast(form.start_date)) { setError('The start date is in the past.'); return; }
+    if (form.end_date && form.start_date && form.end_date < form.start_date) { setError('The end date is before the start date.'); return; }
     if (categories.some((c) => !c.name.trim())) { setError('Every category needs a name.'); return; }
     if (form.custom_link && !linkReady(form.slug, '', linkState, linkConfirmed)) { setError('Check the link name.'); return; }
     const days = form.start_date ? daysValue(form.start_date, form.end_date || form.start_date, form.use_schedule ? form.days : []) : null;
@@ -92,6 +95,7 @@ function CreateTournament() {
         draws_public: false,
         status: 'registration',
       }, categories.map((c) => ({ ...categoryRow(c), day: Math.min(Number(c.day) || 1, lastDay) })));
+      if (logo) { try { await uploadLogo(t.id, logo.file); } catch { /* the logo can be added again in Edit */ } }
       navigate(`/tournament/${t.id}/setup?step=signup`);
     } catch (err) {
       setError(err.message);
@@ -112,7 +116,12 @@ function CreateTournament() {
       <Message type="error">{error}</Message>
 
       <form onSubmit={handleSubmit} onKeyDown={noEnterSubmit}>
-        <TournamentPart form={form} setForm={setForm} />
+        <TournamentPart form={form} setForm={setForm} logo={{
+          url: logo?.url,
+          onFile: (file) => setLogo({ file, url: URL.createObjectURL(file) }),
+          onRemove: () => setLogo(null),
+          onError: setError,
+        }} />
         <VenuePart form={form} setForm={setForm} />
         <PublicPagePart form={form} setForm={setForm} linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState} />
 

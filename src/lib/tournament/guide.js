@@ -141,6 +141,8 @@ export function phaseSteps(phase, t, {
       step('present', 'Present', allPresent,
         `On the day, tick who is present${entries ? ` (${entries.present} / ${entries.total})` : ''}.`, 'registration', 'g-checkin'),
       step('adjust', 'Adjust', allPresent, 'Replace or withdraw who did not come in Drawings → Adjust the draw.', 'drawings', 'g-adjust'),
+      step('hall', 'Hall', seen.has('hall'), 'Set up the hall: internet by hotspot, a laptop + monitor per shiaijo, no sleep.', 'manage', 'g-hall'),
+      step('paper', 'Paper', seen.has('paper'), 'Print the paper backup for each table (fight list, pool sheets, brackets).', 'paper', 'g-paper'),
       step('pin', 'PIN', seen.has('manage'), 'Set the PIN — scoretables join with it and pick their shiaijo.', 'manage', 'g-pin'),
       step('start', 'Start', false, 'Start the tournament — the order of fights on every shiaijo is frozen.', 'registration', 'g-start'),
     ];
@@ -152,7 +154,8 @@ export function phaseSteps(phase, t, {
     ];
     case 'finished': return [
       step('fights', 'Fights', true, 'All fights are finished.', 'manage'),
-      step('results', 'Results', false, 'Results are on the public page.', 'public'),
+      step('spirit', 'Results', seen.has('results'), 'Confirm the Fighting spirit and print the results for the awards.', 'results', 'g-results'),
+      step('results', 'Public', false, 'Results are on the public page.', 'public'),
     ];
     default: return [
       step('results', 'Results', true, 'This tournament is over — its results stay on the public page.', 'public'),

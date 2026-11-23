@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import './SignupPage.css';
 import { supabase } from '../supabaseClient';
 import { countryOptions } from '../lib/countries';
+import { flushPendingLogo, savePendingLogo, shrinkImage } from '../lib/pendingLogo';
 
 const KINDS = [
   { value: 'person', label: 'Individual' },
@@ -21,6 +22,7 @@ const SignupPage = () => {
     name: '', email: '', password: '', confirmPassword: '', city: '', country: '',
     website: '', contact_name: '', contact_email: '',
   });
+  const [logo, setLogo] = useState(null); // shrunk data URL
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const countries = useMemo(() => countryOptions(), []);
@@ -34,7 +36,7 @@ const SignupPage = () => {
       setMessage('Passwords do not match.'); setMessageType('error'); return;
     }
     const role = kind === 'federation' ? fedLevel : kind;
-    const { error } = await supabase.auth.signUp({
+    const { data: signed, error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: form.password,
       options: {
@@ -53,6 +55,10 @@ const SignupPage = () => {
       },
     });
     if (error) { setMessage(`Signup failed: ${error.message}`); setMessageType('error'); return; }
+    if (org && logo) {
+      savePendingLogo(form.email, logo);
+      if (signed?.session) flushPendingLogo(signed.session);
+    }
     setMessage(org
       ? 'Account created — please confirm your email. The app admins will verify your organization; until then you can set up tournaments, but not publish the signup or start them.'
       : 'Account created — please check your email to confirm it.');
@@ -93,6 +99,23 @@ const SignupPage = () => {
             <input type="url" placeholder="Website (https://…)" required value={form.website} onChange={set('website')} />
             <input type="text" placeholder="Responsible person (name)" required value={form.contact_name} onChange={set('contact_name')} />
             <input type="email" placeholder="Responsible person email (optional, if different)" value={form.contact_email} onChange={set('contact_email')} />
+            <div className="signup-logo">
+              <label className="signup-logo-box" title="PNG, JPG, WebP or SVG">
+                {logo ? <img src={logo} alt="Logo" /> : <span>+ Logo</span>}
+                <input type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    try { setLogo(await shrinkImage(f)); } catch (err) { setMessage(err.message); setMessageType('error'); }
+                  }} />
+              </label>
+              <span className="email-note">
+                {kind === 'dojo' ? 'Dojo' : 'Federation'} logo (optional) — shown with your tournaments. It is saved when you first log in
+                on this device; you can always change it in Profile.
+                {logo && <> <button type="button" className="signup-logo-remove" onClick={() => setLogo(null)}>Remove</button></>}
+              </span>
+            </div>
             <p className="email-note">
               The app admins check that the organization is real and that the email and data match its website.
               Until the account is verified you can set up tournaments, but not publish the signup or start them.

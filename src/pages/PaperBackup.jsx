@@ -50,7 +50,7 @@ export default function PaperBackup() {
   return (
     <div className="tp-page tp-page-wide pb-page">
       <BackToDashboard />
-      <h2 className="tp-no-print">Paper backup</h2>
+      <h2 id="g-paper" className="tp-no-print">Paper backup</h2>
       <p className="tp-subtitle tp-no-print">{tournament?.name}</p>
       <div className="tp-no-print">
         <p className="tp-muted">

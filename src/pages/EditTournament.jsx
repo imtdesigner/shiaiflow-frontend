@@ -177,7 +177,13 @@ function EditTournament() {
               <form id="g-details" onSubmit={save} onKeyDown={noEnterSubmit}>
                 {locked && <Message type="info">The draws are confirmed — only the owner can change the tournament data now.</Message>}
                 <fieldset disabled={locked} style={{ border: 0, padding: 0, margin: 0 }}>
-                  <TournamentPart form={form} setForm={setForm} programMode="editor" />
+                  <TournamentPart form={form} setForm={setForm} programMode="editor" savedStart={tournament.start_date} logo={{
+                    url: tournament.logo_url,
+                    busy,
+                    onFile: (f) => run(() => uploadLogo(tournamentId, f), 'Logo saved.'),
+                    onRemove: () => toggle('logo_url', null, 'Logo removed.'),
+                    onError: (text) => setMsg({ type: 'error', text }),
+                  }} />
                   <VenuePart form={form} setForm={setForm} />
                   <PublicPagePart form={form} setForm={setForm} saved={tournament.slug ?? ''}
                     linkConfirmed={linkConfirmed} setLinkConfirmed={setLinkConfirmed} setLinkState={setLinkState}>
@@ -188,17 +194,6 @@ function EditTournament() {
                   </div>
                 </fieldset>
               </form>
-      <div className="tp-card">
-        <h3>Logo</h3>
-        {tournament.logo_url ? <img className="tp-logo-preview" src={tournament.logo_url} alt="Tournament logo" /> : <p className="tp-muted">No logo yet.</p>}
-        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" disabled={busy}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) run(() => uploadLogo(tournamentId, f), 'Logo saved.'); e.target.value = ''; }} />
-        {tournament.logo_url && (
-          <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => toggle('logo_url', null, 'Logo removed.')}>Remove logo</button>
-        )}
-        <p className="tp-muted">PNG, JPG, WebP or SVG, up to 2 MB. Shown on the public page and the tournament lists.</p>
-      </div>
-
       <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
