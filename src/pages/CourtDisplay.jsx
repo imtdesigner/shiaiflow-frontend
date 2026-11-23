@@ -119,10 +119,11 @@ export default function CourtDisplay() {
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
   const current = currentFight(queue);
-  // last result only from the category fighting now (owner, 2026-11-23); one next fight is enough
+  // last result only from the category fighting now (owner, 2026-11-23); next: 3 fights, only 1 during a team match
   const last = queue.filter((f) => f.status === 'finished' && (!current || f.category_id === current.category_id))
     .sort(byFinish).at(-1) ?? null;
-  const next = queue.filter((f) => f.status !== 'finished' && f.id !== current?.id).slice(0, 1);
+  const teamNow = !!current && byCat[current.category_id]?.kind === 'team';
+  const next = queue.filter((f) => f.status !== 'finished' && f.id !== current?.id).slice(0, teamNow ? 1 : 3);
 
   const entryOf = (f, side) => entries.find((e) => e.id === (side === 'red' ? f.red_entry_id : f.white_entry_id));
   const name = (f, side) => {
