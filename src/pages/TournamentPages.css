@@ -550,6 +550,8 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .pb-box.small { width: 2rem; }
 .pb-club { color: #777; font-size: 0.85em; }
 .pb-label { white-space: nowrap; }
+.pb-fights th.pb-aka { background: #c0282d; color: #fff; }
+.pb-fights th.pb-shiro { background: #fff; color: #222; }
 .pb-note { font-size: 0.8rem; color: #666; margin: 0.3rem 0 1rem; }
 .pb-pool, .pb-ko { margin-top: 1rem; break-inside: avoid; }
 .pb-pool h3, .pb-ko h3 { font-size: 1rem; margin: 0 0 0.4rem; }
@@ -563,6 +565,7 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
   .pb-court { break-after: page; padding: 0; margin: 0; }
   .pb-court:last-child { break-after: auto; }
   .pb-fights { font-size: 9pt !important; }
+  .pb-fights th.pb-aka { background: #c0282d !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pb-self { background: #888 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pb-ko .ko-bracket-scroll { overflow: visible; }
 }

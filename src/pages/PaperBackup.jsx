@@ -80,8 +80,8 @@ export default function PaperBackup() {
               <thead>
                 <tr>
                   <th>#</th><th>Fight</th><th>Category</th>
-                  <th className="aka">Red (aka)</th><th className="pb-box small">▲</th><th className="pb-box">Points</th>
-                  <th className="pb-box">Points</th><th className="pb-box small">▲</th><th className="shiro">White (shiro)</th>
+                  <th className="pb-aka">Red (aka)</th><th className="pb-box small">▲</th><th className="pb-box">Points</th>
+                  <th className="pb-box">Points</th><th className="pb-box small">▲</th><th className="pb-shiro">White (shiro)</th>
                   <th className="pb-box">Winner</th>
                 </tr>
               </thead>
