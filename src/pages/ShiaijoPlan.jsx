@@ -154,9 +154,14 @@ function ShiaijoPlan({ embedded = false }) {
             <span className="tp-muted fr-row-note">Bow-in and changeover, used for the time estimate.</span>
           </div>
           <div className="fr-row">
-            <span className="fr-row-label">Timer</span>
-            <Segmented options={[[true, 'The scoretable runs the countdown (start / stop at the table)'], [false, 'Separate timekeeper (the table only presses Time up)']]} value={tournament?.use_timer ?? true}
+            <span className="fr-row-label">Timekeeping</span>
+            <Segmented options={[[true, 'ShiaiFlow measures the time in the app'], [false, 'A 2nd person keeps the time at the table']]} value={tournament?.use_timer ?? true}
               disabled={busy} onChange={(v) => run(() => updateTournament(tournamentId, { use_timer: v }))} />
+            <span className="tp-muted fr-row-note">
+              {(tournament?.use_timer ?? true)
+                ? 'The scorer starts and stops the clock with Hajime / Yame; it stops by itself on every point.'
+                : 'The timekeeper uses their own clock; the scorer only presses Time up when the time is over.'}
+            </span>
           </div>
           <div className="fr-row">
             <span className="fr-row-label">Central shiaijo</span>
