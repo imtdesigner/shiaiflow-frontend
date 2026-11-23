@@ -549,6 +549,7 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .pb-box { width: 4.5rem; }
 .pb-box.small { width: 2rem; }
 .pb-club { color: #777; font-size: 0.85em; }
+.pb-label { white-space: nowrap; }
 .pb-note { font-size: 0.8rem; color: #666; margin: 0.3rem 0 1rem; }
 .pb-pool, .pb-ko { margin-top: 1rem; break-inside: avoid; }
 .pb-pool h3, .pb-ko h3 { font-size: 1rem; margin: 0 0 0.4rem; }

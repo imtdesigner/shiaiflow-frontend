@@ -89,7 +89,7 @@ export default function PaperBackup() {
                 {queue.map((f, i) => (
                   <tr key={f.id}>
                     <td>{i + 1}</td>
-                    <td><strong>{f.label}</strong></td>
+                    <td className="pb-label"><strong>{f.label}</strong></td>
                     <td>{byId[f.category_id]?.name}</td>
                     <td>{side(f, 'red')}</td><td /><td /><td /><td />
                     <td>{side(f, 'white')}</td><td />
