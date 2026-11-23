@@ -20,7 +20,7 @@ import { SpiritPopup } from '../components/FightingSpirit';
 import { lastFightOnCourt } from '../lib/tournament/results.js';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
-  courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, koRoundLabel,
+  courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, phaseLabel, waitingForFighter,
 } from '../lib/tournament/run.js';
 import { boutTotals, scoringOptions } from '../lib/tournament/scoring.js';
 import './TournamentPages.css';
@@ -155,7 +155,7 @@ function ScoreInput() {
       } catch (e) { setMsg({ type: 'error', text: e.message }); }
     })();
     return () => { gone = true; };
-  }, [fight?.id, isTeamFight, entries]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fight?.id, fight?.red_entry_id, fight?.white_entry_id, isTeamFight, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { reloadEvents(); setManualTimeUp(false); }, [reloadEvents]);
 
@@ -311,11 +311,7 @@ function ScoreInput() {
     const e = entries.find((x) => x.id === (side === 'red' ? f.red_entry_id : f.white_entry_id));
     return e?.team?.club ?? e?.competitor?.club ?? '';
   };
-  const roundOf = (f) => {
-    if (f.phase === 'pool') return 'Pool';
-    if (f.phase === 'ipponshobu') return 'Ipponshobu';
-    return koRoundLabel(byId[f.category_id], f.ko_no);
-  };
+  const roundOf = (f) => phaseLabel(byId[f.category_id], f);
 
   // team match: last bout that can be reopened by a manager (not an empty-position fusen)
   const lastBout = team ? [...bouts].filter((b) => b.status === 'finished' && b.red_competitor_id && b.white_competitor_id)
@@ -329,11 +325,16 @@ function ScoreInput() {
           {[...bouts].sort((a, b) => ORDER.indexOf(a.position) - ORDER.indexOf(b.position)).map((b) => {
             const t = boutTotals({ events: events.filter((e) => e.bout_id === b.id) }, opts);
             const mark = (side) => (b.fusen === side ? 'OO' : b.decision === side ? 'HH' : t[side].ippons.join(' '));
+            const draw = b.status === 'finished' && !b.fusen && !b.decision && t.red.ippons.length === t.white.ippons.length;
             return (
               <tr key={b.id} className={b.id === teamBout?.id ? 'current' : b.status}>
-                <td>{POSITION_LABELS[b.position]}</td>
+                <td className="st-team-pos">{POSITION_LABELS[b.position]}</td>
                 <td className="st-team-red">{memberName(b.red_competitor_id) ?? '—'}</td>
-                <td className="st-team-score">{mark('red') || '·'} : {mark('white') || '·'}{b.status === 'finished' && !b.fusen && !b.decision && t.red.ippons.length === t.white.ippons.length ? ' (X)' : ''}</td>
+                <td className="st-sym-h">{'▲'.repeat(t.red.hansoku)}</td>
+                <td className="st-sym-pts red">{mark('red')}</td>
+                <td className="st-sym-mid">{draw ? 'X' : ':'}</td>
+                <td className="st-sym-pts">{mark('white')}</td>
+                <td className="st-sym-h">{'▲'.repeat(t.white.hansoku)}</td>
                 <td>{memberName(b.white_competitor_id) ?? '—'}</td>
               </tr>
             );
@@ -449,9 +450,15 @@ function ScoreInput() {
             {unit?.is_encho && teamBout?.position !== 'daihyosen' && <span className="tp-badge warn">encho</span>}
             {unit?.status === 'scheduled' && <span className="tp-muted"> · not started</span>}
           </div>
+          {waitingForFighter(fight) && (
+            <div className="st-waiting">
+              <p><strong>Waiting:</strong> {name(fight, 'red')} – {name(fight, 'white')} — the fighter comes from a fight that is not finished yet.</p>
+              <p className="tp-muted">This is the next fight on this shiaijo. Wait for it, or start a later fight on purpose with Take next below.</p>
+            </div>
+          )}
 
           {team && <TeamProgress />}
-          {team && step.step === 'lineup' && teamInfo && (
+          {team && !waitingForFighter(fight) && step.step === 'lineup' && teamInfo && (
             <LineupPanel teamSize={category.team_size} teams={teamInfo} defaults={teamInfo.defaults} busy={busy}
               onConfirm={(l) => run(() => confirmLineups(fight, boutRows(category.team_size, l.red, l.white)))} />
           )}
@@ -477,7 +484,7 @@ function ScoreInput() {
             </div>
           )}
 
-          {unit && (<>
+          {unit && !waitingForFighter(fight) && (<>
           <div className="st-board">
             {sideBlock('red')}
             <div className="st-center">
@@ -554,7 +561,7 @@ function ScoreInput() {
             )}
           </div>
           </>)}
-          {team && step.step === 'lineup' && fight.status === 'scheduled' && (
+          {team && !waitingForFighter(fight) && step.step === 'lineup' && fight.status === 'scheduled' && (
             <div className="tp-actions st-actions">
               <span className="tp-muted">Team did not come:</span>
               <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => run(async () => { await startFight(fight, queue); await finishFightFusen('red'); })}>{name(fight, 'red')} wins OO</button>
@@ -616,22 +623,37 @@ function ScoreInput() {
         <div className="tp-pool">
           <h4>Finished</h4>
           {finished.length === 0 ? <p className="tp-muted">None yet.</p> : (
-            <ol>
-              {finished.map((f) => (
-                <li key={f.id}>
-                  <strong>{f.label}</strong> <span className="st-red">{name(f, 'red')}</span> – <span className="st-white">{name(f, 'white')}</span>
-                  {(() => { const r = resultOf(f); return (
-                    <span className="st-result"><span className="st-red">{r.red || '–'}</span> : <span className="st-white">{r.white || '–'}</span>{!f.winner_entry_id ? ' X' : ''}</span>
-                  ); })()}
-                  {manager && (
-                    <button type="button" className="tp-btn secondary small" style={{ marginLeft: '0.4rem' }}
-                      disabled={busy || fight?.status === 'running'} onClick={() => { setPickedId(f.id); run(() => reopenFight(f)); }}>
-                      Correct
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ol>
+            <table className="st-finished">
+              <tbody>
+                {finished.map((f) => {
+                  const r = resultOf(f);
+                  // name · ▲ · points : points · ▲ · name — the middle stays the middle
+                  const split = (m) => { const h = (m || '').match(/▲+/)?.[0] ?? ''; return { h, pts: (m || '').replace(/▲+/, '').trim() }; };
+                  const red = split(r.red);
+                  const white = split(r.white);
+                  return (
+                    <tr key={f.id}>
+                      <td><strong>{f.label}</strong></td>
+                      <td className="st-red st-fin-name left">{name(f, 'red')}</td>
+                      <td className="st-sym-h">{red.h}</td>
+                      <td className="st-sym-pts red st-red">{red.pts}</td>
+                      <td className="st-sym-mid">{!f.winner_entry_id ? 'X' : ':'}</td>
+                      <td className="st-sym-pts st-white">{white.pts}</td>
+                      <td className="st-sym-h">{white.h}</td>
+                      <td className="st-white st-fin-name">{name(f, 'white')}</td>
+                      {manager && (
+                        <td>
+                          <button type="button" className="tp-btn secondary small"
+                            disabled={busy || fight?.status === 'running'} onClick={() => { setPickedId(f.id); run(() => reopenFight(f)); }}>
+                            Correct
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>

@@ -551,7 +551,7 @@ test('bracket editor: untouched templates keep their numbering', () => {
 });
 
 // --- running fights ------------------------------------------------------------
-import { fightRules, fightStatus, startSequence, startOutOfOrder, courtQueue, currentFight, koEntries, placesToCodes } from '../src/lib/tournament/run.js';
+import { fightRules, fightStatus, startSequence, startOutOfOrder, courtQueue, currentFight, koEntries, placesToCodes, phaseLabel, waitingForFighter } from '../src/lib/tournament/run.js';
 
 test('scoring: second hansoku gives I, hantei HH and fusen-gachi OO are 2–0', () => {
   const r = boutResult(bout('', '', { wh: 2 }));
@@ -594,7 +594,7 @@ test('court queue: start sequence, out-of-order start moves skipped fights below
   const done = queue.map((x) => (x.id === 'a1' ? { ...x, status: 'finished' } : x));
   assert.deepEqual(Object.fromEntries(startOutOfOrder(done, 'a3')), { a3: 20, a2: 30 });
   assert.equal(currentFight(done).id, 'a2');
-  assert.equal(currentFight([{ ...done[1], white_entry_id: null }, done[2]]).id, 'a3'); // waits for both fighters
+  assert.equal(currentFight([{ ...done[1], white_entry_id: null }, done[2]]).id, 'a2'); // shows the next fight and waits, no skipping
 });
 
 test('KO entries: pool places and winners fill the bracket', () => {
@@ -1068,4 +1068,13 @@ test('setup guide: steps and the current hint', () => {
   assert.match(currentStep(draw).hint, /1 \/ 2 drawn/);
   const reg = phaseSteps('register', t, { entries: { total: 8, present: 5 } });
   assert.match(currentStep(reg).hint, /5 \/ 8/);
+});
+
+test('phase label: pool number, ipponshobu, KO round; waiting for a fighter', () => {
+  const cat = { ko_template: [{ no: 1, red: '011', white: '022' }, { no: 2, red: '021', white: '012' }, { no: 3, red: 'W1', white: 'W2' }] };
+  assert.equal(phaseLabel(cat, { phase: 'pool', label: 'F-P2.3' }), 'Pool 2');
+  assert.equal(phaseLabel(cat, { phase: 'ipponshobu', label: 'F-P1.D' }), 'Pool 1 · Ipponshobu');
+  assert.equal(phaseLabel(cat, { phase: 'ko', ko_no: 3, label: 'F-3' }), 'Final');
+  assert.equal(waitingForFighter({ status: 'scheduled', red_entry_id: 'a', white_entry_id: null }), true);
+  assert.equal(waitingForFighter({ status: 'scheduled', red_entry_id: 'a', white_entry_id: 'b' }), false);
 });

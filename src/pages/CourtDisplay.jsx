@@ -7,7 +7,7 @@ import {
 import { listRunFights, subscribeFights } from '../lib/runApi';
 import { isUuid } from '../lib/tournament/days.js';
 import { slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue, currentFight, koRoundLabel } from '../lib/tournament/run.js';
+import { courtQueue, currentFight, phaseLabel } from '../lib/tournament/run.js';
 import { boutTotals, firstPointSide, scoringOptions } from '../lib/tournament/scoring.js';
 import { POSITION_LABELS, teamBoard } from '../lib/tournament/team.js';
 import './CourtDisplay.css';
@@ -119,8 +119,10 @@ export default function CourtDisplay() {
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
   const current = currentFight(queue);
-  const last = queue.filter((f) => f.status === 'finished').sort(byFinish).at(-1) ?? null;
-  const next = queue.filter((f) => f.status !== 'finished' && f.id !== current?.id).slice(0, 3);
+  // last result only from the category fighting now (owner, 2026-11-23); one next fight is enough
+  const last = queue.filter((f) => f.status === 'finished' && (!current || f.category_id === current.category_id))
+    .sort(byFinish).at(-1) ?? null;
+  const next = queue.filter((f) => f.status !== 'finished' && f.id !== current?.id).slice(0, 1);
 
   const entryOf = (f, side) => entries.find((e) => e.id === (side === 'red' ? f.red_entry_id : f.white_entry_id));
   const name = (f, side) => {
@@ -129,8 +131,7 @@ export default function CourtDisplay() {
     const code = side === 'red' ? f.red_code : f.white_code;
     return code ? slotLabel(code, byCat[f.category_id]?.pool_size === 1) : '—';
   };
-  const roundOf = (f) => (f.phase === 'pool' ? 'Pool' : f.phase === 'ipponshobu' ? 'Ipponshobu'
-    : koRoundLabel(byCat[f.category_id], f.ko_no));
+  const roundOf = (f) => phaseLabel(byCat[f.category_id], f);
   // a "record" is what the marks are read from: a fight, or one bout of a team match
   const recOf = (f) => ({ events: events.filter((e) => e.match_id === f.id && !e.bout_id), decision: f.decision, fusen: f.fusen, cat: byCat[f.category_id] });
   const boutRec = (f, row) => ({ events: row.events, decision: row.bout?.decision, fusen: row.bout?.fusen, cat: byCat[f.category_id] });
@@ -235,6 +236,7 @@ export default function CourtDisplay() {
         </span>
       </header>
 
+      {!(current && isTeam(current) && boardOf(current).ready) && (
       <section className="cd-band cd-last">
         <h3>Last result</h3>
         {last ? (
@@ -261,6 +263,7 @@ export default function CourtDisplay() {
           </div>
         ) : <p className="cd-muted">No fight finished yet.</p>}
       </section>
+      )}
 
       <main className="cd-band cd-board">
         {current ? (

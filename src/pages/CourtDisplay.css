@@ -147,7 +147,7 @@
 
 /* team match in progress: team names + one row per position */
 .cd-team { display: flex; flex-direction: column; gap: 0.6vh; flex: 1; min-height: 0; }
-.cd-team-row { position: relative; display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-height: 0; }
+.cd-team-row { position: relative; display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 0; min-height: 6.5vh; }
 .cd-team-row.head { flex: 0 0 auto; }
 .cd-team-row.head .cd-team-side { padding: 1vh 9vw 1vh 2vw; }
 .cd-team-row.head .cd-team-side.right { padding: 1vh 2vw 1vh 9vw; }
@@ -166,7 +166,7 @@
 .cd-team-row:last-child .cd-team-side:not(.right) { border-bottom-left-radius: 1vw; }
 .cd-team-row:last-child .cd-team-side.right { border-bottom-right-radius: 1vw; }
 .cd-team-name { font-size: 3.4vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cd-member { font-size: 2.8vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-member { font-size: min(2.8vw, 5.2vh); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cd-team-side .cd-marks { margin: 0; gap: 0.6vw; }
 .cd-team-side.right .cd-marks { flex-direction: row-reverse; }
 .cd-mark.mid { width: 1.3em; height: 1.3em; font-size: 2.8vw; }
@@ -190,9 +190,9 @@
   border-radius: 2vw;
   background: #fff;
   color: #14161a;
-  border: 0.25vw solid #14161a;
-  font-size: 2vw;
-  font-weight: 800;
+  border: 0.2vw solid #14161a;
+  font-size: 1.1vw; /* position names small (owner, 2026-11-23): the names matter */
+  font-weight: 700;
   white-space: nowrap;
 }
 /* hikiwake / encho of that bout: a white circle with X / E on the seam, in place of the position name */

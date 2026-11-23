@@ -139,11 +139,26 @@ export function startOutOfOrder(queue, startedId) {
   return out;
 }
 
-/** The fight a court should show: the running one, else the first scheduled with both fighters. */
+/**
+ * The fight a court should show: the running one, else the next scheduled in
+ * the frozen order — also when a fighter is not known yet (owner, 2026-11-23:
+ * the table waits; it skips only on purpose by taking a later fight by hand).
+ */
 export function currentFight(queue) {
   return queue.find((f) => f.status === 'running')
-    ?? queue.find((f) => f.status === 'scheduled' && f.red_entry_id && f.white_entry_id)
+    ?? queue.find((f) => f.status === 'scheduled')
     ?? null;
+}
+
+/** A scheduled fight still waiting for a fighter from an earlier fight. */
+export const waitingForFighter = (f) => !!f && f.status === 'scheduled' && (!f.red_entry_id || !f.white_entry_id);
+
+/** Phase of a fight for the screens: "Pool 2", "Pool 2 · Ipponshobu", "1/4 final", "Final", "3rd place". */
+export function phaseLabel(category, f) {
+  const pool = /^F-P(\d+)\./.exec(f?.label ?? '')?.[1];
+  if (f?.phase === 'pool') return pool ? `Pool ${pool}` : 'Pool';
+  if (f?.phase === 'ipponshobu') return pool ? `Pool ${pool} · Ipponshobu` : 'Ipponshobu';
+  return koRoundLabel(category, f?.ko_no);
 }
 
 /**
