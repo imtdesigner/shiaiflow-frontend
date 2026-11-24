@@ -24,3 +24,7 @@ npm run test:logic           # tournament logic tests (node:test, no extra deps)
 - `src/pages/` — app pages
 - `supabase/migrations/` — database schema (apply in order)
 - `tests/` — logic tests based on real DP HKS 2026 results
+
+## License
+
+Proprietary — © 2026 Ivan Marko Tomljenović, all rights reserved. See [LICENSE](LICENSE). Publicly visible code grants no rights to use, copy or host it.
