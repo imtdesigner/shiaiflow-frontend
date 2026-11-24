@@ -18,6 +18,7 @@ import { slotLabel } from '../lib/tournament/ko.js';
 import { fightMarks } from '../lib/tournament/poolView.js';
 import { SpiritPopup } from '../components/FightingSpirit';
 import { lastFightOnCourt } from '../lib/tournament/results.js';
+import { COURT_SCREEN, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, phaseLabel, waitingForFighter,
@@ -35,7 +36,7 @@ const mmss = (ms) => {
 };
 
 /**
- * Scoretable for one shiaijo: the current fight, score buttons, the shared
+ * Scorekeeping manager for one shiaijo: the current fight, score buttons, the shared
  * timer (hajime / yame; stops on every point), and what to do at time up —
  * finish, hikiwake, encho or hantei by the category's rules. Several screens
  * can follow the same court (realtime). Managers can reopen finished fights.
@@ -430,6 +431,10 @@ function ScoreInput() {
           {courts.map((n) => <option key={n} value={n}>Shiaijo {n}</option>)}
         </select>
         <span className="tp-muted">{tournament?.name}</span>
+        {tournament && (
+          <a className="tp-btn secondary small st-screen-link" href={courtScreenUrl(tournament, court)} target={`sf-court-${court}`} rel="noreferrer"
+            title="Open in a second window, drag it to the TV next to the shiaijo, full screen (F11)">{COURT_SCREEN} ↗</a>
+        )}
       </div>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 

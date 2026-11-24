@@ -9,8 +9,8 @@ import {
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
-import { publicPath } from '../lib/tournament/days.js';
 import HallSetup from '../components/HallSetup';
+import TableDevice, { COURT_SCREEN, SCOREKEEPING, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import StartTournament from '../components/StartTournament';
 import './TournamentPages.css';
@@ -81,11 +81,9 @@ function Manage() {
   if (role === 'scorer') {
     return (
       <div className="tp-page">
-        <h2>Scoretable</h2>
-        <Message type="info">This device is a scoretable. Pick your shiaijo:</Message>
-        <div className="tp-actions">
-          {courts.map((n) => <Link key={n} className="tp-btn" to={`/tournament/${tournamentId}/score?court=${n}`}>Shiaijo {n}</Link>)}
-        </div>
+        <h2>Table</h2>
+        <p className="tp-subtitle">{tournament?.name}</p>
+        <div className="tp-card">{tournament && <TableDevice tournament={tournament} />}</div>
       </div>
     );
   }
@@ -113,7 +111,7 @@ function Manage() {
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/results`}>Results{tournament?.fighting_spirit !== false ? ' + Fighting spirit' : ''}</Link>
           <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/paper`}>Paper backup</Link>
         </div>
-        {running && <p className="tp-muted">Running: scoretables and court displays are live. Categories drawn later are added at the end of their courts.</p>}
+        {running && <p className="tp-muted">Running: the scorekeeping managers and court screens are live. Categories drawn later are added at the end of their courts.</p>}
       </div>
 
       <HallSetup tournamentId={tournamentId} courts={courts.length} />
@@ -122,7 +120,7 @@ function Manage() {
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           One PIN for this tournament. Before the start it lets editors change the tournament; after the start the same
-          PIN opens the scoretables (each table picks its shiaijo) and Manage. Share <strong>{joinUrl}</strong>.
+          PIN opens the tables (each picks its shiaijo: Scorekeeping manager + Court screen) and Manage. Share <strong>{joinUrl}</strong>.
         </p>
         <div className="tp-actions">
           <strong style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>{pin ?? '—'}</strong>
@@ -131,13 +129,13 @@ function Manage() {
             {pin ? 'New PIN' : 'Create PIN'}
           </button>
           {courts.map((n) => (
-            <Link key={n} className="tp-btn small" to={`/tournament/${tournamentId}/score?court=${n}`}>Scoretable {n}</Link>
+            <Link key={n} className="tp-btn small" to={`/tournament/${tournamentId}/score?court=${n}`}>{SCOREKEEPING} {n}</Link>
           ))}
         </div>
       </div>
 
       <div id="g-displays" className="tp-card">
-        <h3>Court display screens</h3>
+        <h3>Court screens (monitors)</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
           For the monitor next to each shiaijo: the fight in progress, the last result and the next fights — no timer.
           Anyone with the link can open it (no login); the tournament must be published. Shiro is left, aka right;
@@ -145,8 +143,8 @@ function Manage() {
         </p>
         <div className="tp-actions">
           {courts.map((n) => (
-            <a key={n} className="tp-btn secondary small" href={`${publicPath(tournament)}/court/${n}`} target="_blank" rel="noreferrer">
-              Display {n} ↗
+            <a key={n} className="tp-btn secondary small" href={courtScreenUrl(tournament, n)} target="_blank" rel="noreferrer">
+              {COURT_SCREEN} {n} ↗
             </a>
           ))}
         </div>
@@ -193,7 +191,7 @@ function Manage() {
                   <PoolStandings key={p.id} category={c} pool={p} members={poolMembers(p)}
                     fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
                     canCorrect={(f) => !busy && !fights.some((x) => x.status === 'running' && x.shiaijo === f.shiaijo)}
-                    onCorrect={(f) => run(() => reopenFight(f), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again at the scoretable.`)} />
+                    onCorrect={(f) => run(() => reopenFight(f), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)} />
                 ))}
               </div>
             </div>

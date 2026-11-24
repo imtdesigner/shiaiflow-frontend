@@ -46,7 +46,7 @@ export default function StartTournament({ tournament, categories, onStarted }) {
     return (
       <div className="tp-card">
         <h3>Tournament <span className="tp-badge ok">running</span></h3>
-        <p className="tp-muted" style={{ marginTop: 0 }}>Scoretables and court displays are live. Corrections and court overview in Manage.</p>
+        <p className="tp-muted" style={{ marginTop: 0 }}>Scorekeeping managers and court screens are live. Corrections and court overview in Manage.</p>
         <div className="tp-actions"><Link className="tp-btn secondary" to={`/tournament/${tournament.id}/manage`}>Manage</Link></div>
       </div>
     );
@@ -89,7 +89,7 @@ export default function StartTournament({ tournament, categories, onStarted }) {
         </p>
       )}
       <p className="tp-muted">
-        Starting freezes the order of fights on every shiaijo and opens the scoretables. Absent entries should be replaced or
+        Starting freezes the order of fights on every shiaijo and opens the scorekeeping managers. Absent entries should be replaced or
         withdrawn first in Drawings → Adjust the draw.
       </p>
       {waiting && <Message type="info">The organizer's account is waiting for approval by the app admins — the tournament can be started once it is approved.</Message>}

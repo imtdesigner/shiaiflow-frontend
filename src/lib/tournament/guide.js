@@ -143,12 +143,12 @@ export function phaseSteps(phase, t, {
       step('adjust', 'Adjust', allPresent, 'Replace or withdraw who did not come in Drawings → Adjust the draw.', 'drawings', 'g-adjust'),
       step('hall', 'Hall', seen.has('hall'), 'Set up the hall: internet by hotspot, a laptop + monitor per shiaijo, no sleep.', 'manage', 'g-hall'),
       step('paper', 'Paper', seen.has('paper'), 'Print the paper backup for each table (fight list, pool sheets, brackets).', 'paper', 'g-paper'),
-      step('pin', 'PIN', seen.has('manage'), 'Set the PIN — scoretables join with it and pick their shiaijo.', 'manage', 'g-pin'),
+      step('pin', 'PIN', seen.has('manage'), 'Set the PIN — the tables join with it and pick their shiaijo.', 'manage', 'g-pin'),
       step('start', 'Start', false, 'Start the tournament — the order of fights on every shiaijo is frozen.', 'registration', 'g-start'),
     ];
     case 'live': return [
-      step('tables', 'Tables', true, 'Scoretables join with the PIN and pick their shiaijo.', 'manage', 'g-pin'),
-      step('displays', 'Displays', true, 'Open the court display on the monitor next to each shiaijo.', 'manage', 'g-displays'),
+      step('tables', 'Tables', true, 'Tables join with the PIN: per shiaijo the Scorekeeping manager on the laptop, the Court screen on the TV.', 'manage', 'g-pin'),
+      step('displays', 'Displays', true, 'Open the Court screen (monitor) on the TV next to each shiaijo.', 'manage', 'g-displays'),
       step('fights', 'Fights', fights && fights.finished === fights.total,
         `Follow the courts and correct fights in Manage${fights ? ` (${fights.finished} / ${fights.total} done)` : ''}.`, 'manage', 'g-standings'),
     ];

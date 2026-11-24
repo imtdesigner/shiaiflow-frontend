@@ -51,7 +51,7 @@ export default function CategoriesEditor({ tournament, categories, role, onSaved
   });
   const template = (key, tpl) => setFresh((cur) => cur.map((c) => {
     if (c._key !== key) return c;
-    const next = { ...EMPTY_CATEGORY, ...categorySetup(tpl), day: c.day ?? 1, _key: key };
+    const next = { ...EMPTY_CATEGORY, ...categorySetup(tpl), day: c.day ?? 1, name: c.name.trim() ? c.name : tpl.name, _key: key };
     const first = categories.find((x) => x.kind === next.kind && x.status !== 'cancelled');
     return first ? copyFields(next, first, RULE_FIELDS) : next;
   }));

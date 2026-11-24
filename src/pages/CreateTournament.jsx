@@ -52,7 +52,7 @@ function CreateTournament() {
   const addNew = () => addCategories([{ ...EMPTY_CATEGORY, _fresh: true }]);
   const applyTemplate = (key, tpl) => setCategories((cur) => cur.map((c) => {
     if (c._key !== key) return c;
-    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(tpl), day: c.day ?? 1 };
+    const fresh = { ...EMPTY_CATEGORY, ...categorySetup(tpl), day: c.day ?? 1, name: c.name.trim() ? c.name : tpl.name };
     const first = cur.find((x) => x._key !== key && x.kind === fresh.kind && x.name.trim());
     return { ...(first ? copyFields(fresh, first, RULE_FIELDS) : fresh), _key: key };
   }));

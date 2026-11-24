@@ -583,3 +583,9 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .tf-logo-box:hover:not(:disabled) { border-color: #b23a2a; }
 .tf-logo-remove { position: absolute; top: 1.1rem; right: -0.6rem; border: 0; background: #fff; border-radius: 50%; width: 1.3rem; height: 1.3rem; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.25); font-size: 0.7rem; }
 .hall-list { margin: 0.4rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }
+
+/* Table device: per shiaijo the Scorekeeping manager + the Court screen (monitor) */
+.td-courts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.8rem; }
+.td-court { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.8rem; border: 1px solid #e3ded3; border-radius: 10px; background: #fff; }
+.td-court h4 { margin: 0 0 0.2rem; }
+.td-court .tp-btn { text-align: center; }

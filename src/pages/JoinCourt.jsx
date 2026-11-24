@@ -3,13 +3,14 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Message } from '../components/TournamentShell';
 import { claimTournament } from '../lib/runApi';
 import { supabase } from '../supabaseClient';
+import TableDevice from '../components/TableDevice';
 import './TournamentPages.css';
 
 /**
  * Join a tournament with its PIN (no account needed). The door decides the role:
  *   ?as=editor → editor: edits the tournament before the start, Manage after it
  *                (only once the owner has published the tournament);
- *   ?as=table  → scoretable only: picks a shiaijo (only while the tournament runs).
+ *   ?as=table  → table only: per shiaijo the Scorekeeping manager + Court screen (only while the tournament runs).
  */
 function JoinCourt() {
   const { tournamentId } = useParams();
@@ -22,7 +23,7 @@ function JoinCourt() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    supabase.from('tournaments').select('id, name, status, shiaijo_count').eq('id', tournamentId).maybeSingle()
+    supabase.from('tournaments').select('id, name, status, shiaijo_count, slug').eq('id', tournamentId).maybeSingle()
       .then(({ data }) => setTournament(data));
   }, [tournamentId, joined]);
 
@@ -40,22 +41,15 @@ function JoinCourt() {
     try { sessionStorage.setItem('sf-selected-tournament', JSON.stringify({ id: tournamentId, name: tournament?.name })); } catch { /* ignore */ }
   };
   const running = tournament?.status === 'running';
-  const courts = Array.from({ length: tournament?.shiaijo_count ?? 2 }, (_, i) => i + 1);
-  const courtButtons = (
-    <div className="tp-actions">
-      {courts.map((n) => (
-        <Link key={n} className="tp-btn" to={`/tournament/${tournamentId}/score?court=${n}`} onClick={select}>Shiaijo {n}</Link>
-      ))}
-    </div>
-  );
+  const courtButtons = tournament && <TableDevice tournament={tournament} onPick={select} />;
 
   return (
     <div className="tp-page" style={{ maxWidth: 520 }}>
       <h2>{tournament?.name ?? 'Tournament'}</h2>
       <p className="tp-subtitle">
-        {door === 'table' ? 'Scoretable' : 'Editor'} — type the PIN from the tournament owner.
+        {door === 'table' ? 'Table' : 'Editor'} — type the PIN from the tournament owner.
         {' '}<Link to={`/join/${tournamentId}?as=${door === 'table' ? 'editor' : 'table'}`}>
-          {door === 'table' ? 'I am an editor' : 'I am a scoretable'}
+          {door === 'table' ? 'I am an editor' : 'I am a table'}
         </Link>
       </p>
       <Message type="error">{error}</Message>
@@ -72,7 +66,7 @@ function JoinCourt() {
         </form>
       ) : door === 'table' ? (
         <div className="tp-card">
-          <h3>Scoretable — pick your shiaijo</h3>
+          <h3>Table — pick your shiaijo</h3>
           {courtButtons}
         </div>
       ) : (
@@ -85,7 +79,7 @@ function JoinCourt() {
                 <Link className="tp-btn" to={`/tournament/${tournamentId}/manage`} onClick={select}>Manage</Link>
                 <Link className="tp-btn secondary" to={`/tournament/${tournamentId}/fights`} onClick={select}>Fight plan</Link>
               </div>
-              <p className="tp-muted">Scoretables:</p>
+              <h4>Tables</h4>
               {courtButtons}
             </>
           ) : (

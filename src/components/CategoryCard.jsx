@@ -29,7 +29,7 @@ export default function CategoryCard({
           {c._fresh && onTemplate && (
             <div className="ct-templates">
               <span className="ct-head-label">Templates</span>
-              {CATEGORY_TEMPLATES.map((p) => (
+              {CATEGORY_TEMPLATES.filter((p) => p.kind === c.kind).map((p) => (
                 <button key={p.name} type="button" className="tp-btn secondary small" onClick={() => onTemplate(p)}>{p.name}</button>
               ))}
             </div>

@@ -8,10 +8,14 @@ import drawingsIcon from './assets/icons/drawings.png';
 import registrationIcon from './assets/icons/registration.png';
 import editTournamentIcon from './assets/icons/edit_tournament.png';
 import manageIcon from './assets/icons/manage_tournament.png';
-import shinpanIcon from './assets/icons/shinpan_allocation.png';
 import scoreIcon from './assets/icons/score_input.png';
 import createIcon from './assets/icons/create_tournament.png';
 import tournamentIcon from './assets/icons/select_tournament.png';
+import shiaijoPlanIcon from './assets/icons/shiaijo_plan.svg';
+import fightPlanIcon from './assets/icons/fight_plan.svg';
+import resultsIcon from './assets/icons/results.svg';
+import paperIcon from './assets/icons/paper_backup.svg';
+import publicIcon from './assets/icons/public_page.svg';
 import React, { useEffect, useState } from 'react';
 import packageJson from '../package.json';
 import CreateTournament from './pages/CreateTournament';
@@ -105,6 +109,8 @@ function Dashboard({ pinOnly = false }) {
   const handleNavigation = (path) => {
     if (path === '/create-tournament') {
       navigate(path);
+    } else if (path === 'public' && selectedTournament) {
+      navigate(`/t/${selectedTournament.id}`);
     } else if (selectedTournament) {
       navigate(`/tournament/${selectedTournament.id}/${path}`);
     } else {
@@ -121,7 +127,7 @@ function Dashboard({ pinOnly = false }) {
 
     // If user had clicked an icon before, go to that path
     if (pendingPath) {
-      navigate(`/tournament/${tournament.id}/${pendingPath}`);
+      navigate(pendingPath === 'public' ? `/t/${tournament.id}` : `/tournament/${tournament.id}/${pendingPath}`);
       setPendingPath(''); // reset
     }
   };
@@ -163,40 +169,24 @@ function Dashboard({ pinOnly = false }) {
           )}
         </div>
 
-        {/* rest of the icons */}
-        <div className="icon-row">
-          <div className="icon-label" onClick={() => handleNavigation('edit')}>
-            <img src={editTournamentIcon} alt="Edit tournament" />
-            <p>Edit tournament</p>
+        {/* the tournament's pages in the order they are used (owner, 2026-11-24):
+            setup → on the day → after. Shinpan allocation comes back once it is built. */}
+        {[
+          [['edit', editTournamentIcon, 'Edit tournament'], ['shiaijo', shiaijoPlanIcon, 'Shiaijo plan'],
+            ['brackets', bracketIcon, 'Edit brackets'], ['drawings', drawingsIcon, 'Drawings'], ['registration', registrationIcon, 'Registration']],
+          [['fights', fightPlanIcon, 'Fight plan'], ['paper', paperIcon, 'Paper backup'], ['manage', manageIcon, 'Manage (Start) tournament'],
+            ['score', scoreIcon, 'Scorekeeping manager']],
+          [['results', resultsIcon, 'Results'], ['public', publicIcon, 'Public page']],
+        ].map((row, i) => (
+          <div className="icon-row" key={i}>
+            {row.map(([path, icon, label]) => (
+              <div key={path} className="icon-label" onClick={() => handleNavigation(path)}>
+                <img src={icon} alt={label} />
+                <p>{label}</p>
+              </div>
+            ))}
           </div>
-          <div className="icon-label" onClick={() => handleNavigation('brackets')}>
-            <img src={bracketIcon} alt="Bracket Editor" />
-            <p>Edit brackets</p>
-          </div>
-          <div className="icon-label" onClick={() => handleNavigation('drawings')}>
-            <img src={drawingsIcon} alt="Drawings" />
-            <p>Drawings</p>
-          </div>
-          <div className="icon-label" onClick={() => handleNavigation('registration')}>
-            <img src={registrationIcon} alt="Registration" />
-            <p>Registration</p>
-          </div>
-          <div className="icon-label" onClick={() => handleNavigation('manage')}>
-            <img src={manageIcon} alt="Manage Tournament" />
-            <p>Manage (Start) tournament</p>
-          </div>
-        </div>
-
-        <div className="icon-row">
-          <div className="icon-label" onClick={() => handleNavigation('shinpan')}>
-            <img src={shinpanIcon} alt="Shinpan Allocation" />
-            <p>Allocate shinpans</p>
-          </div>
-          <div className="icon-label" onClick={() => handleNavigation('score')}>
-            <img src={scoreIcon} alt="Score Input" />
-            <p>Scoretable</p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -309,7 +299,7 @@ function AppContent() {
   <div className="nav-links">
     {!isAuthLoading && (session ? (
       <>
-        {tableOnly ? <Link to={tableHome}>Scoretable</Link> : (
+        {tableOnly ? <Link to={tableHome}>Table</Link> : (
           <>
             <Link to="/dashboard">Dashboard</Link>
             {!pinOnly && <Link to="/profile">Profile</Link>}

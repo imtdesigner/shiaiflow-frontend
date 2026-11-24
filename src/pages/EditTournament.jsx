@@ -197,7 +197,7 @@ function EditTournament() {
       <div id="g-pin" className="tp-card">
         <h3>PIN for editors and tables</h3>
         <p className="tp-muted" style={{ marginTop: 0 }}>
-          Before the start the PIN lets editors change the tournament; after the start it opens the scoretables and Manage.
+          Before the start the PIN lets editors change the tournament; after the start it opens the tables (Scorekeeping manager + Court screen) and Manage.
           Share <strong>{joinUrl}</strong>.
         </p>
         <div className="tp-actions">
