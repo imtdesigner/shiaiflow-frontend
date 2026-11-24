@@ -12,6 +12,7 @@ import SignupSetup from '../components/SignupSetup';
 import CategoriesEditor from '../components/CategoriesEditor';
 import TournamentStatus from '../components/TournamentStatus';
 import ShiaijoPlan from './ShiaijoPlan';
+import TournamentPicker from '../components/TournamentPicker';
 
 const randomPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -138,7 +139,7 @@ function EditTournament() {
     <div className="tp-page tp-page-wide">
       <BackToDashboard />
       <h2>Edit tournament</h2>
-      <p className="tp-subtitle">{tournament.name}</p>
+      <TournamentPicker tournamentId={tournamentId} name={tournament.name} />
       <p className="tp-muted guide-note">The setup guide on the right (at the bottom on small screens) shows the next step — click it to jump there.</p>
       <Message type={msg.type || 'info'}>{msg.text}</Message>
 

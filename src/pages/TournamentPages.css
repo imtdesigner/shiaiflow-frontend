@@ -589,3 +589,11 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .td-court { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.8rem; border: 1px solid #e3ded3; border-radius: 10px; background: #fff; }
 .td-court h4 { margin: 0 0 0.2rem; }
 .td-court .tp-btn { text-align: center; }
+
+/* tournament selector on a tournament page (as on the dashboard), left-aligned under the title */
+.tournament-dropdown.tpick { align-items: flex-start; margin: 0 0 1rem; }
+.tpick-btn { display: flex; align-items: center; gap: 0.6rem; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.tpick-btn .selected-tournament { margin: 0; font-size: 1.1rem; }
+.tpick-caret { color: #7c1d36; }
+.tpick .dropdown-list { width: 320px; }
+.tpick .dropdown-list li.tpick-on { font-weight: 700; color: #7c1d36; }
