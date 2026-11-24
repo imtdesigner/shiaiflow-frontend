@@ -5,7 +5,7 @@ import {
 } from '../components/TournamentShell';
 import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
-  correctFight, getPin, keepConflicts, listRunFights, myRole, replayConflicts, resetKoFighters, resetPoolOrder,
+  correctFight, editResult, getPin, keepConflicts, listRunFights, myRole, replayConflicts, resetKoFighters, resetPoolOrder,
   setKoFighters, setPin, setPoolOrder, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
@@ -14,7 +14,7 @@ import HallSetup from '../components/HallSetup';
 import TableDevice, { COURT_SCREEN, SCOREKEEPING, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
-  CorrectionLog, KoConflicts, KoFights, PoolOrderDialog, koConflicts,
+  CorrectionLog, EditResultDialog, KoConflicts, KoFights, PoolOrderDialog, koConflicts,
 } from '../components/ManagerCorrections';
 import { koCheck, poolPlacesMap } from '../lib/tournament/corrections.js';
 import { fightMarks } from '../lib/tournament/poolView.js';
@@ -40,6 +40,7 @@ function Manage() {
   const [role, setRole] = useState(null);
   const [version, setVersion] = useState(0); // bumps after a correction: pools and the log refetch
   const [ordering, setOrdering] = useState(null); // { category, pool, order }
+  const [editing, setEditing] = useState(null); // { category, fight }
 
   useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
 
@@ -229,6 +230,7 @@ function Manage() {
                     fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
                     canCorrect={courtFree}
                     onOrder={(pool, order) => setOrdering({ category: c, pool, order })}
+                    onEdit={(f) => setEditing({ category: c, fight: f })}
                     onCorrect={(f) => run(() => correctFight(f, c), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)} />
                 ))}
               </div>
@@ -240,10 +242,20 @@ function Manage() {
       <KoFights states={koStates} entries={entries} nameOf={entryNameById} busy={busy} canCorrect={courtFree}
         marksOf={(f) => fightMarks(byId[f.category_id], f, koMarks.events, koMarks.bouts)}
         onCorrect={(f, c) => run(() => correctFight(f, c), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)}
+        onEdit={(f, c) => setEditing({ category: c, fight: f })}
         onSetFighters={(c, f, red, white, reason) => run(() => setKoFighters(c, f, red, white, reason), `${f.label}: fighters changed.`)}
         onResetFighters={(c, f) => run(() => resetKoFighters(c, f), `${f.label}: back to the bracket.`)} />
 
       <CorrectionLog tournamentId={tournamentId} categories={categories} nameOf={entryNameById} version={version} />
+
+      {editing && (
+        <EditResultDialog category={editing.category} fight={editing.fight} nameOf={entryNameById} busy={busy} onClose={() => setEditing(null)}
+          onSave={(bout, res) => run(async () => {
+            const out = await editResult(editing.category, editing.fight, bout, res);
+            setEditing(null);
+            if (out?.message) setMsg({ type: 'info', text: out.message });
+          }, `${editing.fight.label}: result saved.`)} />
+      )}
 
       {ordering && (
         <PoolOrderDialog category={ordering.category} pool={ordering.pool} order={ordering.order} nameOf={entryNameById} busy={busy}

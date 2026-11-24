@@ -623,3 +623,10 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .ps-manual { color: #7c1d36; font-weight: 600; font-size: 0.85rem; margin: 0.3rem 0; }
 .mc-log summary { cursor: pointer; }
 .mc-ko-table td:first-child, .mc-ko-table td:nth-child(2) { white-space: nowrap; }
+.mc-side { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0; }
+.mc-add { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.mc-events { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.6rem 0; padding: 0.5rem; background: #faf7f0; border-radius: 8px; min-height: 2rem; }
+.mc-ev { border: 1px solid #ccc; border-radius: 6px; padding: 0.2rem 0.5rem; cursor: pointer; background: #fff; font: inherit; font-size: 0.9rem; }
+.mc-ev.red { border-color: #c0392b; color: #a3121f; }
+.mc-ev.white { border-color: #888; color: #333; }
+.mc-ev:hover { text-decoration: line-through; }

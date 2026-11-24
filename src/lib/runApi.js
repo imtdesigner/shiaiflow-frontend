@@ -291,6 +291,26 @@ export async function correctFight(fight, category) {
 }
 
 /**
+ * Result of a finished fight edited directly by the manager (no table needed):
+ * the events are replaced, the winner set from them (or hantei / fusen), then
+ * the pool is ranked again / the KO checked — conflicts show in Manage.
+ */
+export async function editResult(category, fight, { events, decision = null, fusen = null }, result) {
+  const old = unwrap(await supabase.from('score_events').select('side, type').eq('match_id', fight.id).order('id'));
+  const winnerId = result.winner === 'red' ? fight.red_entry_id : result.winner === 'white' ? fight.white_entry_id : null;
+  unwrap(await supabase.from('score_events').delete().eq('match_id', fight.id));
+  if (events.length) unwrap(await supabase.from('score_events').insert(events.map((e) => ({ match_id: fight.id, side: e.side, type: e.type }))));
+  unwrap(await supabase.from('matches').update({
+    decision, fusen, winner_entry_id: winnerId, is_hikiwake: !winnerId, kept_as_fought: false,
+    finished_at: new Date().toISOString(), // screens refetch the points of a fight when this changes
+  }).eq('id', fight.id));
+  await logCorrection(category, 'edit', { match_id: fight.id, note: fight.label,
+    before: { events: old, decision: fight.decision, fusen: fight.fusen, winner: fight.winner_entry_id },
+    after: { events, decision, fusen, winner: winnerId } });
+  return afterFight({ ...fight, status: 'finished', winner_entry_id: winnerId, decision, fusen }, category);
+}
+
+/**
  * Fight again the KO fights in conflict: their result is wiped (kept in the
  * log), they get the right fighters and go first on their shiaijo; what
  * depends on them waits. A running fight must be finished first.

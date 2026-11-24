@@ -3,6 +3,8 @@ import { koCheck, poolPlacesMap } from '../lib/tournament/corrections.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { koRoundLabel } from '../lib/tournament/run.js';
 import { listCorrections } from '../lib/runApi';
+import { listEventsFor } from '../lib/api';
+import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 
 /**
  * Manager corrections in Manage (owner, 2026-11-24): KO conflicts after a
@@ -58,7 +60,7 @@ export function KoConflicts({ states, nameOf, busy, onReplay, onKeep }) {
 }
 
 /** KO fights per category with the manager's tools. */
-export function KoFights({ states, entries, nameOf, busy, canCorrect, onCorrect, onSetFighters, onResetFighters, marksOf }) {
+export function KoFights({ states, entries, nameOf, busy, canCorrect, onCorrect, onEdit, onSetFighters, onResetFighters, marksOf }) {
   const [editing, setEditing] = useState(null); // { fight, red, white, reason }
   const shown = states.filter((s) => s.ko.length);
   if (!shown.length) return null;
@@ -105,6 +107,10 @@ export function KoFights({ states, entries, nameOf, busy, canCorrect, onCorrect,
                           <button type="button" className="tp-btn secondary small" disabled={busy || !canCorrect(f)}
                             title={canCorrect(f) ? 'Reopen this fight on its shiaijo' : 'Another fight is running on this shiaijo'}
                             onClick={() => onCorrect(f, category)}>Correct</button>
+                        )}
+                        {f.status === 'finished' && category.kind !== 'team' && (
+                          <button type="button" className="tp-btn secondary small" disabled={busy} title="Edit the points here, without the table"
+                            onClick={() => onEdit(f, category)}>Edit result</button>
                         )}
                       </td>
                     </tr>
@@ -199,7 +205,7 @@ export function PoolOrderDialog({ category, pool, order: start, nameOf, preview,
 }
 
 const KIND = {
-  reopen: 'Fight reopened', replay: 'Fought again', keep: 'Kept as fought', order: 'Pool order by hand',
+  reopen: 'Fight reopened', edit: 'Result edited', replay: 'Fought again', keep: 'Kept as fought', order: 'Pool order by hand',
   order_reset: 'Pool order back to computed', swap: 'Fighters changed', swap_reset: 'Fighters back to the bracket',
 };
 
@@ -223,6 +229,7 @@ export function CorrectionLog({ tournamentId, categories, nameOf, version }) {
               <td>{KIND[r.kind] ?? r.kind}</td>
               <td>
                 {r.note}
+                {r.kind === 'edit' && <span className="tp-muted"> · {resultText(r.before)} → {resultText(r.after)}</span>}
                 {(r.kind === 'swap' || r.kind === 'replay' || r.kind === 'keep') && r.after && <span className="tp-muted"> · {pair(r.before)} → {pair(r.after)}</span>}
                 {r.kind === 'order' && <span className="tp-muted"> · {(r.after?.order ?? []).map(nameOf).join(', ')}</span>}
               </td>
@@ -231,5 +238,77 @@ export function CorrectionLog({ tournamentId, categories, nameOf, version }) {
         </tbody>
       </table>
     </details>
+  );
+}
+
+const POINTS = ['M', 'K', 'D', 'T'];
+const sideText = (events, side) => (events ?? []).filter((e) => e.side === side && e.type !== 'hansoku').map((e) => e.type).join('') || '–';
+const resultText = (x) => (x ? (x.fusen ? `fusen ${x.fusen}` : x.decision ? `hantei ${x.decision}` : `${sideText(x.events, 'red')} : ${sideText(x.events, 'white')}`) : '');
+
+/**
+ * Result of a finished fight edited directly (owner, 2026-11-24): the points in
+ * order (the first one is circled), hansoku, or hantei / fusen; the winner
+ * follows from them. Team matches go through Correct (bouts at the table).
+ */
+export function EditResultDialog({ category, fight, nameOf, busy, onSave, onClose }) {
+  const [events, setEvents] = useState(null);
+  const [special, setSpecial] = useState(fight.fusen ? `fusen-${fight.fusen}` : fight.decision ? `hantei-${fight.decision}` : 'points');
+  useEffect(() => {
+    listEventsFor([fight.id]).then((ev) => setEvents(ev.filter((e) => !e.bout_id).map((e) => ({ side: e.side, type: e.type })))).catch(() => setEvents([]));
+  }, [fight.id]);
+  if (!events) return null;
+  const [kind, side] = special.split('-');
+  const decision = kind === 'hantei' ? side : null;
+  const fusen = kind === 'fusen' ? side : null;
+  const res = boutResult({ events, decision, fusen }, scoringOptions(category));
+  const mustWin = fight.phase !== 'pool';
+  const add = (s, type) => setEvents([...events, { side: s, type }]);
+  const label = (e) => (e.type === 'hansoku' ? '▲' : e.type);
+  const names = { red: nameOf(fight.red_entry_id), white: nameOf(fight.white_entry_id) };
+  return (
+    <div className="st-popup-back" onClick={onClose}>
+      <div className="st-popup mc-order mc-result-edit" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="st-popup-close" onClick={onClose} title="Close">✕</button>
+        <h3>{fight.label}: edit the result</h3>
+        <p className="tp-muted" style={{ marginTop: 0 }}>Points in the order they were scored (the first is circled on the screens). Click a point to remove it.</p>
+        {['red', 'white'].map((s) => (
+          <div key={s} className="mc-side">
+            <div className={s === 'red' ? 'aka' : 'shiro'}><strong>{names[s]}</strong></div>
+            <div className="mc-add">
+              {POINTS.map((p) => <button key={p} type="button" className="tp-btn secondary small" onClick={() => add(s, p)}>+ {p}</button>)}
+              <button type="button" className="tp-btn secondary small" onClick={() => add(s, 'hansoku')}>+ ▲ hansoku</button>
+            </div>
+          </div>
+        ))}
+        <div className="mc-events">
+          {events.length === 0 && <span className="tp-muted">No points.</span>}
+          {events.map((e, i) => (
+            <button key={i} type="button" className={`mc-ev ${e.side}`} title="Remove" onClick={() => setEvents(events.filter((_, j) => j !== i))}>
+              {i + 1}. {e.side === 'red' ? 'Red' : 'White'} {label(e)} ✕
+            </button>
+          ))}
+        </div>
+        <div className="fr-row">
+          <span className="fr-row-label">Decided by</span>
+          <select value={special} onChange={(e) => setSpecial(e.target.value)}>
+            <option value="points">Points</option>
+            <option value="hantei-red">Hantei — red</option>
+            <option value="hantei-white">Hantei — white</option>
+            <option value="fusen-red">Fusen-gachi — red</option>
+            <option value="fusen-white">Fusen-gachi — white</option>
+          </select>
+        </div>
+        <p className="mc-preview">
+          <strong>Result:</strong>{' '}
+          {res.winner ? `${names[res.winner]} wins ${res.winner === 'red' ? `${res.redIppons}–${res.whiteIppons}` : `${res.whiteIppons}–${res.redIppons}`}${res.by ? ` (${res.by})` : ''}` : 'hikiwake (draw)'}
+          {fight.winner_entry_id !== (res.winner ? fight[`${res.winner}_entry_id`] : null) && <span className="mc-warn"> — the winner changes; the pool / KO follow (later fights already fought: you decide in Manage).</span>}
+        </p>
+        {mustWin && !res.winner && <p className="tp-message error">A {fight.phase === 'ko' ? 'KO fight' : 'ipponshobu'} needs a winner — add the deciding point or a hantei.</p>}
+        <div className="tp-actions">
+          <button type="button" className="tp-btn" disabled={busy || (mustWin && !res.winner)} onClick={() => onSave({ events, decision, fusen }, res)}>Save result</button>
+          <button type="button" className="tp-btn secondary" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import { fightMarks, poolStandings } from '../lib/tournament/poolView.js';
  * Corrections go through the fights (manager reopens a fight), never here.
  */
 export default function PoolStandings({
-  category, pool, members, fights, events, bouts, nameOf, title, onCorrect, canCorrect, onOrder,
+  category, pool, members, fights, events, bouts, nameOf, title, onCorrect, canCorrect, onOrder, onEdit,
 }) {
   const poolFights = fights.filter((f) => f.pool_id === pool.id && (f.phase === 'pool' || f.phase === 'ipponshobu'));
   const computed = poolStandings(category, members, poolFights, events, bouts);
@@ -61,6 +61,9 @@ export default function PoolStandings({
                   <button type="button" className="tp-btn secondary small" disabled={!canCorrect?.(f)}
                     title={canCorrect?.(f) ? 'Reopen this fight on its shiaijo' : 'Another fight is running on this shiaijo'}
                     onClick={() => onCorrect(f)}>Correct</button>
+                  {onEdit && category?.kind !== 'team' && (
+                    <button type="button" className="tp-btn secondary small" title="Edit the points here, without the table" onClick={() => onEdit(f)}>Edit result</button>
+                  )}
                 </li>
               );
             })}
