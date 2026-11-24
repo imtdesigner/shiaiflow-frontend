@@ -3,15 +3,21 @@ import { Link } from 'react-router-dom';
 import {
   BackToDashboard, Message, courtGridStyle, entryName, useTournament,
 } from '../components/TournamentShell';
-import { listEntriesFor } from '../lib/api';
+import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
-  getPin, listRunFights, myRole, reopenFight, setPin, subscribeFights,
+  correctFight, getPin, keepConflicts, listRunFights, myRole, replayConflicts, resetKoFighters, resetPoolOrder,
+  setKoFighters, setPin, setPoolOrder, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight } from '../lib/tournament/run.js';
 import HallSetup from '../components/HallSetup';
 import TableDevice, { COURT_SCREEN, SCOREKEEPING, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
+import {
+  CorrectionLog, KoConflicts, KoFights, PoolOrderDialog, koConflicts,
+} from '../components/ManagerCorrections';
+import { koCheck, poolPlacesMap } from '../lib/tournament/corrections.js';
+import { fightMarks } from '../lib/tournament/poolView.js';
 import StartTournament from '../components/StartTournament';
 import './TournamentPages.css';
 
@@ -32,6 +38,8 @@ function Manage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [role, setRole] = useState(null);
+  const [version, setVersion] = useState(0); // bumps after a correction: pools and the log refetch
+  const [ordering, setOrdering] = useState(null); // { category, pool, order }
 
   useEffect(() => { myRole(tournamentId).then(setRole).catch(() => {}); }, [tournamentId]);
 
@@ -57,7 +65,7 @@ function Manage() {
 
   const run = async (fn, ok) => {
     setBusy(true); setMsg({ type: '', text: '' });
-    try { await fn(); await reloadTournament(); await reload(); if (ok) setMsg({ type: 'success', text: ok }); }
+    try { await fn(); await reloadTournament(); await reload(); setVersion((v) => v + 1); if (ok) setMsg({ type: 'success', text: ok }); }
     catch (e) { setMsg({ type: 'error', text: e.message }); }
     finally { setBusy(false); }
   };
@@ -65,8 +73,32 @@ function Manage() {
   // categories whose pools have started: their standings
   const poolCats = drawn.filter((c) => c.pool_size !== 1
     && fights.some((f) => f.category_id === c.id && f.phase === 'pool' && f.status !== 'scheduled'));
-  const poolData = usePoolData(poolCats.map((c) => c.id), fights);
+  const poolData = usePoolData(poolCats.map((c) => c.id), fights, version);
   const entryNameById = (id) => { const e = entries.find((x) => x.id === id); return e ? entryName(e) : '—'; };
+
+  // manager corrections (owner, 2026-11-24): KO checked against the pool places + KO results
+  const koCats = drawn.filter((c) => fights.some((f) => f.category_id === c.id && f.phase === 'ko'));
+  const koPools = usePoolData(koCats.filter((c) => c.pool_size !== 1).map((c) => c.id), fights, version).pools;
+  const koStates = koConflicts(koCats, fights, koPools);
+  const koDoneKey = fights.filter((f) => f.phase === 'ko' && f.status === 'finished').map((f) => `${f.id}:${f.finished_at}`).join();
+  const [koMarks, setKoMarks] = useState({ events: [], bouts: [] });
+  useEffect(() => {
+    const ids = koDoneKey ? koDoneKey.split(',').map((k) => k.split(':')[0]) : [];
+    if (!ids.length) { setKoMarks({ events: [], bouts: [] }); return; }
+    Promise.all([listEventsFor(ids), listBouts(ids)]).then(([events, bouts]) => setKoMarks({ events, bouts })).catch(() => {});
+  }, [koDoneKey]);
+  const courtFree = (f) => !busy && !fights.some((x) => x.status === 'running' && x.shiaijo === f.shiaijo);
+  const orderPreview = (category, pool, order) => {
+    const ko = fights.filter((f) => f.category_id === category.id && f.phase === 'ko');
+    const others = koPools.filter((p) => p.category_id === category.id && p.id !== pool.id);
+    const mine = { ...pool, pool_entries: order.map((entry_id, i) => ({ entry_id, final_place: i + 1 })) };
+    const { auto, conflicts } = koCheck(ko, poolPlacesMap([...others, mine], category.advancing));
+    const label = (id) => ko.find((f) => f.id === id)?.label;
+    return {
+      changes: auto.map((u) => `${label(u.id)}: ${u.red_entry_id ? entryNameById(u.red_entry_id) : '—'} – ${u.white_entry_id ? entryNameById(u.white_entry_id) : '—'}`),
+      conflicts: conflicts.map((c) => c.fight.label),
+    };
+  };
 
   const name = (f, side) => {
     const id = side === 'red' ? f.red_entry_id : f.white_entry_id;
@@ -176,12 +208,17 @@ function Manage() {
         })}
       </div>
 
+      <KoConflicts states={koStates} nameOf={entryNameById} busy={busy}
+        onReplay={(c, list) => run(() => replayConflicts(c, list), `${list.map((x) => x.fight.label).join(', ')}: to be fought again — first on ${list.length === 1 ? 'its shiaijo' : 'their shiaijos'}.`)}
+        onKeep={(c, list) => run(() => keepConflicts(c, list), `${list.map((x) => x.fight.label).join(', ')}: kept as fought.`)} />
+
       {poolCats.length > 0 && (
         <div className="tp-card" id="g-standings">
           <h3>Pool standings</h3>
           <p className="tp-muted" style={{ marginTop: 0 }}>
             Live, by each category's ranking criteria. To change a result, open Fights under the pool and press Correct — the fight is
-            reopened on its shiaijo and the table scores it again; the standings and the KO follow.
+            reopened on its shiaijo and the table scores it again; the standings and the KO follow. If the fights cannot give the right
+            order, "Change order…" sets the places by hand.
           </p>
           {poolCats.map((c) => (
             <div key={c.id}>
@@ -190,13 +227,30 @@ function Manage() {
                 {poolData.pools.filter((p) => p.category_id === c.id).map((p) => (
                   <PoolStandings key={p.id} category={c} pool={p} members={poolMembers(p)}
                     fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
-                    canCorrect={(f) => !busy && !fights.some((x) => x.status === 'running' && x.shiaijo === f.shiaijo)}
-                    onCorrect={(f) => run(() => reopenFight(f), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)} />
+                    canCorrect={courtFree}
+                    onOrder={(pool, order) => setOrdering({ category: c, pool, order })}
+                    onCorrect={(f) => run(() => correctFight(f, c), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)} />
                 ))}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      <KoFights states={koStates} entries={entries} nameOf={entryNameById} busy={busy} canCorrect={courtFree}
+        marksOf={(f) => fightMarks(byId[f.category_id], f, koMarks.events, koMarks.bouts)}
+        onCorrect={(f, c) => run(() => correctFight(f, c), `${f.label} reopened on shiaijo ${f.shiaijo} — score it again in the Scorekeeping manager.`)}
+        onSetFighters={(c, f, red, white, reason) => run(() => setKoFighters(c, f, red, white, reason), `${f.label}: fighters changed.`)}
+        onResetFighters={(c, f) => run(() => resetKoFighters(c, f), `${f.label}: back to the bracket.`)} />
+
+      <CorrectionLog tournamentId={tournamentId} categories={categories} nameOf={entryNameById} version={version} />
+
+      {ordering && (
+        <PoolOrderDialog category={ordering.category} pool={ordering.pool} order={ordering.order} nameOf={entryNameById} busy={busy}
+          preview={(order) => orderPreview(ordering.category, ordering.pool, order)}
+          onSave={(order, reason) => run(async () => { await setPoolOrder(ordering.category, ordering.pool, order, reason); setOrdering(null); }, `Pool ${ordering.pool.number}: order saved.`)}
+          onReset={() => run(async () => { await resetPoolOrder(ordering.category, ordering.pool); setOrdering(null); }, `Pool ${ordering.pool.number}: back to the computed order.`)}
+          onClose={() => setOrdering(null)} />
       )}
     </div>
   );

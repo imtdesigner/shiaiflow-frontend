@@ -9,10 +9,15 @@ import { fightMarks, poolStandings } from '../lib/tournament/poolView.js';
  * Corrections go through the fights (manager reopens a fight), never here.
  */
 export default function PoolStandings({
-  category, pool, members, fights, events, bouts, nameOf, title, onCorrect, canCorrect,
+  category, pool, members, fights, events, bouts, nameOf, title, onCorrect, canCorrect, onOrder,
 }) {
   const poolFights = fights.filter((f) => f.pool_id === pool.id && (f.phase === 'pool' || f.phase === 'ipponshobu'));
-  const s = poolStandings(category, members, poolFights, events, bouts);
+  const computed = poolStandings(category, members, poolFights, events, bouts);
+  // a pool ordered by the manager shows the manager's places (owner, 2026-11-24)
+  const place = new Map((pool.pool_entries ?? []).map((pe) => [pe.entry_id, pe.final_place]));
+  const s = pool.manual_order
+    ? { ...computed, status: 'decided', table: [...computed.table].sort((a, b) => (place.get(a.id) ?? 99) - (place.get(b.id) ?? 99)) }
+    : computed;
   const decided = s.status === 'decided';
   const advancing = category?.advancing ?? 0;
   return (
@@ -35,6 +40,10 @@ export default function PoolStandings({
           ))}
         </tbody>
       </table>
+      {pool.manual_order && <p className="ps-manual">Order set by the manager{pool.manual_reason ? ` — ${pool.manual_reason}` : ''}.</p>}
+      {onOrder && (decided || computed.status !== 'incomplete') && (
+        <button type="button" className="tp-btn secondary small" onClick={() => onOrder(pool, s.table.map((r) => r.id))}>Change order…</button>
+      )}
       {s.status === 'ipponshobu' && <p className="tp-muted">Tie for place {s.ipponshobu.place} — ipponshobu decides.</p>}
       {s.status === 'replay' && <p className="tp-muted">Two ties at once — the pool is fought again.</p>}
       {decided && advancing > 0 && <p className="tp-muted">Bold: through to the KO.</p>}
@@ -67,13 +76,15 @@ export default function PoolStandings({
  * categories (Manage, scoretable). Refetched when a pool fight finishes or is
  * reopened — the standings count finished fights only.
  */
-export function usePoolData(categoryIds, fights) {
+export function usePoolData(categoryIds, fights, version = 0) {
   const catKey = categoryIds.join();
   const [pools, setPools] = useState([]);
   const [done, setDone] = useState({ events: [], bouts: [] });
+  // places change when a pool finishes (or is ordered by hand): refetch then too
+  const placeKey = fights.filter((f) => f.phase === 'pool' || f.phase === 'ipponshobu').map((f) => f.status).join();
   useEffect(() => {
     listPools(catKey ? catKey.split(',') : []).then(setPools).catch(() => setPools([]));
-  }, [catKey]);
+  }, [catKey, version, placeKey]);
   const finishedKey = fights
     .filter((f) => f.status === 'finished' && (f.phase === 'pool' || f.phase === 'ipponshobu'))
     .map((f) => `${f.id}:${f.finished_at ?? ''}`).sort().join();
