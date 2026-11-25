@@ -9,9 +9,11 @@ import { fightMarks, poolStandings } from '../lib/tournament/poolView.js';
  * Corrections go through the fights (manager reopens a fight), never here.
  */
 export default function PoolStandings({
-  category, pool, members, fights, events, bouts, nameOf, title, onCorrect, canCorrect, onOrder, onEdit,
+  category, pool, members, fights, events, bouts, known, nameOf, title, onCorrect, canCorrect, onOrder, onEdit,
 }) {
-  const poolFights = fights.filter((f) => f.pool_id === pool.id && (f.phase === 'pool' || f.phase === 'ipponshobu'));
+  // known (usePoolData): a finished fight counts only once its points are loaded
+  const poolFights = fights.filter((f) => f.pool_id === pool.id && (f.phase === 'pool' || f.phase === 'ipponshobu'))
+    .map((f) => (known && f.status === 'finished' && !known.has(f.id) ? { ...f, status: 'running' } : f));
   const computed = poolStandings(category, members, poolFights, events, bouts);
   // a pool ordered by the manager shows the manager's places (owner, 2026-11-24)
   const place = new Map((pool.pool_entries ?? []).map((pe) => [pe.entry_id, pe.final_place]));
@@ -82,7 +84,7 @@ export default function PoolStandings({
 export function usePoolData(categoryIds, fights, version = 0) {
   const catKey = categoryIds.join();
   const [pools, setPools] = useState([]);
-  const [done, setDone] = useState({ events: [], bouts: [] });
+  const [done, setDone] = useState({ key: null, events: [], bouts: [] });
   // places change when a pool finishes (or is ordered by hand): refetch then too
   const placeKey = fights.filter((f) => f.phase === 'pool' || f.phase === 'ipponshobu').map((f) => f.status).join();
   useEffect(() => {
@@ -93,12 +95,15 @@ export function usePoolData(categoryIds, fights, version = 0) {
     .map((f) => `${f.id}:${f.finished_at ?? ''}`).sort().join();
   useEffect(() => {
     const ids = finishedKey ? finishedKey.split(',').map((k) => k.split(':')[0]) : [];
-    if (!ids.length) { setDone({ events: [], bouts: [] }); return; }
+    if (!ids.length) { setDone({ key: finishedKey, events: [], bouts: [] }); return; }
     Promise.all([listEventsFor(ids), listBouts(ids)])
-      .then(([events, bouts]) => setDone({ events, bouts }))
+      .then(([events, bouts]) => setDone({ key: finishedKey, events, bouts }))
       .catch(() => {});
   }, [finishedKey]);
-  return { pools, ...done };
+  // fights whose points are loaded: a finished fight without its points would
+  // read as a draw ("two ties at once") until they arrive
+  const known = new Set(done.key ? done.key.split(',').map((k) => k.split(':')[0]) : []);
+  return { pools, events: done.events, bouts: done.bouts, known };
 }
 
 /** Members of a pool in pool order. */

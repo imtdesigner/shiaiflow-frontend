@@ -599,7 +599,7 @@ function ScoreInput() {
           <div className="st-popup" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Pool standings">
             <button type="button" className="st-popup-close" onClick={() => setShownPool(null)} title="Close">✕</button>
             <PoolStandings category={byId[shownPool.category_id]} pool={shownPool} members={poolMembers(shownPool)}
-              fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
+              fights={fights} events={poolData.events} bouts={poolData.bouts} known={poolData.known} nameOf={entryNameById}
               title={`${byId[shownPool.category_id]?.name} · Pool ${shownPool.number}`} />
           </div>
         </div>

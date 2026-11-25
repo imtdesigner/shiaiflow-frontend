@@ -62,7 +62,8 @@ function Manage() {
   }, [drawn, tournamentId]);
 
   useEffect(() => { reload(); }, [reload]);
-  useEffect(() => subscribeFights(tournamentId, reload, 500), [tournamentId, reload]);
+  // a change at a table may also change pool places (written after the fight): standings / KO check refetch them too
+  useEffect(() => subscribeFights(tournamentId, () => { reload(); setVersion((v) => v + 1); }, 500), [tournamentId, reload]);
 
   const run = async (fn, ok) => {
     setBusy(true); setMsg({ type: '', text: '' });
@@ -227,7 +228,7 @@ function Manage() {
               <div className="pool-standings-grid">
                 {poolData.pools.filter((p) => p.category_id === c.id).map((p) => (
                   <PoolStandings key={p.id} category={c} pool={p} members={poolMembers(p)}
-                    fights={fights} events={poolData.events} bouts={poolData.bouts} nameOf={entryNameById}
+                    fights={fights} events={poolData.events} bouts={poolData.bouts} known={poolData.known} nameOf={entryNameById}
                     canCorrect={courtFree}
                     onOrder={(pool, order) => setOrdering({ category: c, pool, order })}
                     onEdit={(f) => setEditing({ category: c, fight: f })}
