@@ -19,6 +19,7 @@ export default function HallSetup({ tournamentId, courts }) {
     <ul className="hall-list">
       <li><strong>Internet:</strong> a phone hotspot or a 4G / 5G router — not the venue Wi-Fi. Keep the hotspot phone on a charger.</li>
       <li><strong>Per shiaijo ({courts}):</strong> a laptop (or tablet) with the Scorekeeping manager, and a monitor / TV next to the shiaijo with the Court screen (monitor) in a second window, full screen (F11).</li>
+      <li><strong>Tournament manager:</strong> a laptop is recommended (not a phone) — Manage for corrections, the pool standings and the KO brackets, Registration and Results need a wide screen.</li>
       <li><strong>Laptops on power</strong>, sleep and screen lock off; browser zoom so the buttons are big.</li>
       <li><strong>If the connection drops</strong>, the table keeps working and sends the clicks later. Keep the <strong>paper backup</strong> printed at each table for a dead device.</li>
       <li><strong>Before the first fight:</strong> each table joins with the PIN and picks its shiaijo; open each display and check sides (⇄).</li>
