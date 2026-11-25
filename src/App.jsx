@@ -17,7 +17,6 @@ import resultsIcon from './assets/icons/results.svg';
 import paperIcon from './assets/icons/paper_backup.svg';
 import publicIcon from './assets/icons/public_page.svg';
 import React, { useEffect, useState } from 'react';
-import packageJson from '../package.json';
 import CreateTournament from './pages/CreateTournament';
 import EditTournament from './pages/EditTournament';
 import SetupWizard from './pages/SetupWizard';
@@ -77,7 +76,6 @@ function Home () {
       <TournamentList tournaments={tournaments} query={query} emptyText="No active tournaments right now." />
       <p><Link to="/tournaments">Past tournaments →</Link></p>
       <p className="powered">Powered by Claude</p>
-      <p className="app-version">Version {packageJson.version}</p>
     </div>
   );
 }
@@ -329,6 +327,7 @@ function AppContent() {
   </div>
 </nav>}
       {guided && <GuidePanel />}
+      {!display && <div className="build-version" title="ShiaiFlow version · build date · commit">v{__APP_VERSION__}</div>}
       {tableRedirect ? <Navigate to={tableRedirect} replace /> : waitRoles ? <div className="page">Loading...</div> : (
       <Routes>
         <Route path="/" element={publicOnly(<Home />)} />
