@@ -1,0 +1,19 @@
+# Keeps the Supabase free-tier project awake (it pauses after ~1 week without
+# requests): reads one row every 2 days. The publishable key is public by design
+# (it is in the app bundle); RLS decides what it can read.
+name: Supabase keep-alive
+on:
+  schedule:
+    - cron: '17 6 */2 * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read one row
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://baxyawzwfpkrylprztad.supabase.co/rest/v1/tournaments?select=id&limit=1" \
+            -H "apikey: sb_publishable_In4Ew1ABsREqCRLYPl2fjQ_N7H14mhA")
+          echo "Supabase answered $code"
+          test "$code" = "200"
