@@ -53,7 +53,7 @@ export function teamBoard(teamSize, bouts, events, options) {
   const rows = order.map((position) => {
     const bout = byPos.get(position) ?? null;
     const evs = bout ? events.filter((e) => e.bout_id === bout.id) : [];
-    const record = { events: evs, decision: bout?.decision ?? null, fusen: bout?.fusen ?? null };
+    const record = { events: evs, decision: bout?.decision ?? null, fusen: bout?.fusen ?? null, encho: !!bout?.is_encho };
     return {
       position,
       bout,
@@ -65,7 +65,7 @@ export function teamBoard(teamSize, bouts, events, options) {
   const current = rows.find((r) => r.status === 'running')?.position ?? null;
   const totals = teamMatchResult(
     rows.filter((r) => r.bout && r.status === 'finished').map((r) => ({
-      position: r.position, bout: { events: r.events, decision: r.bout.decision, fusen: r.bout.fusen },
+      position: r.position, bout: { events: r.events, decision: r.bout.decision, fusen: r.bout.fusen, encho: !!r.bout.is_encho },
     })),
     options,
   );
@@ -158,7 +158,7 @@ export function teamMatchStep(category, phase, bouts, events, options) {
   if (open) return { step: 'bout', bout: open };
   const finished = bouts.map((b) => ({
     position: b.position,
-    bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
+    bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen, encho: !!b.is_encho },
   }));
   const r = teamMatchResult(finished, options);
   if (r.winner) return { step: 'finish', winner: r.winner, result: r };
@@ -178,7 +178,7 @@ export function teamMatchSummary(match, teamSize, bouts, events, options) {
   }
   const r = teamMatchResult(bouts.map((b) => ({
     position: b.position,
-    bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
+    bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen, encho: !!b.is_encho },
   })), options);
   return { winner: r.winner, redIppons: r.redIppons, whiteIppons: r.whiteIppons };
 }

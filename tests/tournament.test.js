@@ -551,16 +551,57 @@ test('bracket editor: untouched templates keep their numbering', () => {
 });
 
 // --- running fights ------------------------------------------------------------
+import { canSosai } from '../src/lib/tournament/scoring.js';
 import { fightRules, fightStatus, startSequence, startOutOfOrder, courtQueue, currentFight, koEntries, placesToCodes, phaseLabel, waitingForFighter } from '../src/lib/tournament/run.js';
 
-test('scoring: second hansoku gives I, hantei HH and fusen-gachi OO are 2–0', () => {
+test('scoring (FIK): 2nd hansoku = H for the opponent, the ▲ marks go; old stored I counts as H', () => {
   const r = boutResult(bout('', '', { wh: 2 }));
-  assert.deepEqual(r.totals.red.ippons, ['I']);
+  assert.deepEqual(r.totals.red.ippons, ['H']);
+  assert.equal(r.totals.white.shown, 0); // ▲ deleted once the point is given
+  assert.equal(boutResult(bout('', '', { wh: 3 })).totals.white.shown, 1);
+  assert.deepEqual(boutResult({ events: [{ side: 'red', type: 'I' }] }).totals.red.ippons, ['H']);
+});
+
+test('scoring (FIK Art. 7.4): hantei gives the winner one point, the points of the fight stay', () => {
   const h = boutResult({ events: [{ side: 'red', type: 'M' }, { side: 'white', type: 'K' }], decision: 'white' });
-  assert.deepEqual([h.winner, h.redIppons, h.whiteIppons, h.by], ['white', 0, 2, 'hantei']);
+  assert.deepEqual([h.winner, h.redIppons, h.whiteIppons, h.by], ['white', 1, 2, 'hantei']);
+  assert.deepEqual(h.totals.white.ippons, ['K', 'Ht']);
+  const z = boutResult({ events: [], decision: 'red' });
+  assert.deepEqual([z.winner, z.redIppons, z.whiteIppons], ['red', 1, 0]);
+  assert.equal(boutResult({ events: [{ side: 'red', type: 'M' }], decision: 'white' }).winner, 'red'); // hantei only on a tie
+  const ip = boutResult({ events: [], decision: 'white' }, { ipponShobu: true });
+  assert.deepEqual([ip.whiteIppons, ip.redIppons], [1, 0]);
+});
+
+test('scoring (FIK Art. 32): fusen-gachi = two points for the winner, the loser keeps points; one point in encho', () => {
   const f = boutResult({ events: [], fusen: 'red' });
   assert.deepEqual([f.winner, f.redIppons, f.whiteIppons, f.by], ['red', 2, 0, 'fusen']);
-  assert.equal(boutResult({ events: [{ side: 'red', type: 'M' }], decision: 'white' }).winner, 'red'); // hantei only on a tie
+  assert.deepEqual(f.totals.red.ippons, ['O', 'O']);
+  // white scored, then could not go on (injury): red wins 2–1, white's point stays
+  const inj = boutResult({ events: [{ side: 'white', type: 'M' }], fusen: 'red' });
+  assert.deepEqual([inj.winner, inj.redIppons, inj.whiteIppons], ['red', 2, 1]);
+  // red already had a point: one more to reach two
+  assert.deepEqual(boutResult({ events: [{ side: 'red', type: 'K' }], fusen: 'red' }).totals.red.ippons, ['K', 'O']);
+  // in encho (1–1): the winner gets one point → 2–1
+  const e = boutResult({ events: [{ side: 'red', type: 'M' }, { side: 'white', type: 'D' }], fusen: 'white', encho: true });
+  assert.deepEqual([e.winner, e.whiteIppons, e.redIppons], ['white', 2, 1]);
+  assert.deepEqual([boutResult({ events: [], fusen: 'red', encho: true }).redIppons], [1]);
+  assert.equal(boutResult({ events: [], fusen: 'white' }, { ipponShobu: true }).whiteIppons, 1);
+});
+
+test('scoring (FIK Art. 20.1): sosai at 1–1 cancels a 2nd hansoku of both, the ▲ marks stay', () => {
+  const base = [{ side: 'red', type: 'M' }, { side: 'white', type: 'K' }, { side: 'red', type: 'hansoku' }, { side: 'white', type: 'hansoku' }];
+  assert.equal(canSosai({ events: base }), true);
+  assert.equal(canSosai({ events: base.slice(0, 3) }), false);
+  assert.equal(canSosai({ events: base.slice(2) }), false); // 0–0: both get a point instead
+  const r = boutResult({ events: [...base, { side: 'red', type: 'sosai' }] });
+  assert.deepEqual([r.redIppons, r.whiteIppons, r.redHansoku, r.whiteHansoku, r.draw], [1, 1, 2, 2, true]);
+  assert.deepEqual([r.totals.red.shown, r.totals.white.shown], [2, 2]);
+  // the next single hansoku is the 3rd — no point; the 4th gives one
+  const r3 = boutResult({ events: [...base, { side: 'red', type: 'sosai' }, { side: 'red', type: 'hansoku' }] });
+  assert.deepEqual([r3.redIppons, r3.whiteIppons], [1, 1]);
+  const r4 = boutResult({ events: [...base, { side: 'red', type: 'sosai' }, { side: 'red', type: 'hansoku' }, { side: 'red', type: 'hansoku' }] });
+  assert.deepEqual([r4.winner, r4.whiteIppons], ['white', 2]);
 });
 
 test('fight status: two ippons end it, time-up tie → hikiwake (pool) or encho (KO), encho first point wins', () => {

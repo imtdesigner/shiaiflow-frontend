@@ -46,6 +46,8 @@
 - [ ] Dva ippona završe borbu; Finish → na ekranu se pojavi „next fight“.
 - [ ] Hikiwake u poolu; encho u KO (E na ekranu, prvi bod pobjeđuje); hantei (HH) ako je postavljen.
 - [ ] Fusen-gachi (OO) za natjecatelja koji ne izađe.
+- [ ] FIK: hantei nakon 1–1 → 2–1 (Ht), bodovi ostaju. OO usred borbe (ozljeda) → pobjednik 2 boda, bod ozlijeđenog ostaje; u enchu samo 1.
+- [ ] Drugi hansoku → H protivniku, ▲ nestanu s Court screena. Sosai: 1–1, oba s jednim hansokuom → gumb „▲▲ Sosai (both)”, nema boda.
 - [ ] Borba niže u redu (Take next) → preskočene se pomaknu ispod.
 - [ ] Gumb poola na stolu → poredak poola u prozorčiću.
 - [ ] Fighting spirit: nakon zadnje borbe kategorije na shiaijou stol predloži borca (Confirm / Skip / Later).

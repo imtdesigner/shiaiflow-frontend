@@ -4,7 +4,7 @@ import { slotLabel } from '../lib/tournament/ko.js';
 import { koRoundLabel } from '../lib/tournament/run.js';
 import { listCorrections } from '../lib/runApi';
 import { listEventsFor } from '../lib/api';
-import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
+import { boutResult, canSosai, scoringOptions } from '../lib/tournament/scoring.js';
 
 /**
  * Manager corrections in Manage (owner, 2026-11-24): KO conflicts after a
@@ -260,10 +260,11 @@ export function EditResultDialog({ category, fight, nameOf, busy, onSave, onClos
   const [kind, side] = special.split('-');
   const decision = kind === 'hantei' ? side : null;
   const fusen = kind === 'fusen' ? side : null;
-  const res = boutResult({ events, decision, fusen }, scoringOptions(category));
+  const opts = scoringOptions(category);
+  const res = boutResult({ events, decision, fusen, encho: !!fight.is_encho }, opts);
   const mustWin = fight.phase !== 'pool';
   const add = (s, type) => setEvents([...events, { side: s, type }]);
-  const label = (e) => (e.type === 'hansoku' ? '▲' : e.type);
+  const label = (e) => (e.type === 'hansoku' ? '▲' : e.type === 'sosai' ? '▲▲ sosai (both)' : e.type === 'I' ? 'H' : e.type);
   const names = { red: nameOf(fight.red_entry_id), white: nameOf(fight.white_entry_id) };
   return (
     <div className="st-popup-back" onClick={onClose}>
@@ -280,6 +281,12 @@ export function EditResultDialog({ category, fight, nameOf, busy, onSave, onClos
             </div>
           </div>
         ))}
+        {canSosai({ events }, opts) && (
+          <div className="mc-add">
+            <button type="button" className="tp-btn secondary small" onClick={() => add('red', 'sosai')}
+              title="1–1 and both commit their 2nd hansoku at the same time: no point (FIK Art. 20)">+ ▲▲ sosai (both)</button>
+          </div>
+        )}
         <div className="mc-events">
           {events.length === 0 && <span className="tp-muted">No points.</span>}
           {events.map((e, i) => (
@@ -298,6 +305,8 @@ export function EditResultDialog({ category, fight, nameOf, busy, onSave, onClos
             <option value="fusen-white">Fusen-gachi — white</option>
           </select>
         </div>
+        {kind === 'hantei' && <p className="tp-muted">Hantei gives the winner one point (Ht); the points above stay.</p>}
+        {kind === 'fusen' && <p className="tp-muted">Fusen-gachi / injury / kiken: the winner gets two points (one in encho), the other keeps the points above. Disqualified (taijo, prohibited equipment)? Remove the loser&apos;s points.</p>}
         <p className="mc-preview">
           <strong>Result:</strong>{' '}
           {res.winner ? `${names[res.winner]} wins ${res.winner === 'red' ? `${res.redIppons}–${res.whiteIppons}` : `${res.whiteIppons}–${res.redIppons}`}${res.by ? ` (${res.by})` : ''}` : 'hikiwake (draw)'}

@@ -97,7 +97,7 @@ export default function PaperBackup() {
                 ))}
               </tbody>
             </table>
-            <p className="pb-note">Points: M K D T, I = ippon from 2nd hansoku, H = hantei, OO = fusen-gachi; X = hikiwake, E = encho. A tie for a place in a pool: ipponshobu written below the list.</p>
+            <p className="pb-note">Points (FIK): M K D T; ▲ = hansoku, H = point from the opponent&apos;s 2nd hansoku (cross out the ▲); Ht = hantei (1 point, the points stay); OO = fusen-gachi / kiken (one O in encho, the other keeps the points); X = hikiwake, E = encho; sosai at 1–1 = both ▲ stay. A tie for a place in a pool: ipponshobu written below the list.</p>
 
             {pools.map((p) => {
               const c = byId[p.category_id];

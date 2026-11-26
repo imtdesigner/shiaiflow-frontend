@@ -8,7 +8,7 @@ import { listRunFights, subscribeFights } from '../lib/runApi';
 import { isUuid } from '../lib/tournament/days.js';
 import { slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, currentFight, phaseLabel } from '../lib/tournament/run.js';
-import { boutTotals, firstPointSide, scoringOptions } from '../lib/tournament/scoring.js';
+import { boutResult, firstPointSide, scoringOptions } from '../lib/tournament/scoring.js';
 import { POSITION_LABELS, teamBoard } from '../lib/tournament/team.js';
 import './CourtDisplay.css';
 
@@ -134,17 +134,13 @@ export default function CourtDisplay() {
   };
   const roundOf = (f) => phaseLabel(byCat[f.category_id], f);
   // a "record" is what the marks are read from: a fight, or one bout of a team match
-  const recOf = (f) => ({ events: events.filter((e) => e.match_id === f.id && !e.bout_id), decision: f.decision, fusen: f.fusen, cat: byCat[f.category_id] });
-  const boutRec = (f, row) => ({ events: row.events, decision: row.bout?.decision, fusen: row.bout?.fusen, cat: byCat[f.category_id] });
-  const totalsOf = (r) => boutTotals({ events: r.events }, scoringOptions(r.cat));
-  const marks = (r, side) => {
-    if (r.fusen === side) return ['O', 'O'];
-    const t = totalsOf(r);
-    if (r.decision === side && t.red.ippons.length === t.white.ippons.length) return scoringOptions(r.cat).ipponShobu ? ['H'] : ['H', 'H'];
-    return t[side].ippons;
-  };
-  // the first point of the fight is circled (only the scorer's first ippon), the rest are letters
-  const firstSide = (r) => (r.fusen || r.decision ? null : firstPointSide({ events: r.events }, scoringOptions(r.cat)));
+  const recOf = (f) => ({ events: events.filter((e) => e.match_id === f.id && !e.bout_id), decision: f.decision, fusen: f.fusen, encho: !!f.is_encho, cat: byCat[f.category_id] });
+  const boutRec = (f, row) => ({ events: row.events, decision: row.bout?.decision, fusen: row.bout?.fusen, encho: !!row.bout?.is_encho, cat: byCat[f.category_id] });
+  // FIK marks (scoring.js): points of the fight, then Ht (hantei) or O (fusen) for the winner; ▲ only until two hansoku become a point
+  const totalsOf = (r) => boutResult(r, scoringOptions(r.cat)).totals;
+  const marks = (r, side) => totalsOf(r)[side].ippons;
+  // the first point of the fight is circled (only a point scored in the fight), the rest are letters
+  const firstSide = (r) => firstPointSide({ events: r.events }, scoringOptions(r.cat));
   const markList = (r, s, size = 'big') => marks(r, s).map((m, i) => (
     <span key={i} className={`cd-mark ${i === 0 && firstSide(r) === s ? 'first' : ''} ${size}`}>{m}</span>
   ));
@@ -165,7 +161,7 @@ export default function CourtDisplay() {
   /** One fighter in one row: name, hansoku right by it, then the points towards the middle (mirrored on the right). */
   const fighter = (f, s, right) => {
     const r = recOf(f);
-    const h = totalsOf(r)[s].hansoku;
+    const h = totalsOf(r)[s].shown;
     // two lines: surname, then first name (a team: its name); font from the room left next to the points (vw)
     const c = entryOf(f, s)?.competitor;
     const lines = c && !c.display_name && c.first_name ? [c.last_name, c.first_name] : [name(f, s)];
@@ -201,7 +197,7 @@ export default function CourtDisplay() {
         return (
           <div key={row.position} className={`cd-team-row ${row.status}`}>
             {[order[0], order[1]].map((s, i) => {
-              const h = totalsOf(r)[s].hansoku;
+              const h = totalsOf(r)[s].shown;
               return (
                 <div key={s} className={`cd-team-side ${s} ${i ? 'right' : ''}`}>
                   <span className="cd-member">{personName(row.bout?.[s])}</span>

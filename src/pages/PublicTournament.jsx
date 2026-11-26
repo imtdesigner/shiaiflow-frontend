@@ -163,8 +163,8 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
         const m = fightMarks(c, f, events, bouts);
         results[f.ko_no] = {
           winner: f.winner_entry_id === f.red_entry_id ? 'red' : f.winner_entry_id === f.white_entry_id ? 'white' : null,
-          red: f.fusen === 'red' ? 'OO' : m.red,
-          white: f.fusen === 'white' ? 'OO' : m.white,
+          red: m.red,
+          white: m.white,
         };
       }
     }
@@ -217,12 +217,12 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
       if (f.fusen) return f.fusen === 'red' ? 'OO : –' : '– : OO';
       const r = teamMatchResult(bouts.filter((b) => b.match_id === f.id && b.status === 'finished').map((b) => ({
         position: b.position,
-        bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen },
+        bout: { events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen, encho: !!b.is_encho },
       })), scoringOptions(byCat[f.category_id]));
       const d = bouts.some((b) => b.match_id === f.id && b.position === 'daihyosen' && b.status === 'finished');
       return `${r.redWins} : ${r.whiteWins}${d ? ' (daihyosen)' : ''}`;
     }
-    const r = boutResult({ events: events.filter((e) => e.match_id === f.id), decision: f.decision, fusen: f.fusen }, scoringOptions(byCat[f.category_id]));
+    const r = boutResult({ events: events.filter((e) => e.match_id === f.id), decision: f.decision, fusen: f.fusen, encho: !!f.is_encho }, scoringOptions(byCat[f.category_id]));
     return `${r.totals.red.ippons.join('') || '–'} : ${r.totals.white.ippons.join('') || '–'}`;
   };
 

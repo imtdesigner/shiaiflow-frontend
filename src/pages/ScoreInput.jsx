@@ -23,7 +23,7 @@ import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStand
 import {
   courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, phaseLabel, waitingForFighter,
 } from '../lib/tournament/run.js';
-import { boutTotals, scoringOptions } from '../lib/tournament/scoring.js';
+import { boutResult, canSosai, scoringOptions } from '../lib/tournament/scoring.js';
 import './TournamentPages.css';
 import './Scoreinput.css';
 
@@ -199,7 +199,7 @@ function ScoreInput() {
   const timeUp = useTimer ? remaining != null && remaining <= 0 : manualTimeUp;
   const bout = unit ? boutOf(unit, unitEvents) : { events: [] };
   const status = unit && rules ? fightStatus(bout, rules, { encho: unit.is_encho, timeUp }, opts) : null;
-  const totals = unit ? boutTotals({ events: unitEvents }, opts) : null;
+  const totals = unit ? boutResult(bout, opts).totals : null; // FIK marks: points, then Ht / O for the winner
   useEffect(() => { setManualTimeUp(false); }, [teamBout?.id]);
 
   const run = async (fn) => {
@@ -324,18 +324,19 @@ function ScoreInput() {
       <table className="tp-table st-team">
         <tbody>
           {[...bouts].sort((a, b) => ORDER.indexOf(a.position) - ORDER.indexOf(b.position)).map((b) => {
-            const t = boutTotals({ events: events.filter((e) => e.bout_id === b.id) }, opts);
-            const mark = (side) => (b.fusen === side ? 'OO' : b.decision === side ? 'HH' : t[side].ippons.join(' '));
-            const draw = b.status === 'finished' && !b.fusen && !b.decision && t.red.ippons.length === t.white.ippons.length;
+            const res = boutResult({ events: events.filter((e) => e.bout_id === b.id), decision: b.decision, fusen: b.fusen, encho: !!b.is_encho }, opts);
+            const t = res.totals;
+            const mark = (side) => t[side].ippons.join(' ');
+            const draw = b.status === 'finished' && res.draw;
             return (
               <tr key={b.id} className={b.id === teamBout?.id ? 'current' : b.status}>
                 <td className="st-team-pos">{POSITION_LABELS[b.position]}</td>
                 <td className="st-team-red">{memberName(b.red_competitor_id) ?? '—'}</td>
-                <td className="st-sym-h">{'▲'.repeat(t.red.hansoku)}</td>
+                <td className="st-sym-h">{'▲'.repeat(t.red.shown)}</td>
                 <td className="st-sym-pts red">{mark('red')}</td>
                 <td className="st-sym-mid">{draw ? 'X' : ':'}</td>
                 <td className="st-sym-pts">{mark('white')}</td>
-                <td className="st-sym-h">{'▲'.repeat(t.white.hansoku)}</td>
+                <td className="st-sym-h">{'▲'.repeat(t.white.shown)}</td>
                 <td>{memberName(b.white_competitor_id) ?? '—'}</td>
               </tr>
             );
@@ -403,8 +404,8 @@ function ScoreInput() {
       <div className="st-name">{unitName(side)}</div>
       <div className="st-club">{unitClub(side)}</div>
       <div className="st-marks">
-        {unit.fusen === side ? 'OO' : status?.by === 'hantei' && status.winner === side ? 'HH' : totals[side].ippons.join(' ') || '·'}
-        {totals[side].hansoku > 0 && <span className="st-hansoku">{'▲'.repeat(totals[side].hansoku)}</span>}
+        {totals[side].ippons.join(' ') || '·'}
+        {totals[side].shown > 0 && <span className="st-hansoku">{'▲'.repeat(totals[side].shown)}</span>}
       </div>
       {unit.status === 'running' && !status?.over && (
         <div className="st-buttons">
@@ -558,10 +559,16 @@ function ScoreInput() {
                 <button type="button" className="tp-btn" disabled={busy} onClick={() => finish({ decision: 'white' })}>Hantei — white</button>
               </>
             )}
+            {unit.status === 'running' && !status?.over && canSosai(bout, opts) && (
+              <button type="button" className="tp-btn secondary" disabled={busy} onClick={() => point('red', 'sosai')}
+                title="1–1 and both commit their 2nd hansoku at the same time: both ▲ stay, no point (FIK Art. 20)">▲▲ Sosai (both)</button>
+            )}
             {unit.status === 'running' && !status?.over && (
               <>
-                <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'red' })}>Red wins OO</button>
-                <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'white' })}>White wins OO</button>
+                <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'red' })}
+                  title="Injury or kiken of white: red gets two points (one in encho), white keeps the points scored">Red wins OO</button>
+                <button type="button" className="tp-btn secondary small" disabled={busy} onClick={() => finish({ fusen: 'white' })}
+                  title="Injury or kiken of red: white gets two points (one in encho), red keeps the points scored">White wins OO</button>
               </>
             )}
           </div>

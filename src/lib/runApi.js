@@ -162,7 +162,7 @@ export async function reopenBout(bout) {
 }
 
 /** Bout record of a fight for the scoring logic. */
-export const boutOf = (fight, events) => ({ events, decision: fight.decision, fusen: fight.fusen });
+export const boutOf = (fight, events) => ({ events, decision: fight.decision, fusen: fight.fusen, encho: !!fight.is_encho });
 
 /**
  * Finish a fight with its result, then run what follows:

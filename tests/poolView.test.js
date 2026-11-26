@@ -28,6 +28,12 @@ test('pool standings: finished pool is decided', () => {
 test('fight marks: ippons, hansoku, fusen and hantei', () => {
   const evs = [ev('1', 'red', 'M'), ev('1', 'red', 'hansoku'), ev('1', 'white', 'K')];
   assert.deepEqual(fightMarks(cat, { id: '1' }, evs), { red: 'M ▲', white: 'K' });
-  assert.deepEqual(fightMarks(cat, { id: '2', fusen: 'white' }, []), { red: '', white: 'OO' });
-  assert.deepEqual(fightMarks(cat, { id: '3', decision: 'red' }, []), { red: 'H H', white: '' });
+  assert.deepEqual(fightMarks(cat, { id: '2', fusen: 'white' }, []), { red: '', white: 'O O' });
+  assert.deepEqual(fightMarks(cat, { id: '3', decision: 'red' }, []), { red: 'Ht', white: '' });
+  // FIK: hantei after 1–1 = 2–1, fusen keeps the loser's point, 2nd hansoku → H and the ▲ go
+  const tie = [ev('4', 'red', 'M'), ev('4', 'white', 'D')];
+  assert.deepEqual(fightMarks(cat, { id: '4', decision: 'white' }, tie), { red: 'M', white: 'D Ht' });
+  assert.deepEqual(fightMarks(cat, { id: '5', fusen: 'red' }, [ev('5', 'white', 'K')]), { red: 'O O', white: 'K' });
+  const hh = [ev('6', 'red', 'hansoku'), ev('6', 'red', 'hansoku')];
+  assert.deepEqual(fightMarks(cat, { id: '6' }, hh), { red: '', white: 'H' });
 });
