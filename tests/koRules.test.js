@@ -59,3 +59,15 @@ test('uneven pools: the smaller pools are the ones whose qualifiers play the pre
 test('uneven pools without preliminary fights keep bigger pools first', () => {
   assert.deepEqual(sizesForKo([3, 3, 3, 2], [{ no: 1, red: '011', white: '022' }, { no: 2, red: '031', white: '042' }, { no: 3, red: '012', white: '021' }, { no: 4, red: '032', white: '041' }, { no: 5, red: 'W01', white: 'W02' }, { no: 6, red: 'W03', white: 'W04' }, { no: 7, red: 'W05', white: 'W06' }]), [3, 3, 3, 2]);
 });
+
+import { shortPoolToFill } from '../src/lib/tournament/draw.js';
+import { getTemplate as tpl } from '../src/lib/tournament/ko.js';
+
+test('adjust the draw: a late entry is advised to the short pool whose qualifiers play no preliminary fights', () => {
+  // K032: pool 2's qualifiers both play preliminaries, pool 3 only one, pool 1 one (011 has a bye; 012 plays)
+  const t = tpl('K032');
+  const pick = shortPoolToFill([1, 2], 3, t);
+  assert.notEqual(pick, 1);
+  assert.equal(shortPoolToFill([0], 3, t), null); // one short pool: nothing to advise
+  assert.equal(shortPoolToFill([0, 1], 4, tpl('K042')), null); // no preliminaries
+});

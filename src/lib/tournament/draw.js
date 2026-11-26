@@ -44,13 +44,14 @@ const chunk = (ids, sizes) => {
  * then non-seed pools first, then the higher pool number; the smallest sizes
  * go to the first of them. Without preliminary fights: bigger pools first.
  */
-export function sizesForKo(sizes, template) {
-  if (!template?.length || new Set(sizes).size < 2) return sizes;
+/** Qualifiers per pool index that play the preliminary fights, or null when the bracket has none. */
+function prelimCounts(template) {
+  if (!template?.length) return null;
   const rounds = matchRounds(template);
   const deepest = Math.max(...rounds.values());
   const entering = new Set();
   for (const m of template) for (const c of [m.red, m.white]) if (!isWinnerRef(c)) entering.add(rounds.get(m.no));
-  if (entering.size < 2) return sizes;
+  if (entering.size < 2) return null;
   const inPrelims = new Map();
   for (const m of template) {
     if (rounds.get(m.no) !== deepest) continue;
@@ -60,9 +61,36 @@ export function sizesForKo(sizes, template) {
       inPrelims.set(pool, (inPrelims.get(pool) ?? 0) + 1);
     }
   }
-  const seeds = new Set(seedPools(sizes.length).map((p) => p - 1));
-  const order = sizes.map((_, i) => i).sort((a, b) => (inPrelims.get(b) ?? 0) - (inPrelims.get(a) ?? 0)
+  return inPrelims;
+}
+
+/** Pool indices, the pool that should be smallest first (see sizesForKo). */
+function smallFirst(poolCount, inPrelims) {
+  const seeds = new Set(seedPools(poolCount).map((p) => p - 1));
+  return [...Array(poolCount).keys()].sort((a, b) => (inPrelims.get(b) ?? 0) - (inPrelims.get(a) ?? 0)
     || Number(seeds.has(a)) - Number(seeds.has(b)) || b - a);
+}
+
+/**
+ * After the draw (Adjust the draw): which of the short pools a late entry
+ * should fill — the one whose qualifiers play the fewest preliminary fights,
+ * so the smaller pools stay those that feed the preliminaries. Pool index, or
+ * null when it makes no difference.
+ */
+export function shortPoolToFill(shortPools, poolCount, template) {
+  const inPrelims = prelimCounts(template);
+  if (!inPrelims || shortPools.length < 2) return null;
+  const order = smallFirst(poolCount, inPrelims).filter((i) => shortPools.includes(i));
+  const first = order[order.length - 1];
+  // no advice when every short pool counts the same
+  return order.every((i) => (inPrelims.get(i) ?? 0) === (inPrelims.get(first) ?? 0)) ? null : first;
+}
+
+export function sizesForKo(sizes, template) {
+  if (new Set(sizes).size < 2) return sizes;
+  const inPrelims = prelimCounts(template);
+  if (!inPrelims) return sizes;
+  const order = smallFirst(sizes.length, inPrelims);
   const ascending = [...sizes].sort((a, b) => a - b);
   const out = [...sizes];
   order.forEach((pool, k) => { out[pool] = ascending[k]; });

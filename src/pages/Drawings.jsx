@@ -10,7 +10,7 @@ import {
 import Segmented from '../components/Segmented';
 import { afterFight, myRole } from '../lib/runApi';
 import {
-  buildDraw, drawFromPools, moveEntry, newSeed, smallCategoryFormats, swapEntries,
+  buildDraw, drawFromPools, moveEntry, newSeed, shortPoolToFill, smallCategoryFormats, swapEntries,
 } from '../lib/tournament/draw.js';
 import KoBracket from '../components/KoBracket';
 import { entriesOutsideRules, rulesText, tournamentAgeCtx } from '../lib/tournament/eligibility.js';
@@ -18,7 +18,7 @@ import { categoryRow } from '../lib/tournament/categoryTemplates.js';
 import CategoryRules from '../components/CategoryRules';
 import FightRules from '../components/FightRules';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
-import { thirdPlaceFight } from '../lib/tournament/ko.js';
+import { getTemplate, thirdPlaceFight } from '../lib/tournament/ko.js';
 import './TournamentPages.css';
 
 const FORMAT_LABEL = { roundRobin: 'Round robin', directKo: 'Direct KO' };
@@ -92,6 +92,10 @@ function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run })
   const present = new Map(entries.map((e) => [e.id, e.checked_in]));
   const absent = [...placed].filter((id) => !present.get(id));
   if (!saved) return null;
+  // a late entry best fills the short pool whose qualifiers play no preliminary KO fights (smaller pools feed them)
+  const shortIdx = direct ? [] : saved.pools.map((_, pi) => pi).filter((pi) => (savedPools[pi] ?? []).length < category.pool_size);
+  const koTemplate = category.ko_template ?? (category.ko_template_code ? getTemplate(category.ko_template_code) : null);
+  const fillFirst = unplaced.length ? shortPoolToFill(shortIdx, saved.pools.length, koTemplate) : null;
   return (
     <details id="g-adjust" style={{ marginTop: '1rem' }} open={unplaced.length > 0}>
       <summary className="tp-muted">
@@ -150,7 +154,11 @@ function DrawAdjust({ category, saved, savedPools, entries, nameOf, busy, run })
                 <tr key={`add-${p.id}`}>
                   <td>{p.number}</td>
                   <td />
-                  <td className="tp-muted">pool is short of {category.pool_size - members.length}</td>
+                  <td className="tp-muted">
+                    pool is short of {category.pool_size - members.length}
+                    {fillFirst === pi && <span className="tp-badge" title="Its qualifiers play no preliminary KO fights — the smaller pools should be the ones that do.">recommended</span>}
+                    {fillFirst != null && fillFirst !== pi && <span title="Its qualifiers play preliminary KO fights — better keep this pool the smaller one."> · better keep it smaller</span>}
+                  </td>
                   <td colSpan={2}>
                     {unplaced.map((e) => (
                       <button key={e.id} type="button" className="tp-btn secondary small" style={{ marginRight: '0.3rem' }} disabled={busy}
