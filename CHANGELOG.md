@@ -3,6 +3,7 @@
 One line per deploy (newest first). The app shows `version · build date · commit` bottom left;
 every deploy is tagged `YYYY.MM.DD-n` in git. Rollback: Netlify → Deploys → pick a deploy → Publish deploy.
 
+- **2026.11.26-1** · 0.2.0 — FIK scoring rules: hantei = one point (Ht), points stay; OO / injury keeps the loser's points (one point in encho); sosai at 1–1; H for the hansoku point, ▲ go once converted. Hall setup: laptop for the tournament manager.
 - **2026.11.25-1** · 0.2.0 — version label bottom left, CHANGELOG, deploy tags, Supabase keep-alive ping
 - 2026.11.24 · 0.2.0 — manager corrections (pool order by hand, KO check with fight again / keep as fought, change KO fighters, Edit result, corrections log); Scorekeeping manager + Court screen after the Table PIN; dashboard icons; tournament picker in Edit tournament; LICENSE
 - 2026.11.23 · 0.2.0 — results + Fighting spirit, paper backup print, setup small fixes, after-live-test fixes (pool number, table waits for an unknown fighter), timekeeping option, app icon and link preview
