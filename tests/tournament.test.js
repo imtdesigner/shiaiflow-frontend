@@ -213,9 +213,9 @@ test('draw: team direct KO with 11 teams → K111, qualifiers per pool', () => {
 });
 
 test('draw: missing template is reported', () => {
-  const ids = Array.from({ length: 45 }, (_, i) => `e${i}`);
-  const d = buildDraw(ids, { poolSize: 3, advancing: 2 }, 1); // K152
-  assert.ok(d.problems.some((p) => p.includes('K152')));
+  const ids = Array.from({ length: 51 }, (_, i) => `e${i}`);
+  const d = buildDraw(ids, { poolSize: 3, advancing: 2 }, 1); // K172 (17 pools)
+  assert.ok(d.problems.some((p) => p.includes('K172')));
 });
 
 test('draw: 3 entries cannot go to KO (direct KO or pool + advancing)', () => {
@@ -320,13 +320,12 @@ test('tiers 1-3: champion, runner-up and two thirds in 24 (K082) never meet befo
   checkTop(24, 4);
 });
 
-test('tiers 1-3: K052 (15) separates 3; a 4th cannot be kept apart and is reported', () => {
+test('tiers 1-3: K052 (15) keeps 4 top entries apart until the semifinal (rebuilt template, 2026-11-26)', () => {
   const d3 = buildDraw(people(15, () => '', (i) => [1, 2, 3][i] ?? null), { poolSize: 3, advancing: 2 }, 1);
   assert.deepEqual(d3.warnings, []);
-  // Excel K052: winners of pools 1/2 meet in the quarterfinal, 4/5 in round one.
   const d = buildDraw(people(15, () => '', (i) => TOP4[i] ?? null), { poolSize: 3, advancing: 2 }, 1);
   assert.equal(new Set([0, 1, 2, 3].map((i) => poolOf(d, `p${i}`))).size, 4);
-  assert.ok(d.warnings.some((w) => w.includes('too early')));
+  assert.deepEqual(d.warnings, []);
 });
 
 test('tiers 1-3: direct KO with 8 (K081) puts champion and runner-up in opposite halves', () => {
@@ -959,7 +958,8 @@ test('"Same as" copies the fight settings, new categories inherit the rules', ()
 });
 
 test('bracket editor: a preliminary fight can feed another fight', () => {
-  const t = getTemplate('K052'); // F-1 feeds F-4 (031 vs W01)
+  // the old Excel K052 (frozen here: the editor mechanics, not the template): F-1 feeds F-4 (031 vs W01)
+  const t = parseTemplate(['01 042 052', '02 041 051', '03 011 021', '04 031 W01', '05 012 022', '06 032 W02', '07 W03 W04', '08 W05 W06', '09 W07 W08']);
   const moved = normalizeTemplate(moveFight(t, 1, { no: 3, side: 'white' }));
   assert.equal(moved.error, null);
   const f3 = moved.template.find((m) => m.no === 3);
