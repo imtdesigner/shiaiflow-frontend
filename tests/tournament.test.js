@@ -436,8 +436,8 @@ test('courts: pools spread over the category courts by fight count', () => {
 
 test('courts: KO halves on their own court, final on the first court', () => {
   const k = koCourts(tpl('K042'), [1, 2]);
-  // K042 final is W06-W05: the W06 half (03, 04, 06) on court 1, the W05 half (01, 02, 05) on court 2
-  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => k.get(n)), [2, 2, 1, 1, 2, 1, 1]);
+  // K042 final is W05-W06 (top half first, 2026-11-26): the W05 half (01, 02, 05) on court 1, the W06 half (03, 04, 06) on court 2
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => k.get(n)), [1, 1, 2, 2, 1, 2, 1]);
   const one = koCourts(tpl('K042'), [3]);
   assert.ok([...one.values()].every((c) => c === 3));
 });
@@ -476,10 +476,11 @@ test('courts: finals / semifinals and finals at the end on the central courts', 
   const finals = drawCourts(d, courtPlan(cat, { central_shiaijos: [4, 3], end_block: 'finals' }));
   assert.deepEqual([...finals.end], [7]);
   assert.equal(finals.ko.get(7), 3); // first central court (sorted)
-  assert.equal(finals.ko.get(5), 2); // semis stay with the category
+  assert.equal(finals.ko.get(5), 1); // semis stay with the category (top half on the first court)
+  assert.equal(finals.ko.get(6), 2);
   const sf = drawCourts(d, courtPlan(cat, { central_shiaijos: [3, 4], end_block: 'semis_finals' }));
   assert.deepEqual([...sf.end].sort(), [5, 6, 7]);
-  assert.deepEqual([sf.ko.get(6), sf.ko.get(5), sf.ko.get(7)], [3, 4, 3]); // final is W06-W05 → 06 first
+  assert.deepEqual([sf.ko.get(5), sf.ko.get(6), sf.ko.get(7)], [3, 4, 3]); // final is W05-W06 → 05 first
   const noCentral = drawCourts(d, courtPlan(cat, { central_shiaijos: [], end_block: 'finals' }));
   assert.equal(noCentral.ko.get(7), 1);
   assert.ok(noCentral.end.has(7));

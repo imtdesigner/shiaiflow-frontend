@@ -71,3 +71,23 @@ test('adjust the draw: a late entry is advised to the short pool whose qualifier
   assert.equal(shortPoolToFill([0], 3, t), null); // one short pool: nothing to advise
   assert.equal(shortPoolToFill([0, 1], 4, tpl('K042')), null); // no preliminaries
 });
+
+import { matchRounds as rounds2, winnerRefNo } from '../src/lib/tournament/ko.js';
+
+test('KO templates: fights numbered round by round, top to bottom as drawn (red = upper)', () => {
+  for (const code of Object.keys(KO_TEMPLATES)) {
+    const t = getTemplate(code);
+    const byNo = new Map(t.map((m) => [m.no, m]));
+    const r = rounds2(t);
+    const seq = [];
+    const walk = (no) => {
+      const m = byNo.get(no);
+      if (isWinnerRef(m.red)) walk(winnerRefNo(m.red));
+      seq.push(no);
+      if (isWinnerRef(m.white)) walk(winnerRefNo(m.white));
+    };
+    walk(t[t.length - 1].no);
+    const wanted = [...seq].sort((a, b) => r.get(b) - r.get(a) || seq.indexOf(a) - seq.indexOf(b));
+    assert.deepEqual(wanted, wanted.map((_, i) => i + 1), code);
+  }
+});
