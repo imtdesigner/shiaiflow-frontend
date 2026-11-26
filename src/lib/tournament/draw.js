@@ -2,7 +2,8 @@
 // Pure function; the page saves the result to the database.
 
 import { seededRandom, shuffle, splitPools, poolMatches, systemCode } from './pools.js';
-import { getTemplate, validateTemplate, poolCode } from './ko.js';
+import { getTemplate, validateTemplate, poolCode, matchRounds, isWinnerRef } from './ko.js';
+import { seedPools } from './koRules.js';
 import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 
 /**
@@ -19,15 +20,53 @@ import { analyzePlacement, entryMeta, placeEntries } from './placement.js';
 export function buildDraw(entries, settings, seed) {
   const meta = entryMeta(entries);
   const ids = meta.map((m) => m.id);
-  const sizes = splitPools(ids, settings.poolSize, settings.split).map((p) => p.length);
+  const split = splitPools(ids, settings.poolSize, settings.split).map((p) => p.length);
   const directKo = settings.poolSize === 1;
   const adv = directKo ? 1 : settings.advancing;
-  const code = adv > 0 && sizes.length * adv >= 2 ? systemCode(sizes.length, adv) : null;
+  const code = adv > 0 && split.length * adv >= 2 ? systemCode(split.length, adv) : null;
   const template = code ? (settings.custom?.code === code ? settings.custom.template : getTemplate(code)) : null;
+  const sizes = directKo ? split : sizesForKo(split, template);
   const pools = meta.some((m) => m.club || m.tier)
     ? placeEntries(meta, sizes, template, directKo, seed)
-    : splitPools(shuffle(ids, seededRandom(seed)), settings.poolSize, settings.split);
+    : chunk(shuffle(ids, seededRandom(seed)), sizes);
   return drawFromPools(pools, settings, seed, meta);
+}
+
+const chunk = (ids, sizes) => {
+  let at = 0;
+  return sizes.map((n) => { const p = ids.slice(at, at + n); at += n; return p; });
+};
+
+/**
+ * Uneven pools (owner, 2026-11-26): the smaller pools are the ones whose
+ * qualifiers play the preliminary KO fights — they had fewer pool fights.
+ * Pools ranked by how many of their qualifiers enter in the preliminary round,
+ * then non-seed pools first, then the higher pool number; the smallest sizes
+ * go to the first of them. Without preliminary fights: bigger pools first.
+ */
+export function sizesForKo(sizes, template) {
+  if (!template?.length || new Set(sizes).size < 2) return sizes;
+  const rounds = matchRounds(template);
+  const deepest = Math.max(...rounds.values());
+  const entering = new Set();
+  for (const m of template) for (const c of [m.red, m.white]) if (!isWinnerRef(c)) entering.add(rounds.get(m.no));
+  if (entering.size < 2) return sizes;
+  const inPrelims = new Map();
+  for (const m of template) {
+    if (rounds.get(m.no) !== deepest) continue;
+    for (const c of [m.red, m.white]) {
+      if (isWinnerRef(c)) continue;
+      const pool = Number(c.slice(0, 2)) - 1;
+      inPrelims.set(pool, (inPrelims.get(pool) ?? 0) + 1);
+    }
+  }
+  const seeds = new Set(seedPools(sizes.length).map((p) => p - 1));
+  const order = sizes.map((_, i) => i).sort((a, b) => (inPrelims.get(b) ?? 0) - (inPrelims.get(a) ?? 0)
+    || Number(seeds.has(a)) - Number(seeds.has(b)) || b - a);
+  const ascending = [...sizes].sort((a, b) => a - b);
+  const out = [...sizes];
+  order.forEach((pool, k) => { out[pool] = ascending[k]; });
+  return out;
 }
 
 /**
