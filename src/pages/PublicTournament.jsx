@@ -510,7 +510,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', gender: '', birth_year: '', birth_date: '', grade_rank: '',
-  email: '', dojo_email: '', consents: {}, picked: null, teamFor: {},
+  email: '', dojo_email: '', consents: {}, picked: null, teamFor: {}, asks: {}, note: '',
 };
 
 /** Rules data of a person form (what eligibility needs). */
@@ -552,6 +552,9 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
     onChange({ ...p, picked: [...n] });
   };
   const setTeam = (cid, v) => onChange({ ...p, teamFor: { ...p.teamFor, [cid]: v } });
+  // ask to enter a category the rules do not allow: { [category id]: reason }
+  const asks = p.asks ?? {};
+  const setAsk = (cid, v) => { const n = { ...asks }; if (v == null) delete n[cid]; else n[cid] = v; onChange({ ...p, asks: n }); };
   const consents = askedConsents(settings);
 
   return (
@@ -614,7 +617,7 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
       <table className="tp-table">
         <tbody>
           {checks.map(({ c, reason }) => (
-            <tr key={c.id} style={reason ? { opacity: 0.5 } : undefined}>
+            <tr key={c.id} style={reason && !(c.id in asks) ? { opacity: 0.6 } : undefined}>
               <td style={{ width: '2rem' }}>
                 <input type="checkbox" disabled={!!reason} checked={!reason && picked.has(c.id)} onChange={(e) => togglePick(c, e.target.checked)} />
               </td>
@@ -625,6 +628,19 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
                   {c.kind === 'team' && ` · team of ${c.team_size} + ${teamReserves(c.team_size)}${c.team_same_dojo ? ' · one dojo' : ''}${c.position_rules ? ' · limits per position' : ''}`}
                   {reason ? ` — not for you: ${reason}` : ''}
                 </div>
+                {reason && (
+                  <div style={{ marginTop: '0.3rem' }}>
+                    <label className="tp-check">
+                      <input type="checkbox" checked={c.id in asks} onChange={(e) => setAsk(c.id, e.target.checked ? '' : null)} />
+                      Ask the organizer to let me enter anyway
+                    </label>
+                    {c.id in asks && (
+                      <input style={{ marginTop: '0.3rem', width: '100%' }} maxLength={300} value={asks[c.id]}
+                        placeholder="Why? e.g. my coach asks for me to fight in this category"
+                        onChange={(e) => setAsk(c.id, e.target.value)} />
+                    )}
+                  </div>
+                )}
                 {c.kind === 'team' && !reason && picked.has(c.id) && tournament.team_signup === 'team_first' && (
                   <p className="tp-muted" style={{ margin: '0.3rem 0 0' }}>You sign up as a ronin (no team yet): a team can pick you, or the organizer places you in one.</p>
                 )}
@@ -648,6 +664,11 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
           ))}
         </tbody>
       </table>
+      <label className="tp-field" style={{ marginTop: '0.75rem' }}>
+        Note to the organizer <span className="tp-muted">(optional, organizers only)</span>
+        <textarea rows={2} maxLength={1000} value={p.note ?? ''} onChange={set('note')}
+          placeholder="Anything the organizer should know" />
+      </label>
     </div>
   );
 }
@@ -701,6 +722,13 @@ function RegisterForm({ tournament, categories, teams, competitors, onDone }) {
         try {
           await publicRegister(c.id, { ...x, ...rulesPerson(x, byDate), ...(c.kind === 'team' ? (teamFirst ? { as_ronin: true } : x.teamFor[c.id] ?? {}) : {}) });
           done.push(c.name);
+        } catch (err) { failed.push(`${c.name}: ${err.message}`); }
+      }
+      // categories asked for: they wait for the organizer
+      for (const c of personCats.filter((cat) => cat.id in (x.asks ?? {}) && ineligibleReason(cat, rulesPerson(x, byDate), ctx))) {
+        try {
+          await publicRegister(c.id, { ...x, ...rulesPerson(x, byDate), as_request: true, request_reason: x.asks[c.id] });
+          done.push(`${c.name} (asked — waiting for the organizer)`);
         } catch (err) { failed.push(`${c.name}: ${err.message}`); }
       }
       const who = `${x.last_name.toUpperCase()} ${x.first_name}`.trim();

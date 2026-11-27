@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addExistingEntry, listCompetitors, listContacts, listEntries, listPaid, removeEntry, setCheckedIn, setPaid, setTier,
+  acceptRequest, addCompetitorEntry, addExistingEntry, declineRequest, listRequests, listCompetitors, listContacts, listEntries, listPaid, removeEntry, setCheckedIn, setPaid, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
@@ -37,6 +37,7 @@ function Registration() {
   const [bulk, setBulk] = useState('');
   const [competitors, setCompetitors] = useState([]);
   const [paid, setPaidSet] = useState(new Set());
+  const [requests, setRequests] = useState([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -59,6 +60,7 @@ function Registration() {
       setEntries(ens);
       setCompetitors(comps);
       listPaid(ens.map((e) => e.id)).then(setPaidSet).catch(() => setPaidSet(new Set()));
+      listRequests(selectedId).then(setRequests).catch(() => setRequests([]));
       // private contacts and consents (organizers only; empty for others)
       listContacts(comps.map((c) => c.id)).then(setContacts).catch(() => setContacts(new Map()));
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
@@ -210,6 +212,40 @@ function Registration() {
             </div>
           )}
 
+          {requests.length > 0 && (
+            <div id="g-requests" className="tp-card">
+              <h3>Requests: {requests.length} <span className="tp-muted">· asked to enter {category.name} although the rules do not allow it</span></h3>
+              <p className="tp-muted" style={{ marginTop: 0 }}>
+                Not in the category (and not drawn) until you accept. {isTeam ? 'Accept puts them among the ronin — then place them in a team.' : 'Accept adds them as an entry.'}
+              </p>
+              <table className="tp-table">
+                <tbody>
+                  {requests.map((r) => {
+                    const c = r.competitor;
+                    const note = contacts.get(c.id)?.note;
+                    const now = ineligibleReason(category, { ...c, birth_date: contacts.get(c.id)?.birth_date ?? null }, tournamentAgeCtx(tournament ?? {}));
+                    return (
+                      <tr key={c.id}>
+                        <td>
+                          <strong>{personName(c)}</strong>{c.club ? <span className="tp-muted"> · {c.club}</span> : null}
+                          <div className="tp-muted">does not meet: {now ?? r.rule ?? '—'}{!now ? ' (fits the rules now)' : ''}</div>
+                          {r.reason && <div>“{r.reason}”</div>}
+                          {note && <div className="tp-muted">📝 {note}</div>}
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                          <button type="button" className="tp-btn small" disabled={busy || cancelled}
+                            onClick={() => run(() => acceptRequest(category, c.id), `${personName(c)} accepted in ${category.name}.`)}>Accept</button>{' '}
+                          <button type="button" className="tp-btn secondary small" disabled={busy}
+                            onClick={() => { if (window.confirm(`Decline ${personName(c)} for ${category.name}?`)) run(() => declineRequest(category.id, c.id)); }}>Decline</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {isTeam && (
             <TeamEditor tournamentId={tournamentId} category={category} competitors={competitors} contacts={contacts}
               ctx={tournamentAgeCtx(tournament ?? {})} onChanged={reload} />
@@ -238,6 +274,9 @@ function Registration() {
                         <td className="tp-muted">{i + 1}</td>
                         <td>
                           {entryName(en)}
+                          {en.competitor && contacts.get(en.competitor.id)?.note && (
+                            <span className="tp-badge" style={{ marginLeft: 6 }} title={contacts.get(en.competitor.id).note}>📝 note</span>
+                          )}
                           {outsideById.has(en.id) && (
                             <span className="tp-badge warn" title="Registered before the rules changed, or added by an organizer">⚠ {outsideById.get(en.id)}</span>
                           )}

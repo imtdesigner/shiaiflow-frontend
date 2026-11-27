@@ -103,6 +103,9 @@ export async function publicRegister(categoryId, person) {
     dojo_email: person.dojo_email || null,
     consents: person.consents && Object.keys(person.consents).length ? person.consents : null,
     as_ronin: !!person.as_ronin,
+    as_request: !!person.as_request,
+    request_reason: person.request_reason || null,
+    note: person.note?.trim() || null,
   }));
 }
 
@@ -159,7 +162,7 @@ export async function listContacts(competitorIds) {
   // in chunks: a whole tournament's ids would make the URL too long
   for (let i = 0; i < competitorIds.length; i += 100) {
     rows.push(...unwrap(await supabase.from('competitor_contacts')
-      .select('competitor_id, email, dojo_email, birth_date, consents').in('competitor_id', competitorIds.slice(i, i + 100))));
+      .select('competitor_id, email, dojo_email, birth_date, consents, note').in('competitor_id', competitorIds.slice(i, i + 100))));
   }
   return new Map(rows.map((r) => [r.competitor_id, r]));
 }
@@ -336,6 +339,27 @@ export async function listCategoryTeams(categoryId) {
   return unwrap(await supabase.from('entries')
     .select('id, team:teams(id, name, club, team_members(competitor_id, sort_order, competitor:competitors(id, last_name, first_name, club, gender, birth_year, grade_rank)))')
     .eq('category_id', categoryId).not('team_id', 'is', null).order('created_at'));
+}
+
+/** Requests to enter a category the person does not fit (organizers only). */
+export async function listRequests(categoryId) {
+  return unwrap(await supabase.from('category_requests')
+    .select('reason, rule, created_at, competitor:competitors(id, last_name, first_name, club, gender, birth_year, grade_rank)')
+    .eq('category_id', categoryId).order('created_at')).filter((r) => r.competitor);
+}
+
+/** Accept: individual → entry, team category → ronin (to be placed in a team). */
+export async function acceptRequest(category, competitorId) {
+  if (category.kind === 'team') await addRonin(category.id, competitorId);
+  else {
+    const { error } = await supabase.from('entries').insert({ category_id: category.id, competitor_id: competitorId, checked_in: true });
+    if (error && error.code !== '23505') throw new Error(error.message);
+  }
+  return declineRequest(category.id, competitorId);
+}
+
+export async function declineRequest(categoryId, competitorId) {
+  return unwrap(await supabase.from('category_requests').delete().eq('category_id', categoryId).eq('competitor_id', competitorId));
 }
 
 /** Ronin of a category: signed up without a team. */

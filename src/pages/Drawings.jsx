@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, listRonin, moveCategoryEntries, replaceInDraw, restoreCategory,
+  addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, listRequests, listRonin, moveCategoryEntries, replaceInDraw, restoreCategory,
   saveDraw, setCheckedIn, setDrawsConfirmed, updateCategory, updateTournament, withdrawFromPool,
 } from '../lib/api';
 import Segmented from '../components/Segmented';
@@ -229,19 +229,21 @@ function Drawings() {
   }, [categories, selectedId]);
 
   const [ronin, setRonin] = useState([]);
+  const [requests, setRequests] = useState([]);
   const reload = useCallback(async () => {
     if (!selectedId) return;
     try {
       const [ens, draw, rs] = await Promise.all([listEntries(selectedId), getSavedDraw(selectedId), listRonin(selectedId).catch(() => [])]);
       setEntries(ens);
       setRonin(rs.filter(Boolean));
+      listRequests(selectedId).then(setRequests).catch(() => setRequests([]));
       setSaved(draw.pools.length ? draw : null);
     } catch (e) {
       setMsg({ type: 'error', text: e.message });
     }
   }, [selectedId]);
 
-  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); setRonin([]); setMoveTarget(''); reload(); }, [reload]);
+  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); setRonin([]); setRequests([]); setMoveTarget(''); reload(); }, [reload]);
 
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
@@ -515,6 +517,12 @@ function Drawings() {
             <Message type="error">
               {ronin.length} without a team (ronin): {ronin.map((r) => `${r.last_name} ${r.first_name ?? ''}`.trim()).join(', ')}.
               They are not in the draw — put them into a team in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.
+            </Message>
+          )}
+          {requests.length > 0 && (
+            <Message type="error">
+              {requests.length} waiting request{requests.length > 1 ? 's' : ''} to enter {category.name}: {requests.map((r) => `${r.competitor.last_name} ${r.competitor.first_name ?? ''}`.trim()).join(', ')}.
+              Accept or decline them in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link> before the draw.
             </Message>
           )}
           {fightRulesBlock(false)}

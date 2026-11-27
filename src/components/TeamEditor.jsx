@@ -119,6 +119,7 @@ export default function TeamEditor({ tournamentId, category, competitors, contac
                   <input type="checkbox" checked={picked.includes(r.id)} disabled={busy || cancelled}
                     onChange={(e) => setPicked(e.target.checked ? [...picked, r.id] : picked.filter((x) => x !== r.id))} />
                   {' '}{personName(r)}{r.club ? <span className="tp-muted"> · {r.club}</span> : null}
+                  {contacts?.get(r.id)?.note && <span className="tp-badge" style={{ marginLeft: 6 }} title={contacts.get(r.id).note}>📝 note</span>}
                 </label>
                 <button type="button" className="member-x" title="Remove from this category" disabled={busy || cancelled}
                   onClick={() => { if (window.confirm(`Remove ${personName(r)} from ${category.name}?`)) run(() => removeRonin(category.id, r.id)); }}>×</button>
