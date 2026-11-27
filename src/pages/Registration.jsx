@@ -16,10 +16,14 @@ import { parseBulk } from '../lib/tournament/bulk.js';
 import CompetitorPicker, { personName } from '../components/CompetitorPicker';
 import TeamEditor from '../components/TeamEditor';
 import EditPerson from '../components/EditPerson';
+import AllEntries from '../components/AllEntries';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
 };
+
+/** Tab with every competitor of the individual categories (check-in in the hall). */
+const ALL = '__all';
 
 function Registration() {
   const { tournamentId, tournament, categories, reload: reloadTournament, error: loadError, loading } = useTournament();
@@ -56,7 +60,7 @@ function Registration() {
   }, [categories, selectedId]);
 
   const reload = useCallback(async () => {
-    if (!selectedId) return;
+    if (!selectedId || selectedId === ALL) return;
     try {
       const [ens, comps] = await Promise.all([listEntries(selectedId), listCompetitors(tournamentId)]);
       setEntries(ens);
@@ -137,10 +141,13 @@ function Registration() {
           selectedId={selectedId}
           onSelect={(id) => { setSelectedId(id); setMsg({ type: '', text: '' }); }}
           renderExtra={(c) => (c.status === 'cancelled' ? ' ✕' : '')}
+          before={[{ id: ALL, label: 'All' }]}
         />
       )}
 
       <Message type={msg.type || 'info'}>{msg.text}</Message>
+
+      {selectedId === ALL && <AllEntries categories={categories} />}
 
       {category && (
         <>

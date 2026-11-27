@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 // search ignores accents: č → c, ő → o; Đ / đ are separate letters, read as d (also ß → ss, ł → l)
-const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+export const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   .replace(/đ/g, 'd').replace(/ß/g, 'ss').replace(/ł/g, 'l');
 export const personName = (c) => `${c.last_name}${c.first_name ? ` ${c.first_name}` : ''}`;
 

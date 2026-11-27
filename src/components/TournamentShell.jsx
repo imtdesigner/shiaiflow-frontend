@@ -49,9 +49,14 @@ export function Message({ type = 'info', children }) {
 }
 
 /** Category selector as pill tabs. */
-export function CategoryTabs({ categories, selectedId, onSelect, renderExtra }) {
+export function CategoryTabs({ categories, selectedId, onSelect, renderExtra, before = [] }) {
   return (
     <div className="tp-tabs">
+      {before.map((t) => (
+        <button type="button" key={t.id} className={`tp-tab ${t.id === selectedId ? 'active' : ''}`} onClick={() => onSelect(t.id)}>
+          {t.label}
+        </button>
+      ))}
       {categories.map((c) => (
         <button
           type="button"
