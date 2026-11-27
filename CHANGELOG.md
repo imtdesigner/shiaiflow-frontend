@@ -3,6 +3,7 @@
 One line per deploy (newest first). The app shows `version · build date · commit` bottom left;
 every deploy is tagged `YYYY.MM.DD-n` in git. Rollback: Netlify → Deploys → pick a deploy → Publish deploy.
 
+- **2026.11.27-4** · 0.2.0 — Start category (fights show after the manager or a table starts the category), Next category as the last Next line, FINALS on Shiaijo N
 - **2026.11.27-3** · 0.2.0 — signup: ask to enter a category the rules do not allow (Requests in Registration: Accept / Decline) + Note to the organizer
 - **2026.11.27-2** · 0.2.0 — Registration: Paid tick next to Check-in (organizers only, a record; payments later)
 - **2026.11.27-1** · 0.2.0 — team editor in Registration (members only, no positions; add from registered / ronin / new, take out, rename, new team); Ronin option in public signup; Add a registered competitor in individual categories; organizer rules only warn
