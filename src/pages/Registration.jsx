@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  acceptRequest, addCompetitorEntry, addExistingEntry, declineRequest, listRequests, listCompetitors, listContacts, listEntries, listPaid, removeEntry, setCheckedIn, setPaid, setTier,
+  acceptRequest, addCompetitorEntry, addExistingEntry, declineRequest, listRequests, listCompetitors, listContacts, listEntries, listPaid, removeEntry, setCheckedIn, setPaid, setTier, updateCompetitor,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
@@ -15,6 +15,7 @@ import StartTournament from '../components/StartTournament';
 import { parseBulk } from '../lib/tournament/bulk.js';
 import CompetitorPicker, { personName } from '../components/CompetitorPicker';
 import TeamEditor from '../components/TeamEditor';
+import EditPerson from '../components/EditPerson';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
@@ -38,6 +39,7 @@ function Registration() {
   const [competitors, setCompetitors] = useState([]);
   const [paid, setPaidSet] = useState(new Set());
   const [requests, setRequests] = useState([]);
+  const [editingId, setEditingId] = useState(null); // competitor being corrected
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -248,7 +250,7 @@ function Registration() {
 
           {isTeam && (
             <TeamEditor tournamentId={tournamentId} category={category} competitors={competitors} contacts={contacts}
-              ctx={tournamentAgeCtx(tournament ?? {})} onChanged={reload} />
+              ctx={tournamentAgeCtx(tournament ?? {})} ageBasis={tournament?.age_basis} onChanged={reload} />
           )}
 
           <div id="g-checkin" className="tp-card">
@@ -270,7 +272,8 @@ function Registration() {
                   </thead>
                   <tbody>
                     {entries.map((en, i) => (
-                      <tr key={en.id}>
+                      <Fragment key={en.id}>
+                      <tr>
                         <td className="tp-muted">{i + 1}</td>
                         <td>
                           {entryName(en)}
@@ -319,7 +322,11 @@ function Registration() {
                             onChange={(e) => run(() => setPaid(en.id, e.target.checked))}
                           />
                         </td>
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {en.competitor && (
+                            <button type="button" className="tp-btn secondary small" disabled={busy}
+                              onClick={() => setEditingId(editingId === en.competitor.id ? null : en.competitor.id)}>Edit</button>
+                          )}{' '}
                           {!locked && (
                             <button type="button" className="tp-btn danger small" disabled={busy}
                               onClick={() => { if (window.confirm(`Remove ${entryName(en)} from the category?`)) run(() => removeEntry(en.id)); }}>
@@ -328,6 +335,16 @@ function Registration() {
                           )}
                         </td>
                       </tr>
+                      {en.competitor && editingId === en.competitor.id && (
+                        <tr>
+                          <td colSpan={20}>
+                            <EditPerson person={en.competitor} birthDate={contacts.get(en.competitor.id)?.birth_date} ageBasis={tournament?.age_basis} busy={busy}
+                              onCancel={() => setEditingId(null)}
+                              onSave={(p) => run(async () => { await updateCompetitor(en.competitor.id, p); setEditingId(null); }, `${p.last_name.trim().toUpperCase()} ${p.first_name.trim()} saved.`)} />
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

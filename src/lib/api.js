@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { directKoQualifiers } from './tournament/draw.js';
 import { getTemplate, thirdPlaceFight } from './tournament/ko.js';
 import { courtPlan, drawCourts } from './tournament/courts.js';
+import { GRADES } from './tournament/eligibility.js';
 
 function unwrap({ data, error }) {
   if (error) throw new Error(error.message);
@@ -332,6 +333,25 @@ export async function findOrCreateCompetitor(tournamentId, person) {
   if (found) return found.id;
   return unwrap(await supabase.from('competitors')
     .insert({ tournament_id: tournamentId, last_name: lastName, first_name: firstName, club }).select('id').single()).id;
+}
+
+/** Correct a competitor's data (organizers): shows in every category and team of the tournament. */
+export async function updateCompetitor(id, person) {
+  const rank = person.grade_rank === '' || person.grade_rank == null ? null : Number(person.grade_rank);
+  unwrap(await supabase.from('competitors').update({
+    last_name: person.last_name.trim().toUpperCase(),
+    first_name: (person.first_name ?? '').trim(),
+    club: (person.club ?? '').trim() || null,
+    gender: person.gender || null,
+    birth_year: person.birth_date ? Number(person.birth_date.slice(0, 4)) : (person.birth_year ? Number(person.birth_year) : null),
+    grade_rank: rank,
+    grade: rank == null ? null : GRADES.find((g) => g.rank === rank)?.label ?? null,
+    display_name: null, // a short scoreboard name would keep the old spelling
+  }).eq('id', id));
+  if (person.birth_date) {
+    unwrap(await supabase.from('competitor_contacts')
+      .upsert({ competitor_id: id, birth_date: person.birth_date }, { onConflict: 'competitor_id' }));
+  }
 }
 
 /** Teams of a category with their members (team editor). */

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addTeamMembers, createTeam, findOrCreateCompetitor, listCategoryTeams, listRonin,
-  removeRonin, removeTeamMember, renameTeam, startedEntries,
+  removeRonin, removeTeamMember, renameTeam, startedEntries, updateCompetitor,
 } from '../lib/api';
 import { teamMaxMembers, teamProblems, teamReserves } from '../lib/tournament/eligibility.js';
 import CompetitorPicker, { personName } from './CompetitorPicker';
 import { Message } from './TournamentShell';
+import EditPerson from './EditPerson';
 
 /** A person typed by hand (not registered yet): last name, first name, club. */
 function NewPerson({ onAdd, disabled, club = '' }) {
@@ -27,7 +28,7 @@ function NewPerson({ onAdd, disabled, club = '' }) {
  * without a team), new teams from registered competitors or ronin. Rules only
  * warn: the organizer may break them. Members are fixed once the team fought.
  */
-export default function TeamEditor({ tournamentId, category, competitors, contacts, ctx, onChanged }) {
+export default function TeamEditor({ tournamentId, category, competitors, contacts, ctx, ageBasis, onChanged }) {
   const [teams, setTeams] = useState([]);
   const [ronin, setRonin] = useState([]);
   const [started, setStarted] = useState(new Set());
@@ -36,6 +37,7 @@ export default function TeamEditor({ tournamentId, category, competitors, contac
   const [picked, setPicked] = useState([]); // ronin ticked for a new team / an existing team
   const [draft, setDraft] = useState({ name: '', club: '', members: [] });
   const [renaming, setRenaming] = useState(null); // { id, name, club }
+  const [editing, setEditing] = useState(null); // competitor id being corrected
   const cancelled = category.status === 'cancelled';
   const size = category.team_size ?? 3;
   const max = teamMaxMembers(size);
@@ -174,15 +176,27 @@ export default function TeamEditor({ tournamentId, category, competitors, contac
                 )}
               </div>
               <ul className="team-members">
-                {t.members.map((m) => (
+                {t.members.map((m) => (editing === m.id ? (
                   <li key={m.id}>
-                    {personName(m)}{m.club && m.club !== t.club ? <span className="tp-muted"> · {m.club}</span> : null}
+                    <EditPerson person={m} birthDate={contacts?.get(m.id)?.birth_date} ageBasis={ageBasis} busy={busy}
+                      onCancel={() => setEditing(null)}
+                      onSave={(p) => run(async () => { await updateCompetitor(m.id, p); setEditing(null); })} />
+                  </li>
+                ) : (
+                  <li key={m.id}>
+                    <span>
+                      {personName(m)}{m.club && m.club !== t.club ? <span className="tp-muted"> · {m.club}</span> : null}
+                      {!cancelled && (
+                        <button type="button" className="member-x" style={{ color: '#557' }} title="Correct name / data" disabled={busy}
+                          onClick={() => setEditing(m.id)}>✎</button>
+                      )}
+                    </span>
                     {!locked && (
                       <button type="button" className="member-x" title="Take out of the team (stays as a ronin of this category)" disabled={busy}
                         onClick={() => run(() => removeTeamMember(t.id, m.id, category.id), `${personName(m)} is now without a team (ronin).`)}>×</button>
                     )}
                   </li>
-                ))}
+                )))}
               </ul>
               {pr.length > 0 && <p className="team-warn">⚠ {pr.join(' · ')}</p>}
               {!locked && t.members.length < max && (
