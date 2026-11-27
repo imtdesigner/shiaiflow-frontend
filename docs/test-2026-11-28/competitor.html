@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><title>Natjecatelj — javna stranica</title><link rel="stylesheet" href="style.css"></head><body>
+<h1>Natjecatelj / gledatelj — javna stranica</h1>
+<p class="sub">ShiaiFlow alpha test · 28.11. · bez prijave u aplikaciju, <b>na mobitelu</b> (po mogućnosti) · link: <code>app.shiaiflow.com/t/ba06d6a2-07a2-4680-a542-954e7e2795c8</code></p>
+
+<div class="info">Ti si <b>JURIĆ Luka</b> (Kendo klub Osijek). Boriš se u <b>Kyu open</b> i u timu <b>KK NET</b>, uvijek na Shiaiju 1.
+Ne klikaš ništa u aplikaciji osim javne stranice. Gledaš pojavljuje li se sve <b>točno i na vrijeme</b> (≈1–2 s nakon klika stola).
+Kad nešto ne štima, zapiši <b>vrijeme</b> i napravi <b>screenshot</b>.</div>
+
+<h2>Prije starta</h2>
+<table><tr><th>#</th><th>Provjeri</th><th>Očekivano</th><th>✓</th></tr>
+<tr><td class="n">1</td><td>Otvori link na mobitelu. Kartice na vrhu.</td><td>Tournament · Entries · Register · Draw · Schedule</td><td class="ok"></td></tr>
+<tr><td class="n">2</td><td><b>Who are you?</b> → odaberi <b>JURIĆ Luka · Kendo klub Osijek</b></td><td>"Your next fight": Kyu open, Pool 3, Shiaijo 1, MARIĆ – JURIĆ, planirano vrijeme</td><td class="ok"></td></tr>
+<tr><td class="n">3</td><td>Entries</td><td>Kyu open, Dan open i Team open sa sastavima timova; imena s Č Ć Ž Š Đ ispravna</td><td class="ok"></td></tr>
+<tr><td class="n">4</td><td>Draw → Kyu open</td><td>3 poola; nakon povlačenja ŠARIĆ pool 3 ima samo MARIĆ i JURIĆ; bracket K032 (P3.2–P2.2, P2.1–P1.2 …)</td><td class="ok"></td></tr>
+<tr><td class="n">5</td><td>Schedule</td><td>Borbe po shiaijima s vremenima. Timski meč traje oko 10 min, a između kategorija je 5 min.</td><td class="ok"></td></tr>
+<tr><td class="n">6</td><td><i>(neobavezno)</i> Register → pokušaj prijaviti izmišljenu osobu u Kyu open</td><td>Odbijeno: "already drawn". Kategorija je već izvučena, pa je to ispravno.</td><td class="ok"></td></tr>
+</table>
+
+<h2>Tijekom testa — kartica Live</h2>
+<table><tr><th>#</th><th>Kad</th><th>Očekivano</th><th>✓</th></tr>
+<tr><td class="n">7</td><td>Nakon Start tournament</td><td>Pojavi se kartica <b>Live</b>: oba shiaija jedan pored drugog (na mobitelu jedan ispod drugog), pod njima gumbi kategorija</td><td class="ok"></td></tr>
+<tr><td class="n">8</td><td>Kyu open poolovi</td><td>Tablica poolova se puni uživo; Pool 1: HORVAT, NOVAK, VUKOVIĆ; podebljani su oni koji idu u KO</td><td class="ok"></td></tr>
+<tr><td class="n">9</td><td>Pool 2 (Shiaijo 2)</td><td>Napomena o <b>ipponshobuu</b> BABIĆ – KNEŽEVIĆ; nakon njega BABIĆ 2.</td><td class="ok"></td></tr>
+<tr><td class="n">10</td><td><b>Tvoja borba</b> Pool 3 MARIĆ – JURIĆ</td><td>"Fighting now". Kraj: MARIĆ O O : K JURIĆ. Next fight → <b>F-1</b> protiv BABIĆ</td><td class="ok"></td></tr>
+<tr><td class="n">11</td><td><b>F-1</b> JURIĆ – BABIĆ</td><td>JURIĆ pobjeđuje hantejem (<b>Ht</b>). U bracketu ide dalje na F-3 protiv HORVATA</td><td class="ok"></td></tr>
+<tr class="mistake"><td class="n">12</td><td>Kyu F-2 (Shiaijo 2)</td><td>Prvo krivo: NOVAK pobjeđuje i igra F-4 protiv MARIĆ. Nakon ispravka managera: <b>KOVAČEVIĆ</b> pobjednik F-2, F-4 se bori ponovno (KOVAČEVIĆ – MARIĆ)</td><td class="ok"></td></tr>
+<tr><td class="n">13</td><td><b>F-3</b> HORVAT – JURIĆ</td><td>HORVAT 1–0 (bez K kod JURIĆA, jer stol radi Undo). Ti si <b>3.</b></td><td class="ok"></td></tr>
+<tr><td class="n">14</td><td>Finale Kyu F-5</td><td>HORVAT – KOVAČEVIĆ (<b>ne</b> MARIĆ), HORVAT 2–1 u enchu (E)</td><td class="ok"></td></tr>
+<tr class="mistake"><td class="n">15</td><td>Dan open Pool 1</td><td>Kratko je LUKIĆ 2., a nakon ispravka managera <b>MATIĆ 2.</b> U KO F-3 je MATIĆ – BOŽIĆ</td><td class="ok"></td></tr>
+<tr><td class="n">16</td><td>Dan open Pool 2</td><td>Sosai: PAVLOVIĆ – BOŽIĆ 1–1 hikiwake, oba ▲▲. Poredak: BOŽIĆ, PAVLOVIĆ, HORVAT H.</td><td class="ok"></td></tr>
+<tr><td class="n">17</td><td>Gumbi kategorija</td><td>● uz kategoriju koja se upravo bori, "· later" uz one koje nisu počele; kategorija koja se bori otvori se sama</td><td class="ok"></td></tr>
+<tr><td class="n">18</td><td><b>Team F-1</b> KK NET – KK RIJEKA (ti si senpo)</td><td>Postave se vide <b>tek kad ih stol potvrdi</b>. Tvoj bout: JURIĆ M. Meč odlučuje daihyosen MATIĆ K → KK NET u finalu</td><td class="ok"></td></tr>
+<tr><td class="n">19</td><td>Team F-2 ZAGREB – SPLIT</td><td>Chuken SPLITA prazan (fusen), ZAGREB 2:1</td><td class="ok"></td></tr>
+<tr><td class="n">20</td><td><b>Team finale F-3</b> KK NET – KK ZAGREB</td><td>Tvoj bout: LONČAR M. ZAGREB 2:1. Who are you: <b>"No more fights for you."</b></td><td class="ok"></td></tr>
+</table>
+
+<h2>Na kraju</h2>
+<table><tr><th>#</th><th>Provjeri</th><th>Očekivano</th><th>✓</th></tr>
+<tr><td class="n">21</td><td>Bracketi sve tri kategorije</td><td>Pobjednici podebljani, poraženi blijedi, poeni po strani. Kyu: HORVAT · Dan: PERIĆ · Team: KK ZAGREB</td><td class="ok"></td></tr>
+<tr><td class="n">22</td><td>Je li "Your next fight" cijelo vrijeme imao smisla (shiaijo, protivnik, "Expected in … min")?</td><td>Zapiši gdje nije</td><td class="ok"></td></tr>
+<tr><td class="n">23</td><td>Mobitel: je li se sve dalo čitati bez zumiranja?</td><td>Zapiši što je presitno ili preširoko</td><td class="ok"></td></tr>
+</table>
+<p class="sub">Za usporedbu: konačni rezultati su u listu managera. Kyu: 1. HORVAT, 2. KOVAČEVIĆ, 3. JURIĆ i MARIĆ · Dan: 1. PERIĆ, 2. BOŽIĆ, 3. PAVLOVIĆ i TOMIĆ · Team: 1. ZAGREB, 2. NET, 3. RIJEKA i SPLIT.</p>
+</body></html>
