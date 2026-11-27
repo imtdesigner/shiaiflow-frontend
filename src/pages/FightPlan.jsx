@@ -5,13 +5,13 @@ import {
 } from '../components/TournamentShell';
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
 import { matchRounds, slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
+import { courtQueue, koRoundLabel, matchSeconds } from '../lib/tournament/run.js';
 import { breakSeconds, clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
 import { fmtDate } from '../components/TournamentList';
 import './TournamentPages.css';
 
 /** Seconds a fight takes (fight time of its category, phase and KO round). */
-const fightSecondsOf = (f, c) => fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no));
+const fightSecondsOf = (f, c, changeover) => matchSeconds(c, f, changeover);
 
 /**
  * Fight plan: every saved fight, by category (pools, then KO) or by shiaijo
@@ -90,7 +90,7 @@ function FightPlan() {
     // per day, the clock starts at the day's start; the end block closes each day
     const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
     const dayOf = (f) => byId[f.category_id]?.day ?? 1;
-    return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id]), {
+    return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id], tournament?.changeover_seconds ?? 15), {
       changeover: tournament?.changeover_seconds ?? 15,
       breaksOf: (d) => breakSeconds(days[d - 1]),
     });

@@ -68,7 +68,7 @@ function ShiaijoPlan({ embedded = false }) {
 
   const perCategory = active.map((c) => {
     const fs = categoryFights(c);
-    return { c, fights: fs, seconds: courtSeconds(fs, c) };
+    return { c, fights: fs, seconds: courtSeconds(fs, c, tournament?.changeover_seconds ?? 15) };
   });
 
   const run = async (fn, ok) => {
@@ -275,7 +275,7 @@ function ShiaijoPlan({ embedded = false }) {
             const finals = fs.length - semis;
             const label = [semis && `${semis} ${end ? 'semifinal' : 'fight'}${semis > 1 ? 's' : ''}`, finals && `${finals} final`]
               .filter(Boolean).join(' + ');
-            return { c: r.c, count: fs.length, label, seconds: [...courtSeconds(fs, r.c).values()].reduce((a, b) => a + b, 0) };
+            return { c: r.c, count: fs.length, label, seconds: [...courtSeconds(fs, r.c, tournament?.changeover_seconds ?? 15).values()].reduce((a, b) => a + b, 0) };
           }).filter((p) => p.count > 0);
           const parts = partsOf(false);
           const endParts = partsOf(true);

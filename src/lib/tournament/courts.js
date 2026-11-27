@@ -8,6 +8,7 @@
 
 import { getTemplate, leaves, matchRounds, thirdPlaceFight } from './ko.js';
 import { POOL_ORDER, splitPools, systemCode } from './pools.js';
+import { teamAwareSeconds } from './run.js';
 
 const fightsInPool = (size) => (size >= 2 ? (POOL_ORDER[size]?.length ?? (size * (size - 1)) / 2) : 0);
 
@@ -134,11 +135,13 @@ export function plannedFights(count, { poolSize, advancing, split = 'even', thir
   return fights;
 }
 
-/** Seconds of fighting per court for a list of fights and the category's fight times. */
-export function courtSeconds(fights, { pool_fight_seconds: pool, ko_fight_seconds: ko, final_fight_seconds: final }) {
+/** Seconds of fighting per court for a list of fights and the category's fight times (team: every bout). */
+export function courtSeconds(fights, category, changeover = 15) {
+  const { pool_fight_seconds: pool, ko_fight_seconds: ko, final_fight_seconds: final } = category;
   const out = new Map();
   for (const f of fights) {
-    const s = f.phase === 'pool' ? pool : f.phase === 'final' ? final : ko;
+    // a team match counts all its bouts
+    const s = teamAwareSeconds(category, f.phase === 'pool' ? pool : f.phase === 'final' ? (final ?? ko) : ko, changeover);
     out.set(f.court, (out.get(f.court) ?? 0) + s);
   }
   return out;

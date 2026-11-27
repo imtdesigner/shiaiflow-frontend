@@ -14,7 +14,7 @@ import { askedConsents, signupProblems, signupSettings } from '../lib/tournament
 import { subscribeFights } from '../lib/runApi';
 import { directKoQualifiers } from '../lib/tournament/draw.js';
 import { slotLabel, thirdPlaceFight } from '../lib/tournament/ko.js';
-import { courtQueue, fightSeconds, koRound, koRoundLabel } from '../lib/tournament/run.js';
+import { courtQueue, koRoundLabel, matchSeconds } from '../lib/tournament/run.js';
 import { boutResult, scoringOptions } from '../lib/tournament/scoring.js';
 import { teamMatchResult } from '../lib/tournament/team.js';
 import { fightMarks } from '../lib/tournament/poolView.js';
@@ -142,7 +142,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     : koRoundLabel(byCat[f.category_id], f.ko_no));
   const secsOf = (f) => {
     const c = byCat[f.category_id];
-    return c ? fightSeconds(c, f.phase === 'ko' ? 'ko' : 'pool', koRound(c, f.ko_no)) : 180;
+    return c ? matchSeconds(c, f, tournament?.changeover_seconds ?? 15) : 180;
   };
   /**
    * One category: pools (standings once fights started, else the members)

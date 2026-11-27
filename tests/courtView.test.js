@@ -52,3 +52,19 @@ test('finals on another court: the idle court says where', () => {
   const own = [f('p1', 'A', 2, 10, 'finished', { finished_at: '2026-11-28T10:00:00Z' }), f('k1', 'A', 2, 20, 'scheduled', st)];
   assert.equal(courtView(queueOf(own, 2), own).elsewhere, null);
 });
+
+import { matchSeconds, teamAwareSeconds } from '../src/lib/tournament/run.js';
+import { courtSeconds } from '../src/lib/tournament/courts.js';
+
+test('time estimate: a team match counts every bout (owner, 2026-11-27)', () => {
+  const team = { kind: 'team', team_size: 3, pool_fight_seconds: 180, ko_fight_seconds: 180, final_fight_seconds: 180, ko_template: [] };
+  // 3 × 3 min + 2 × 15 s changeover + 1 min lineups / bows = 10.5 min
+  assert.equal(teamAwareSeconds(team, 180, 15), 630);
+  assert.equal(matchSeconds(team, { phase: 'ko', ko_no: 1 }, 15), 630);
+  // 13 teams direct KO = 12 matches ≈ 126 min, not 36
+  const fights = Array.from({ length: 12 }, () => ({ phase: 'ko', court: 1 }));
+  assert.equal(courtSeconds(fights, team, 15).get(1), 12 * 630);
+  const five = { ...team, team_size: 5 };
+  assert.equal(teamAwareSeconds(five, 180, 15), 5 * 180 + 4 * 15 + 60);
+  assert.equal(teamAwareSeconds({ kind: 'individual' }, 180, 15), 180);
+});

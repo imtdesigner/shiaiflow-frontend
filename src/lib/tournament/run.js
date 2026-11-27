@@ -43,6 +43,25 @@ export function fightSeconds(category, phase, round) {
   return category.ko_fight_seconds;
 }
 
+/** Lineups, team bow-in and bow-out of a team match (estimate). */
+export const TEAM_MATCH_EXTRA_SECONDS = 60;
+
+/**
+ * Seconds a whole fight takes, for time estimates: an individual fight = its
+ * fight time; a team match = every bout (team size × fight time), a changeover
+ * between bouts and TEAM_MATCH_EXTRA_SECONDS (owner, 2026-11-27: 3 × 3 min +
+ * 2 × 15 s + 1 min ≈ 10.5 min, not 3 min).
+ */
+export function teamAwareSeconds(category, boutSeconds, changeover = 15) {
+  if (category?.kind !== 'team') return boutSeconds;
+  const n = category.team_size ?? 3;
+  return n * boutSeconds + (n - 1) * changeover + TEAM_MATCH_EXTRA_SECONDS;
+}
+
+/** Estimate of a fight: fight time of its category, phase and KO round; a team match counts all its bouts. */
+export const matchSeconds = (category, f, changeover = 15) => teamAwareSeconds(category,
+  fightSeconds(category, f.phase === 'ko' ? 'ko' : 'pool', koRound(category, f.ko_no)), changeover);
+
 /** Round label of a KO fight: 1/4 final, 1/2 final, Final, 3rd place. */
 export function koRoundLabel(category, koNo) {
   const t = category?.ko_template ?? [];
