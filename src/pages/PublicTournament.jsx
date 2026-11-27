@@ -8,7 +8,7 @@ import {
   listTournamentFights, publicRegister, publicRegisterTeam, resolveTournament, tournamentOrganizers,
 } from '../lib/api';
 import { OrganizerLine, fmtDate } from '../components/TournamentList';
-import { breakSeconds, clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
+import { CATEGORY_GAP_SECONDS, breakSeconds, clockAt, courtSchedule, isUuid, tournamentDays } from '../lib/tournament/days.js';
 import { dayProgram, programForDay } from '../lib/tournament/program.js';
 import { askedConsents, signupProblems, signupSettings } from '../lib/tournament/signup.js';
 import { subscribeFights } from '../lib/runApi';
@@ -234,6 +234,7 @@ function PublicTournament({ tournamentId, editions = [], slug = null }) {
     const queues = new Map(courts.map((n) => [n, courtQueue(fights, drawn, n)]));
     return courtSchedule(queues, (f) => byCat[f.category_id]?.day ?? 1, secsOf, {
       changeover: tournament?.changeover_seconds ?? 15,
+      categoryGap: CATEGORY_GAP_SECONDS,
       breaksOf: (d) => breakSeconds(days[d - 1]),
     }).map(({ court, days: ds }) => ({ court, days: ds, list: ds.flatMap((d) => d.list) }));
   }, [fights, drawn, courts.length, tournament]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -84,24 +84,31 @@ function placeFight(t, secs, breaks) {
   return start;
 }
 
+/** Pause on a shiaijo between two categories (owner, 2026-11-27), for estimates. */
+export const CATEGORY_GAP_SECONDS = 300;
+
 /**
  * Schedule of every court, per day. `queues`: Map(court → fights in running
  * order); `dayOf(f)` → day number; `secsOf(f)` → fight seconds.
- * Options: `changeover` seconds between fights (bow-in, changeover), `breaksOf(day)`
+ * Options: `changeover` seconds between fights (bow-in, changeover), `categoryGap`
+ * seconds instead when the next fight is of another category (not in the end block), `breaksOf(day)`
  * → [[fromSec, toSec]] from that day's start (no fight starts in, or runs into, a break).
  * Returns [{ court, days: [{ day, list: [{ f, start }], total }] }] — start and
  * total in seconds from that day's start. Each day the end-block fights start
  * once every court has finished that day's other fights.
  */
-export function courtSchedule(queues, dayOf, secsOf, { changeover = 0, breaksOf = () => [] } = {}) {
+export function courtSchedule(queues, dayOf, secsOf, { changeover = 0, categoryGap = 0, breaksOf = () => [] } = {}) {
   const courts = [...queues.keys()];
   const all = courts.flatMap((c) => queues.get(c));
   const dayNos = [...new Set(all.map(dayOf))].sort((a, b) => a - b);
-  const run = (list, day, from = 0) => {
+  const run = (list, day, from = 0, gap = categoryGap) => {
     let t = from;
+    let prev = null;
     const placed = list.map((f) => {
-      const start = placeFight(t === from ? t : t + changeover, secsOf(f), breaksOf(day));
+      const pause = prev && prev.category_id !== f.category_id ? Math.max(changeover, gap) : changeover;
+      const start = placeFight(t === from ? t : t + pause, secsOf(f), breaksOf(day));
       t = start + secsOf(f);
+      prev = f;
       return { f, start };
     });
     return { placed, end: t };
@@ -116,7 +123,7 @@ export function courtSchedule(queues, dayOf, secsOf, { changeover = 0, breaksOf 
       const regular = run(mine.filter((f) => !f.end_block), day);
       const blockFights = mine.filter((f) => f.end_block);
       const block = blockFights.length
-        ? run(blockFights, day, Math.max(regular.end + (regular.placed.length ? changeover : 0), regularEnd.get(day) + changeover))
+        ? run(blockFights, day, Math.max(regular.end + (regular.placed.length ? changeover : 0), regularEnd.get(day) + changeover), 0)
         : { placed: [], end: regular.end };
       return { day, list: [...regular.placed, ...block.placed], total: block.end };
     }).filter((d) => d.list.length),

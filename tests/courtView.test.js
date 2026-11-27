@@ -68,3 +68,13 @@ test('time estimate: a team match counts every bout (owner, 2026-11-27)', () => 
   assert.equal(teamAwareSeconds(five, 180, 15), 5 * 180 + 4 * 15 + 60);
   assert.equal(teamAwareSeconds({ kind: 'individual' }, 180, 15), 180);
 });
+
+import { courtSchedule } from '../src/lib/tournament/days.js';
+
+test('schedule: 5 min between categories on a shiaijo, not inside the end block', () => {
+  const q = [{ id: 1, category_id: 'A' }, { id: 2, category_id: 'A' }, { id: 3, category_id: 'B' },
+    { id: 4, category_id: 'A', end_block: true }, { id: 5, category_id: 'B', end_block: true }];
+  const [court] = courtSchedule(new Map([[1, q]]), () => 1, () => 100, { changeover: 15, categoryGap: 300 });
+  const starts = court.days[0].list.map((x) => x.start);
+  assert.deepEqual(starts, [0, 115, 515, 630, 745]);
+});

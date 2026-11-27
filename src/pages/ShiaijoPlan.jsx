@@ -7,7 +7,7 @@ import {
   changeCourtCount, checkedInCounts, listFights, setCategoryCourts, setTournamentCourts, updateCategory, updateTournament,
 } from '../lib/api';
 import { courtPlan, courtSeconds, plannedFights } from '../lib/tournament/courts.js';
-import { dayCount, tournamentDays } from '../lib/tournament/days.js';
+import { CATEGORY_GAP_SECONDS, dayCount, tournamentDays } from '../lib/tournament/days.js';
 import './TournamentPages.css';
 import { TimeInput } from '../components/EuInputs';
 import Segmented from '../components/Segmented';
@@ -279,7 +279,11 @@ function ShiaijoPlan({ embedded = false }) {
           }).filter((p) => p.count > 0);
           const parts = partsOf(false);
           const endParts = partsOf(true);
-          const total = [...parts, ...endParts].reduce((a, p) => a + p.seconds, 0);
+          // + changeover between fights and a pause between categories (as in the Fight plan)
+          const fightCount = [...parts, ...endParts].reduce((a, p) => a + p.count, 0);
+          const total = [...parts, ...endParts].reduce((a, p) => a + p.seconds, 0)
+            + Math.max(0, fightCount - 1) * (tournament?.changeover_seconds ?? 15)
+            + Math.max(0, parts.length - 1) * (CATEGORY_GAP_SECONDS - (tournament?.changeover_seconds ?? 15));
           return (
             <div className="tp-pool" key={n}>
               <h4>

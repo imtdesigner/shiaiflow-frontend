@@ -6,7 +6,7 @@ import {
 import { listEntriesFor, listTournamentFights, setFightCourt } from '../lib/api';
 import { matchRounds, slotLabel } from '../lib/tournament/ko.js';
 import { courtQueue, koRoundLabel, matchSeconds } from '../lib/tournament/run.js';
-import { breakSeconds, clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
+import { CATEGORY_GAP_SECONDS, breakSeconds, clockAt, courtSchedule, overrunsDay, tournamentDays } from '../lib/tournament/days.js';
 import { fmtDate } from '../components/TournamentList';
 import './TournamentPages.css';
 
@@ -92,6 +92,7 @@ function FightPlan() {
     const dayOf = (f) => byId[f.category_id]?.day ?? 1;
     return courtSchedule(queues, dayOf, (f) => fightSecondsOf(f, byId[f.category_id], tournament?.changeover_seconds ?? 15), {
       changeover: tournament?.changeover_seconds ?? 15,
+      categoryGap: CATEGORY_GAP_SECONDS,
       breaksOf: (d) => breakSeconds(days[d - 1]),
     });
   }, [fights, byId, meta, courtCount, drawn, tournament]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -197,7 +198,7 @@ function FightPlan() {
       ))}
 
       <p className="tp-muted">
-        Start = {dayStart(1) ? `from ${multiDay ? 'each day\'s start' : dayStart(1)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times plus {tournament?.changeover_seconds ?? 15} s between fights, no fight starts in or runs into a break; the end-of-tournament block starts once
+        Start = {dayStart(1) ? `from ${multiDay ? 'each day\'s start' : dayStart(1)}, ` : 'set a start time in the Shiaijo plan for clock times; '}estimated from fight times (a team match: every bout + 1 min) plus {tournament?.changeover_seconds ?? 15} s between fights and {CATEGORY_GAP_SECONDS / 60} min between categories, no fight starts in or runs into a break; the end-of-tournament block starts once
         every shiaijo has finished its other fights{multiDay ? ' of that day' : ''}. ✎ = court changed by hand.
       </p>
       <div className="tp-actions tp-no-print">
