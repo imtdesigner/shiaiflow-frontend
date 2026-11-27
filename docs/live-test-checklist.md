@@ -98,3 +98,9 @@
 **Bilješke s testa** (što je zapelo, kome je što bilo nejasno, ideje):
 
 -
+
+## Start category (2026-11-27)
+- [ ] After Start tournament every Court screen shows "next category <name>"; the table shows Start category.
+- [ ] Start category on one table → the fights appear on every shiaijo of the category (≈1 s).
+- [ ] Next list ends with "Next category: X" near the end of a category.
+- [ ] A category with pools on 2 shiaijos and the final on one: the other Court screen shows "FINALS on Shiaijo N".

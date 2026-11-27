@@ -237,3 +237,5 @@
 .st-waiting { margin: 0.6rem 0; padding: 0.7rem 0.9rem; border: 2px dashed #c9b9a0; border-radius: 8px; background: #fffaf0; }
 .st-waiting p { margin: 0.2rem 0; }
 .st-head .st-screen-link { margin-left: auto; }
+
+.st-start-cat { font-size: 1.3rem; padding: 0.8rem 1.6rem; margin-top: 0.5rem; }

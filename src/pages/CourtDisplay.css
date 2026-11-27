@@ -214,3 +214,10 @@
 .cd-page.idle, .cd-page.idle * { cursor: none !important; }
 .cd-page.idle .cd-tools { opacity: 0; }
 .cd-tools { transition: opacity 0.3s; }
+
+/* Start category / finals elsewhere (2026-11-27) */
+.cd-nextcat { display: flex; flex-direction: column; align-items: center; gap: 1.5vw; text-align: center; width: 100%; }
+.cd-nextcat > strong { font-size: 6vw; color: #f3efe6; line-height: 1.1; }
+.cd-elsewhere { background: #2a2416; border-top: 2px solid #d9a441; font-size: 2.4vw; }
+.cd-band .cd-elsewhere-title, .cd-elsewhere-title { margin: 0 0 0.6vw; color: #f0c060; font-size: 2.8vw; letter-spacing: 0.04em; }
+.cd-row-cat { color: #f0c060; font-size: 1em; justify-content: flex-start; gap: 1vw; }

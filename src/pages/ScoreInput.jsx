@@ -7,7 +7,7 @@ import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
   addDaihyosen, boutOf, confirmLineups, finishBout, finishFight, listEvents, listMatchBouts,
   listRunFights, listTeamMembers, myRole, previousLineup, reopenBout, reopenFight,
-  listFightingSpirit, proposeFightingSpirit, sendScoreOp, setFightFields, startBout, startEncho, startFight, subscribeFights,
+  listFightingSpirit, proposeFightingSpirit, sendScoreOp, setFightFields, startBout, startCategory, startEncho, startFight, subscribeFights,
 } from '../lib/runApi';
 import { createOutbox, eventsWithOps, fightsWithOps } from '../lib/outbox.js';
 import { DaihyosenPanel, LineupPanel, personName } from '../components/TeamLineup';
@@ -21,7 +21,7 @@ import { lastFightOnCourt } from '../lib/tournament/results.js';
 import { COURT_SCREEN, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
 import {
-  courtQueue, currentFight, fightRules, fightSeconds, fightStatus, koRound, phaseLabel, waitingForFighter,
+  categoryStarted, courtQueue, courtView, currentFight, elsewhereTitle, fightRules, fightSeconds, fightStatus, koRound, phaseLabel, waitingForFighter,
 } from '../lib/tournament/run.js';
 import { boutResult, canSosai, scoringOptions } from '../lib/tournament/scoring.js';
 import './TournamentPages.css';
@@ -347,6 +347,9 @@ function ScoreInput() {
   };
 
   const upcoming = queue.filter((f) => f.status !== 'finished' && f.id !== fight?.id);
+  // Start category (owner, 2026-11-27): a category's fights start only after Start category
+  const gateCat = fight && fight.status === 'scheduled' && !categoryStarted(fight.category_id, fights) ? byId[fight.category_id] : null;
+  const elsewhere = courtView(queue, fights).elsewhere;
   const finished = queue.filter((f) => f.status === 'finished').slice(-6).reverse();
 
   // points of the finished fights in the list (ippons and hansoku only)
@@ -445,7 +448,25 @@ function ScoreInput() {
         </Message>
       )}
 
-      {!fight ? (
+      {elsewhere && (
+        <Message type="info">
+          <strong>{byId[elsewhere.category]?.name} — {elsewhereTitle(elsewhere.fights)}:</strong>{' '}
+          {elsewhere.fights.slice(0, 3).map((f) => `${f.label} ${name(f, 'red')} – ${name(f, 'white')}`).join(' · ')}
+        </Message>
+      )}
+
+      {gateCat ? (
+        <div className="tp-card st-fight">
+          <div className="st-fight-head"><span className="tp-badge warn">next category</span> <strong>{gateCat.name}</strong></div>
+          <p className="tp-muted">
+            The screens show “Next: {gateCat.name}” until it starts. Check that the competitors are ready (late changes to the draw are still possible), then start it — its fights appear on every shiaijo of the category.
+          </p>
+          <button type="button" className="tp-btn st-start-cat" disabled={busy || tournament?.status !== 'running'}
+            onClick={() => run(() => startCategory(gateCat.id))}>
+            Start category {gateCat.name}
+          </button>
+        </div>
+      ) : !fight ? (
         <div className="tp-card"><p className="tp-muted">No fight ready on this shiaijo{upcoming.length ? ' — waiting for fighters from earlier fights.' : '.'}</p></div>
       ) : (
         <div className="tp-card st-fight">

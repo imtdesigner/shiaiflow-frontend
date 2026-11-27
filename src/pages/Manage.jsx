@@ -6,10 +6,10 @@ import {
 import { listBouts, listEntriesFor, listEventsFor } from '../lib/api';
 import {
   correctFight, editResult, getPin, keepConflicts, listRunFights, myRole, replayConflicts, resetKoFighters, resetPoolOrder,
-  setKoFighters, setPin, setPoolOrder, subscribeFights,
+  setKoFighters, setPin, setPoolOrder, startCategory, subscribeFights,
 } from '../lib/runApi';
 import { slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue, currentFight } from '../lib/tournament/run.js';
+import { courtQueue, courtView, elsewhereTitle } from '../lib/tournament/run.js';
 import HallSetup from '../components/HallSetup';
 import TableDevice, { COURT_SCREEN, SCOREKEEPING, courtScreenUrl } from '../components/TableDevice';
 import PoolStandings, { poolMembers, usePoolData } from '../components/PoolStandings';
@@ -187,9 +187,10 @@ function Manage() {
       <div className="court-grid" style={courtGridStyle(courts.length)}>
         {courts.map((n) => {
           const queue = courtQueue(fights, drawn, n);
-          const now = currentFight(queue);
+          const view = courtView(queue, fights);
+          const now = view.current;
           const done = queue.filter((f) => f.status === 'finished').length;
-          const next = queue.filter((f) => f.status !== 'finished' && f.id !== now?.id).slice(0, 3);
+          const { next } = view;
           return (
             <div className="tp-pool" key={n}>
               <h4>Shiaijo {n} <span className="tp-muted">· {done}/{queue.length} done</span></h4>
@@ -199,12 +200,26 @@ function Manage() {
                   {' '}<strong>{now.label}</strong> {byId[now.category_id]?.name}<br />
                   <span className="aka">{name(now, 'red')}</span> – <span className="shiro">{name(now, 'white')}</span>
                 </p>
+              ) : view.waiting ? (
+                <p>
+                  <span className="tp-badge warn">next category</span> <strong>{byId[view.waiting]?.name}</strong><br />
+                  {running && (
+                    <button type="button" className="tp-btn small" style={{ marginTop: '0.4rem' }} disabled={busy}
+                      onClick={() => run(() => startCategory(view.waiting), `${byId[view.waiting]?.name} started — its fights are on the screens.`)}>
+                      Start category {byId[view.waiting]?.name}
+                    </button>
+                  )}
+                </p>
               ) : <p className="tp-muted">{queue.length && done === queue.length ? 'All fights done.' : 'Waiting.'}</p>}
+              {view.elsewhere && (
+                <p className="tp-muted">{byId[view.elsewhere.category]?.name} — {elsewhereTitle(view.elsewhere.fights)}</p>
+              )}
               {next.length > 0 && (
                 <ol>
                   {next.map((f) => <li key={f.id}><strong>{f.label}</strong> {name(f, 'red')} – {name(f, 'white')}</li>)}
                 </ol>
               )}
+              {view.nextCategory && <p className="tp-muted">Then: {byId[view.nextCategory]?.name} (starts with Start category)</p>}
             </div>
           );
         })}

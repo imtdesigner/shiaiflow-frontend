@@ -189,3 +189,66 @@ export function koEntries(koFights, poolPlaces) {
 export function placesToCodes(poolNumber, ranking, advancing) {
   return ranking.slice(0, advancing).map((id, i) => [poolCode(poolNumber, i + 1), id]);
 }
+
+/**
+ * A category has started once the manager or a table pressed Start category
+ * (fights carry `category.started_at`, embedded by listRunFights) or one of its
+ * fights started.
+ */
+export const categoryStarted = (categoryId, fights) => fights.some((f) => f.category_id === categoryId
+  && (f.category?.started_at || f.status !== 'scheduled'));
+
+/**
+ * What a shiaijo shows (owner, 2026-11-27):
+ *   current — the fight in progress or next, only from a started category;
+ *   waiting — the category coming next on this shiaijo, not started yet
+ *             (screens show "Next: <category>", tables a Start category button);
+ *   next — up to `count` following fights of started categories;
+ *   nextCategory — the category after them when it has not started (the last "Next" line);
+ *   elsewhere — { category, fights } when the category last fought here goes on
+ *               on another shiaijo only (e.g. its final): "FINALS on Shiaijo 1".
+ * picked: a fight the table took on purpose (Take next).
+ */
+export function courtView(queue, allFights, { count = 3, picked = null } = {}) {
+  const started = new Map();
+  const isStarted = (id) => {
+    if (!started.has(id)) started.set(id, categoryStarted(id, allFights));
+    return started.get(id);
+  };
+  const open = queue.filter((f) => f.status !== 'finished');
+  const first = picked ?? currentFight(queue);
+  let current = first;
+  let waiting = null;
+  if (first && first.status === 'scheduled' && !isStarted(first.category_id)) {
+    current = null;
+    waiting = first.category_id;
+  }
+  const next = [];
+  let nextCategory = null;
+  if (!waiting) {
+    for (const f of open) {
+      if (f.id === current?.id) continue;
+      if (!isStarted(f.category_id)) { nextCategory = f.category_id; break; }
+      if (next.length >= count) break;
+      next.push(f);
+    }
+  }
+  // the category last fought here, now going on only on other shiaijos
+  const court = queue[0]?.shiaijo;
+  const lastHere = queue.filter((f) => f.status === 'finished')
+    .sort((a, b) => new Date(a.finished_at ?? 0) - new Date(b.finished_at ?? 0)).at(-1);
+  let elsewhere = null;
+  if (lastHere && !open.some((f) => f.category_id === lastHere.category_id)) {
+    const rest = allFights.filter((f) => f.category_id === lastHere.category_id && f.shiaijo !== court && f.status !== 'finished')
+      .sort((a, b) => (a.shiaijo - b.shiaijo) || ((a.court_seq ?? 0) - (b.court_seq ?? 0)));
+    if (rest.length) elsewhere = { category: lastHere.category_id, fights: rest };
+  }
+  return { current, waiting, next, nextCategory, elsewhere };
+}
+
+/** Heading for fights going on elsewhere: "FINALS on Shiaijo 1" (KO only) or "goes on on Shiaijo 1". */
+export function elsewhereTitle(fights) {
+  const courts = [...new Set(fights.map((f) => f.shiaijo))].join(' + ');
+  const ko = fights.every((f) => f.phase === 'ko' || f.phase === 'daihyosen');
+  return ko ? `FINALS on Shiaijo ${courts}` : `goes on on Shiaijo ${courts}`;
+}

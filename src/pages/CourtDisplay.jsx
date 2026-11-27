@@ -7,7 +7,7 @@ import {
 import { listRunFights, subscribeFights } from '../lib/runApi';
 import { isUuid } from '../lib/tournament/days.js';
 import { slotLabel } from '../lib/tournament/ko.js';
-import { courtQueue, currentFight, phaseLabel } from '../lib/tournament/run.js';
+import { courtQueue, courtView, currentFight, elsewhereTitle, phaseLabel } from '../lib/tournament/run.js';
 import { boutResult, firstPointSide, scoringOptions } from '../lib/tournament/scoring.js';
 import { POSITION_LABELS, teamBoard } from '../lib/tournament/team.js';
 import './CourtDisplay.css';
@@ -118,12 +118,13 @@ export default function CourtDisplay() {
   }, []);
 
   const queue = useMemo(() => courtQueue(fights, drawn, court), [fights, drawn, court]);
-  const current = currentFight(queue);
+  // a category's fights show only once it is started (owner, 2026-11-27): before that "Next: <category>"
+  const teamNow = (() => { const c = currentFight(queue); return !!c && byCat[c.category_id]?.kind === 'team'; })();
+  const view = useMemo(() => courtView(queue, fights, { count: teamNow ? 1 : 3 }), [queue, fights, teamNow]);
+  const { current, next } = view;
   // last result only from the category fighting now (owner, 2026-11-23); next: 3 fights, only 1 during a team match
   const last = queue.filter((f) => f.status === 'finished' && (!current || f.category_id === current.category_id))
     .sort(byFinish).at(-1) ?? null;
-  const teamNow = !!current && byCat[current.category_id]?.kind === 'team';
-  const next = queue.filter((f) => f.status !== 'finished' && f.id !== current?.id).slice(0, teamNow ? 1 : 3);
 
   const entryOf = (f, side) => entries.find((e) => e.id === (side === 'red' ? f.red_entry_id : f.white_entry_id));
   const name = (f, side) => {
@@ -222,6 +223,21 @@ export default function CourtDisplay() {
     </>
   );
 
+  // the category last fought here goes on only on another shiaijo (e.g. its final)
+  const elsewhereBlock = (big) => (
+    <div className={big ? 'cd-nextcat' : ''}>
+      <h3 className="cd-elsewhere-title">{byCat[view.elsewhere.category]?.name} — {elsewhereTitle(view.elsewhere.fights)}</h3>
+      {view.elsewhere.fights.slice(0, big ? 3 : 1).map((f) => (
+        <div key={f.id} className="cd-row">
+          {fightInfo(f)}
+          <span className={`cd-who left ${order[0]}`}>{name(f, order[0])}</span>
+          <span className="cd-vs">–</span>
+          <span className={`cd-who ${order[1]}`}>{name(f, order[1])}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className={`cd-page ${idle ? 'idle' : ''}`}>
       <header className="cd-head">
@@ -280,14 +296,24 @@ export default function CourtDisplay() {
             )}
             {isTeam(current) && !boardOf(current).ready && <p className="cd-note">Lineups are shown once both teams have confirmed them.</p>}
           </>
-        ) : (
+        ) : view.waiting ? (
+          <div className="cd-nextcat">
+            <span className="cd-soon">next category</span>
+            <strong>{byCat[view.waiting]?.name}</strong>
+          </div>
+        ) : view.elsewhere ? elsewhereBlock(true) : (
           <p className="cd-wait">{queue.length && queue.every((f) => f.status === 'finished') ? 'All fights on this shiaijo are finished.' : 'Waiting for the next fight…'}</p>
         )}
       </main>
 
+      {view.elsewhere && (current || view.waiting) && (
+        <section className="cd-band cd-elsewhere">{elsewhereBlock(false)}</section>
+      )}
+
       <section className="cd-band cd-next">
         <h3>Next</h3>
-        {next.length === 0 ? <p className="cd-muted">Nothing left on this shiaijo.</p> : next.map((f) => (
+        {view.waiting ? <p className="cd-muted">The fights appear when the category starts.</p>
+          : next.length === 0 && !view.nextCategory ? <p className="cd-muted">Nothing left on this shiaijo.</p> : next.map((f) => (
           <div key={f.id} className="cd-row">
             {fightInfo(f)}
             <span className={`cd-who left ${order[0]}`}>{name(f, order[0])}</span>
@@ -295,6 +321,9 @@ export default function CourtDisplay() {
             <span className={`cd-who ${order[1]}`}>{name(f, order[1])}</span>
           </div>
         ))}
+        {!view.waiting && view.nextCategory && (
+          <div className="cd-row cd-row-cat">Next category: <strong>{byCat[view.nextCategory]?.name}</strong></div>
+        )}
       </section>
     </div>
   );

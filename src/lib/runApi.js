@@ -14,7 +14,8 @@ function unwrap({ data, error }) {
 
 const FIGHT_COLUMNS = 'id, category_id, phase, label, pool_id, ko_no, red_code, white_code, red_entry_id, white_entry_id, '
   + 'shiaijo, court_seq, queue_order, end_block, court_manual, status, is_encho, is_hikiwake, decision, fusen, '
-  + 'winner_entry_id, started_at, finished_at, timer_elapsed_ms, timer_started_at, manual_entries, kept_as_fought';
+  + 'winner_entry_id, started_at, finished_at, timer_elapsed_ms, timer_started_at, manual_entries, kept_as_fought, '
+  + 'category:categories(started_at)'; // Start category (courtView)
 
 export async function listRunFights(categoryIds) {
   if (!categoryIds.length) return [];
@@ -37,6 +38,11 @@ export async function startTournament(tournament, categories) {
   const seq = startSequence(fights.filter((f) => f.court_seq == null), drawn);
   await setSeqs(seq);
   return unwrap(await supabase.from('tournaments').update({ status: 'running' }).eq('id', tournament.id).select().single());
+}
+
+/** Start a category (manager or one of its tables): its fights appear on the screens. */
+export async function startCategory(categoryId) {
+  return unwrap(await supabase.rpc('start_category', { c_id: categoryId }));
 }
 
 /** Start a fight; fights skipped on this court move below it. */
