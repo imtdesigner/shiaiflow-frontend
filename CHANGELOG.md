@@ -3,6 +3,7 @@
 One line per deploy (newest first). The app shows `version · build date · commit` bottom left;
 every deploy is tagged `YYYY.MM.DD-n` in git. Rollback: Netlify → Deploys → pick a deploy → Publish deploy.
 
+- **2026.11.27-6** · 0.2.0 — time estimate: a team match counts every bout (+15 s changeovers, +1 min lineups / bows), 5 min between categories; Shiaijo plan totals count changeovers
 - **2026.11.27-5** · 0.2.0 — Registration: Edit a competitor (changes the person everywhere; ✎ in the team editor); competitor search reads Đ as D
 - **2026.11.27-4** · 0.2.0 — Start category (fights show after the manager or a table starts the category), Next category as the last Next line, FINALS on Shiaijo N
 - **2026.11.27-3** · 0.2.0 — signup: ask to enter a category the rules do not allow (Requests in Registration: Accept / Decline) + Note to the organizer
