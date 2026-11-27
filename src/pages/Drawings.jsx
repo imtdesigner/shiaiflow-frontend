@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, moveCategoryEntries, replaceInDraw, restoreCategory,
+  addToPool, cancelCategory, clearDraw, getSavedDraw, listContacts, listEntries, listRonin, moveCategoryEntries, replaceInDraw, restoreCategory,
   saveDraw, setCheckedIn, setDrawsConfirmed, updateCategory, updateTournament, withdrawFromPool,
 } from '../lib/api';
 import Segmented from '../components/Segmented';
@@ -228,18 +228,20 @@ function Drawings() {
     if (!selectedId && categories.length) setSelectedId(categories[0].id);
   }, [categories, selectedId]);
 
+  const [ronin, setRonin] = useState([]);
   const reload = useCallback(async () => {
     if (!selectedId) return;
     try {
-      const [ens, draw] = await Promise.all([listEntries(selectedId), getSavedDraw(selectedId)]);
+      const [ens, draw, rs] = await Promise.all([listEntries(selectedId), getSavedDraw(selectedId), listRonin(selectedId).catch(() => [])]);
       setEntries(ens);
+      setRonin(rs.filter(Boolean));
       setSaved(draw.pools.length ? draw : null);
     } catch (e) {
       setMsg({ type: 'error', text: e.message });
     }
   }, [selectedId]);
 
-  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); setMoveTarget(''); reload(); }, [reload]);
+  useEffect(() => { setPreview(null); setSaved(null); setEntries([]); setRonin([]); setMoveTarget(''); reload(); }, [reload]);
 
   const replaceCategory = (c) => setCategories(categories.map((x) => (x.id === c.id ? c : x)));
 
@@ -507,6 +509,12 @@ function Drawings() {
               {outside.length} registered {outside.length === 1 ? 'entry does' : 'entries do'} not meet the rules of {category.name}:{' '}
               {outside.map((x) => `${entryName(x.entry)} (${x.reason})`).join(', ')}. They stay registered — move or remove them in{' '}
               <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link> if needed.
+            </Message>
+          )}
+          {category.kind === 'team' && ronin.length > 0 && (
+            <Message type="error">
+              {ronin.length} without a team (ronin): {ronin.map((r) => `${r.last_name} ${r.first_name ?? ''}`.trim()).join(', ')}.
+              They are not in the draw — put them into a team in <Link to={`/tournament/${tournamentId}/registration`}>Registration</Link>.
             </Message>
           )}
           {fightRulesBlock(false)}

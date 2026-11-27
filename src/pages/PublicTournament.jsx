@@ -625,13 +625,19 @@ function PersonBlock({ p, onChange, onRemove, index, tournament, personCats, tea
                   {c.kind === 'team' && ` · team of ${c.team_size} + ${teamReserves(c.team_size)}${c.team_same_dojo ? ' · one dojo' : ''}${c.position_rules ? ' · limits per position' : ''}`}
                   {reason ? ` — not for you: ${reason}` : ''}
                 </div>
-                {c.kind === 'team' && !reason && picked.has(c.id) && (
+                {c.kind === 'team' && !reason && picked.has(c.id) && tournament.team_signup === 'team_first' && (
+                  <p className="tp-muted" style={{ margin: '0.3rem 0 0' }}>You sign up as a ronin (no team yet): a team can pick you, or the organizer places you in one.</p>
+                )}
+                {c.kind === 'team' && !reason && picked.has(c.id) && tournament.team_signup !== 'team_first' && (
                   <div className="tp-grid" style={{ marginTop: '0.4rem' }}>
-                    <select value={p.teamFor[c.id]?.team_id ?? ''} onChange={(e) => setTeam(c.id, { team_id: e.target.value, team_name: '' })}>
+                    <select value={p.teamFor[c.id]?.as_ronin ? '__ronin' : p.teamFor[c.id]?.team_id ?? ''}
+                      onChange={(e) => setTeam(c.id, e.target.value === '__ronin'
+                        ? { team_id: '', team_name: '', as_ronin: true } : { team_id: e.target.value, team_name: '', as_ronin: false })}>
                       <option value="">— new team —</option>
+                      <option value="__ronin">Ronin — no team, the organizer places me in one</option>
                       {teams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.club ? ` · ${t.club}` : ''}</option>)}
                     </select>
-                    {!p.teamFor[c.id]?.team_id && (
+                    {!p.teamFor[c.id]?.team_id && !p.teamFor[c.id]?.as_ronin && (
                       <input placeholder="New team name, e.g. RIJEKA 1" value={p.teamFor[c.id]?.team_name ?? ''}
                         onChange={(e) => setTeam(c.id, { team_id: '', team_name: e.target.value })} />
                     )}
@@ -662,7 +668,8 @@ function RegisterForm({ tournament, categories, teams, competitors, onDone }) {
   const [msg, setMsg] = useState({ type: '', text: '' });
 
   const teamFirst = tournament.team_signup === 'team_first';
-  const personCats = categories.filter((c) => c.kind === 'individual' || !teamFirst);
+  // team-first: a person may still tick a team category, as a ronin
+  const personCats = categories;
   const teamCats = categories.filter((c) => c.kind === 'team' && teamFirst);
 
   const update = (key, next) => setPeople((cur) => cur.map((x) => (x._key === key ? { ...next, _key: key } : x)));
@@ -692,7 +699,7 @@ function RegisterForm({ tournament, categories, teams, competitors, onDone }) {
       const failed = [];
       for (const c of personCats.filter((cat) => (x.picked ?? []).includes(cat.id))) {
         try {
-          await publicRegister(c.id, { ...x, ...rulesPerson(x, byDate), ...(c.kind === 'team' ? x.teamFor[c.id] ?? {} : {}) });
+          await publicRegister(c.id, { ...x, ...rulesPerson(x, byDate), ...(c.kind === 'team' ? (teamFirst ? { as_ronin: true } : x.teamFor[c.id] ?? {}) : {}) });
           done.push(c.name);
         } catch (err) { failed.push(`${c.name}: ${err.message}`); }
       }

@@ -102,6 +102,7 @@ export async function publicRegister(categoryId, person) {
     birth_date: person.birth_date || null,
     dojo_email: person.dojo_email || null,
     consents: person.consents && Object.keys(person.consents).length ? person.consents : null,
+    as_ronin: !!person.as_ronin,
   }));
 }
 
@@ -154,9 +155,12 @@ export async function createTournament(fields, categories = []) {
 
 /** Private contacts of a tournament's competitors (organizers only): Map(competitor id → row). */
 export async function listContacts(competitorIds) {
-  if (!competitorIds.length) return new Map();
-  const rows = unwrap(await supabase.from('competitor_contacts')
-    .select('competitor_id, email, dojo_email, birth_date, consents').in('competitor_id', competitorIds));
+  const rows = [];
+  // in chunks: a whole tournament's ids would make the URL too long
+  for (let i = 0; i < competitorIds.length; i += 100) {
+    rows.push(...unwrap(await supabase.from('competitor_contacts')
+      .select('competitor_id, email, dojo_email, birth_date, consents').in('competitor_id', competitorIds.slice(i, i + 100))));
+  }
   return new Map(rows.map((r) => [r.competitor_id, r]));
 }
 
@@ -291,6 +295,90 @@ export async function setTier(entryId, tier) {
     throw new Error(tier === 1 ? 'This category already has a champion.' : 'This category already has a runner-up.');
   }
   if (error) throw new Error(error.message);
+}
+
+/** Put an already registered competitor into another category (organizer; rules only warn). */
+export async function addExistingEntry(categoryId, competitorId, checkedIn = true) {
+  return unwrap(await supabase.from('entries')
+    .insert({ category_id: categoryId, competitor_id: competitorId, checked_in: checkedIn }).select().single());
+}
+
+/** Find or create a competitor by name + club (organizer). */
+export async function findOrCreateCompetitor(tournamentId, person) {
+  const lastName = person.last_name.trim().toUpperCase();
+  const firstName = (person.first_name ?? '').trim();
+  const club = (person.club ?? '').trim() || null;
+  let q = supabase.from('competitors').select('id')
+    .eq('tournament_id', tournamentId).eq('last_name', lastName).eq('first_name', firstName);
+  q = club ? q.eq('club', club) : q.is('club', null);
+  const found = unwrap(await q.maybeSingle());
+  if (found) return found.id;
+  return unwrap(await supabase.from('competitors')
+    .insert({ tournament_id: tournamentId, last_name: lastName, first_name: firstName, club }).select('id').single()).id;
+}
+
+/** Teams of a category with their members (team editor). */
+export async function listCategoryTeams(categoryId) {
+  return unwrap(await supabase.from('entries')
+    .select('id, team:teams(id, name, club, team_members(competitor_id, sort_order, competitor:competitors(id, last_name, first_name, club, gender, birth_year, grade_rank)))')
+    .eq('category_id', categoryId).not('team_id', 'is', null).order('created_at'));
+}
+
+/** Ronin of a category: signed up without a team. */
+export async function listRonin(categoryId) {
+  return unwrap(await supabase.from('ronin')
+    .select('competitor:competitors(id, last_name, first_name, club, gender, birth_year, grade_rank)')
+    .eq('category_id', categoryId).order('created_at')).map((r) => r.competitor);
+}
+
+export async function removeRonin(categoryId, competitorId) {
+  return unwrap(await supabase.from('ronin').delete().eq('category_id', categoryId).eq('competitor_id', competitorId));
+}
+
+/** Organizer adds a person to a team category as a ronin (no team yet). */
+export async function addRonin(categoryId, competitorId) {
+  return unwrap(await supabase.from('ronin').upsert({ category_id: categoryId, competitor_id: competitorId }, { onConflict: 'category_id,competitor_id' }));
+}
+
+/** Add members (competitor ids) to a team; a ronin placed in it stops being a ronin (DB trigger). */
+export async function addTeamMembers(teamId, competitorIds) {
+  const existing = unwrap(await supabase.from('team_members').select('sort_order').eq('team_id', teamId));
+  let next = existing.reduce((m, x) => Math.max(m, x.sort_order + 1), 0);
+  for (const id of competitorIds) {
+    unwrap(await supabase.from('team_members').insert({ team_id: teamId, competitor_id: id, sort_order: next }));
+    next += 1;
+  }
+}
+
+/** Take a member out of a team; optionally keep them as a ronin of the category. */
+export async function removeTeamMember(teamId, competitorId, roninCategoryId = null) {
+  unwrap(await supabase.from('team_members').delete().eq('team_id', teamId).eq('competitor_id', competitorId));
+  if (roninCategoryId) await addRonin(roninCategoryId, competitorId);
+}
+
+export async function renameTeam(teamId, { name, club }) {
+  const { error } = await supabase.from('teams')
+    .update({ name: name.trim().toUpperCase(), club: club?.trim() || null }).eq('id', teamId);
+  if (error?.code === '23505') throw new Error('A team with this name already exists in this tournament.');
+  if (error) throw new Error(error.message);
+}
+
+/** New team in a category from competitor ids (organizer). */
+export async function createTeam(tournamentId, categoryId, { name, club, memberIds = [], checked_in = true }) {
+  const { data: team, error } = await supabase.from('teams')
+    .insert({ tournament_id: tournamentId, name: name.trim().toUpperCase(), club: club?.trim() || null }).select('id').single();
+  if (error?.code === '23505') throw new Error('A team with this name already exists in this tournament.');
+  if (error) throw new Error(error.message);
+  await addTeamMembers(team.id, memberIds);
+  return unwrap(await supabase.from('entries')
+    .insert({ category_id: categoryId, team_id: team.id, checked_in: !!checked_in }).select().single());
+}
+
+/** Team entries of a category that already fought or are fighting (members then locked). */
+export async function startedEntries(categoryId) {
+  const rows = unwrap(await supabase.from('matches').select('red_entry_id, white_entry_id')
+    .eq('category_id', categoryId).neq('status', 'scheduled'));
+  return new Set(rows.flatMap((m) => [m.red_entry_id, m.white_entry_id]).filter(Boolean));
 }
 
 export async function removeEntry(entryId) {

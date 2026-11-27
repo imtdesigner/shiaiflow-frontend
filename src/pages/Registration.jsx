@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addTeamEntry, listContacts, listEntries, removeEntry, setCheckedIn, setTier,
+  addCompetitorEntry, addExistingEntry, listCompetitors, listContacts, listEntries, removeEntry, setCheckedIn, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
@@ -13,6 +13,8 @@ import './TournamentPages.css';
 import { DateInput } from '../components/EuInputs';
 import StartTournament from '../components/StartTournament';
 import { parseBulk } from '../lib/tournament/bulk.js';
+import CompetitorPicker, { personName } from '../components/CompetitorPicker';
+import TeamEditor from '../components/TeamEditor';
 
 const EMPTY_PERSON = {
   last_name: '', first_name: '', club: '', grade: '', gender: '', birth_year: '', birth_date: '', grade_rank: '', checked_in: true,
@@ -33,7 +35,7 @@ function Registration() {
   }, [categories, selectedId, entries, contacts, tournament]);
   const [person, setPerson] = useState(EMPTY_PERSON);
   const [bulk, setBulk] = useState('');
-  const [team, setTeam] = useState({ name: '', club: '', members: [] });
+  const [competitors, setCompetitors] = useState([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -49,21 +51,16 @@ function Registration() {
     if (!selectedId && categories.length) setSelectedId(categories[0].id);
   }, [categories, selectedId]);
 
-  useEffect(() => {
-    if (category?.kind === 'team') {
-      setTeam((t) => ({ ...t, members: Array.from({ length: (category.team_size ?? 3) + 2 }, (_, i) => t.members[i] ?? { last_name: '', first_name: '' }) }));
-    }
-  }, [category]);
-
   const reload = useCallback(async () => {
     if (!selectedId) return;
     try {
-      const ens = await listEntries(selectedId);
+      const [ens, comps] = await Promise.all([listEntries(selectedId), listCompetitors(tournamentId)]);
       setEntries(ens);
+      setCompetitors(comps);
       // private contacts and consents (organizers only; empty for others)
-      listContacts(ens.map((e) => e.competitor?.id).filter(Boolean)).then(setContacts).catch(() => setContacts(new Map()));
+      listContacts(comps.map((c) => c.id)).then(setContacts).catch(() => setContacts(new Map()));
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
-  }, [selectedId]);
+  }, [selectedId, tournamentId]);
 
   useEffect(() => { setEntries([]); reload(); }, [reload]);
 
@@ -103,14 +100,13 @@ function Registration() {
     }, `Added: ${people.length}`);
   };
 
-  const addTeam = (e) => {
-    e.preventDefault();
-    if (!team.name.trim()) return;
-    run(async () => {
-      await addTeamEntry(tournamentId, selectedId, team);
-      setTeam({ name: '', club: '', members: team.members.map(() => ({ last_name: '', first_name: '' })) });
-    });
+  // an already registered competitor (e.g. from another category) into this one; rules only warn
+  const addExisting = (c) => {
+    const reason = ineligibleReason(category, { ...c, birth_date: contacts.get(c.id)?.birth_date ?? null }, tournamentAgeCtx(tournament ?? {}));
+    if (reason && !window.confirm(`${category.name} rules: ${personName(c)} — ${reason}. Add anyway?`)) return;
+    run(() => addExistingEntry(selectedId, c.id), `${personName(c)} added to ${category.name}.`);
   };
+  const inCategory = useMemo(() => new Set(entries.map((e) => e.competitor?.id).filter(Boolean)), [entries]);
 
   const checkAll = (value) => run(async () => {
     for (const en of entries.filter((x) => x.checked_in !== value)) await setCheckedIn(en.id, value);
@@ -149,6 +145,14 @@ function Registration() {
                 : 'The draw for this category has been made. Tick who is present below; a walk-in added here is not in the draw yet — put them in place of a no-show or into a short pool in Drawings → Adjust the draw.'}
               {' '}<Link to={`/tournament/${tournamentId}/drawings`}>Open draw</Link>
             </Message>
+          )}
+
+          {canAdd && !isTeam && competitors.some((c) => !inCategory.has(c.id)) && (
+            <div className="tp-card">
+              <h3>Add a registered competitor <span className="tp-muted">· from other categories</span></h3>
+              <p className="tp-muted" style={{ marginTop: 0 }}>Already registered in this tournament — one click puts them in {category.name} too. Rules only warn: you may add someone who does not fit (e.g. a junior fighting up).</p>
+              <CompetitorPicker competitors={competitors} exclude={inCategory} disabled={busy} onPick={addExisting} />
+            </div>
           )}
 
           {canAdd && !isTeam && (
@@ -204,32 +208,9 @@ function Registration() {
             </div>
           )}
 
-          {canAdd && isTeam && (
-            <div className="tp-card">
-              <h3>{locked ? 'Add a walk-in team' : 'Add team'} ({category.team_size} members + reserves)</h3>
-              <form onSubmit={addTeam}>
-                <div className="tp-grid">
-                  <label className="tp-field">Team name<input value={team.name} onChange={(e) => setTeam({ ...team, name: e.target.value })} placeholder="e.g. RIJEKA 1" required /></label>
-                  <label className="tp-field">Club<input value={team.club} onChange={(e) => setTeam({ ...team, club: e.target.value })} /></label>
-                </div>
-                <table className="tp-table" style={{ marginTop: '1rem' }}>
-                  <thead><tr><th>#</th><th>Last name</th><th>First name</th></tr></thead>
-                  <tbody>
-                    {team.members.map((m, i) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <tr key={i}>
-                        <td className="tp-muted">{i < category.team_size ? i + 1 : 'R'}</td>
-                        <td><input value={m.last_name} onChange={(e) => setTeam({ ...team, members: team.members.map((x, j) => (j === i ? { ...x, last_name: e.target.value } : x)) })} /></td>
-                        <td><input value={m.first_name} onChange={(e) => setTeam({ ...team, members: team.members.map((x, j) => (j === i ? { ...x, first_name: e.target.value } : x)) })} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="tp-actions">
-                  <button type="submit" className="tp-btn" disabled={busy}>Add team</button>
-                </div>
-              </form>
-            </div>
+          {isTeam && (
+            <TeamEditor tournamentId={tournamentId} category={category} competitors={competitors} contacts={contacts}
+              ctx={tournamentAgeCtx(tournament ?? {})} onChanged={reload} />
           )}
 
           <div id="g-checkin" className="tp-card">

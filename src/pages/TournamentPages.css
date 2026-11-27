@@ -630,3 +630,21 @@ body.guide-open .court-grid { width: calc(100vw - 3rem - 220px); }
 .mc-ev.red { border-color: #c0392b; color: #a3121f; }
 .mc-ev.white { border-color: #888; color: #333; }
 .mc-ev:hover { text-decoration: line-through; }
+
+/* Competitor picker + team editor (2026-11-27) */
+.picker { margin: 0.4rem 0; }
+.picker input { width: 100%; max-width: 420px; }
+.picker-list { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+.picker-item { border: 1px solid #ccd; background: #f7f8fb; border-radius: 6px; padding: 0.25rem 0.55rem; cursor: pointer; font: inherit; font-size: 0.9rem; }
+.picker-item:hover:not(:disabled) { background: #e9edf7; }
+.team-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin: 0.75rem 0; }
+.team-box { border: 1px solid #dde; border-radius: 8px; padding: 0.6rem 0.75rem; background: #fff; }
+.team-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.3rem; }
+.team-members { list-style: none; padding: 0; margin: 0.3rem 0; }
+.team-members li { display: flex; align-items: center; justify-content: space-between; padding: 0.15rem 0; border-bottom: 1px dotted #e3e3ea; }
+.member-x { border: none; background: none; color: #b33; font-size: 1.1rem; cursor: pointer; padding: 0 0.3rem; }
+.member-x:disabled { color: #ccc; cursor: default; }
+.team-warn { color: #7a4a00; font-size: 0.85rem; margin: 0.3rem 0; }
+.team-ronin { border: 1px dashed #d9a441; background: #fffaf0; border-radius: 8px; padding: 0.6rem 0.75rem; margin: 0.5rem 0; }
+.team-ronin h4, .team-new h4 { margin: 0 0 0.3rem; }
+.team-new { border-top: 1px solid #eee; padding-top: 0.75rem; margin-top: 0.5rem; }
