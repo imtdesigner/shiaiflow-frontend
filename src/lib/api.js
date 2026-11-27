@@ -288,6 +288,20 @@ export async function setCheckedIn(entryId, checkedIn) {
   return unwrap(await supabase.from('entries').update({ checked_in: checkedIn }).eq('id', entryId));
 }
 
+/** Entry ids marked paid (organizers only; a record, nothing depends on it). */
+export async function listPaid(entryIds) {
+  const rows = [];
+  for (let i = 0; i < entryIds.length; i += 100) {
+    rows.push(...unwrap(await supabase.from('entry_paid').select('entry_id').in('entry_id', entryIds.slice(i, i + 100))));
+  }
+  return new Set(rows.map((r) => r.entry_id));
+}
+
+export async function setPaid(entryId, paid) {
+  if (paid) return unwrap(await supabase.from('entry_paid').upsert({ entry_id: entryId }, { onConflict: 'entry_id' }));
+  return unwrap(await supabase.from('entry_paid').delete().eq('entry_id', entryId));
+}
+
 /** Set or clear (null) the strength tier (1–6) of an entry. */
 export async function setTier(entryId, tier) {
   const { error } = await supabase.from('entries').update({ tier }).eq('id', entryId);

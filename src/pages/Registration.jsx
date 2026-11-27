@@ -4,7 +4,7 @@ import {
   BackToDashboard, CategoryTabs, Message, entryName, useTournament,
 } from '../components/TournamentShell';
 import {
-  addCompetitorEntry, addExistingEntry, listCompetitors, listContacts, listEntries, removeEntry, setCheckedIn, setTier,
+  addCompetitorEntry, addExistingEntry, listCompetitors, listContacts, listEntries, listPaid, removeEntry, setCheckedIn, setPaid, setTier,
 } from '../lib/api';
 import { TIER_LABELS } from '../lib/tournament/placement.js';
 import { consentLetters } from '../lib/tournament/signup.js';
@@ -36,6 +36,7 @@ function Registration() {
   const [person, setPerson] = useState(EMPTY_PERSON);
   const [bulk, setBulk] = useState('');
   const [competitors, setCompetitors] = useState([]);
+  const [paid, setPaidSet] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -57,6 +58,7 @@ function Registration() {
       const [ens, comps] = await Promise.all([listEntries(selectedId), listCompetitors(tournamentId)]);
       setEntries(ens);
       setCompetitors(comps);
+      listPaid(ens.map((e) => e.id)).then(setPaidSet).catch(() => setPaidSet(new Set()));
       // private contacts and consents (organizers only; empty for others)
       listContacts(comps.map((c) => c.id)).then(setContacts).catch(() => setContacts(new Map()));
     } catch (e) { setMsg({ type: 'error', text: e.message }); }
@@ -217,6 +219,7 @@ function Registration() {
             <h3>
               Registered: {entries.length}
               {' '}<span className={`tp-badge ${checkedCount === entries.length && entries.length ? 'ok' : 'warn'}`}>present {checkedCount}</span>
+              {' '}<span className={`tp-badge ${entries.length && entries.every((x) => paid.has(x.id)) ? 'ok' : 'warn'}`}>paid {entries.filter((x) => paid.has(x.id)).length}</span>
             </h3>
             {entries.length === 0 ? (
               <p className="tp-muted">No entries in this category yet.</p>
@@ -226,7 +229,7 @@ function Registration() {
                   <thead>
                     <tr>
                       <th>#</th><th>{isTeam ? 'Team' : 'Competitor'}</th><th>Club</th>
-                      {!isTeam && <th>Grade</th>}{!isTeam && contacts.size > 0 && <th title="Email · dojo email · consents (D data, N news media, S social media, P photos; · = no)">Contact</th>}<th title="1 champion, 2 runner-up, 3 third place, 4 strong, 5 medium, 6 weaker">Strength</th><th>Check-in</th><th />
+                      {!isTeam && <th>Grade</th>}{!isTeam && contacts.size > 0 && <th title="Email · dojo email · consents (D data, N news media, S social media, P photos; · = no)">Contact</th>}<th title="1 champion, 2 runner-up, 3 third place, 4 strong, 5 medium, 6 weaker">Strength</th><th>Check-in</th><th title="A record only — nothing depends on it">Paid</th><th />
                     </tr>
                   </thead>
                   <tbody>
@@ -267,6 +270,14 @@ function Registration() {
                             checked={en.checked_in}
                             disabled={busy || cancelled}
                             onChange={(e) => run(() => setCheckedIn(en.id, e.target.checked))}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={paid.has(en.id)}
+                            disabled={busy || cancelled}
+                            onChange={(e) => run(() => setPaid(en.id, e.target.checked))}
                           />
                         </td>
                         <td>
