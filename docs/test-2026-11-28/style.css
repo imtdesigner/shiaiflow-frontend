@@ -1,0 +1,21 @@
+@page { size: A4; margin: 14mm 13mm; }
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #111; line-height: 1.35; }
+h1 { font-size: 17pt; margin: 0 0 2mm; color: #711921; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 1.5px solid #711921; padding-bottom: 1mm; }
+h3 { font-size: 11pt; margin: 4mm 0 1.5mm; }
+.sub { color: #555; margin: 0 0 3mm; }
+table { border-collapse: collapse; width: 100%; margin: 1mm 0 3mm; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #bbb; padding: 1.4mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f1ece4; font-size: 9.5pt; }
+td.n { width: 7mm; text-align: center; color: #666; }
+td.f { width: 16mm; font-weight: 700; white-space: nowrap; }
+td.ok { width: 9mm; }
+.box { border: 2px solid #c0392b; background: #fdecea; padding: 2mm 3mm; margin: 2mm 0; border-radius: 2mm; }
+.info { border: 1.5px solid #d9a441; background: #fff8e6; padding: 2mm 3mm; margin: 2mm 0; border-radius: 2mm; }
+.start { background: #e8f3e3; font-weight: 700; }
+.mistake { background: #fdecea; }
+.check { color: #1d5e12; }
+b.red { color: #b0141e; }
+code { font-family: Menlo, monospace; font-size: 9.5pt; background: #f4f4f4; padding: 0 1mm; }
+ul { margin: 1mm 0 2mm 5mm; padding-left: 3mm; }

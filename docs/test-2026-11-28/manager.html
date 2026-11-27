@@ -1,0 +1,75 @@
+<!DOCTYPE html><html lang="hr"><head><meta charset="utf-8"><title>Manager — očekivani rezultati</title><link rel="stylesheet" href="style.css"></head><body>
+<h1>Manager / vlasnik — tijek i očekivani rezultati</h1>
+<p class="sub">ShiaiFlow alpha test · 28.11. · Kyu open (9 → 8), Dan open (10), Team open (4 tima, direktni KO) · 30 s borbe · 3. mjesta dijeljena</p>
+
+<h2>Prije starta</h2>
+<table><tr><th>#</th><th>Korak</th><th>Očekivano</th><th>✓</th></tr>
+<tr><td class="n">1</td><td>Registration → Kyu open: makni kvačicu <b>Check-in</b> kod ŠARIĆ Đurđa (no-show)</td><td>present 8 / 9</td><td class="ok"></td></tr>
+<tr><td class="n">2</td><td>Drawings → Kyu open → Adjust the draw → ŠARIĆ <b>Withdraw</b></td><td>Pool 3: MARIĆ, JURIĆ, samo 1 borba</td><td class="ok"></td></tr>
+<tr><td class="n">3</td><td>Manage → <b>Start tournament</b></td><td>Oba Court screena pokazuju "next category Kyu open", stolovi gumb Start category</td><td class="ok"></td></tr>
+<tr><td class="n">4</td><td>Testerima: link /join, PIN, vrata Table, odabir shiaija; Court screen u drugom prozoru</td><td></td><td class="ok"></td></tr>
+</table>
+
+<h2>Ispravci tijekom testa (tvoj dio)</h2>
+<table><tr><th>Kad</th><th>Što javlja stol</th><th>Što ti radiš</th><th>Očekivano</th><th>✓</th></tr>
+<tr class="mistake"><td>A · Shiaijo 1, Dan F-P1.2</td><td>"K je bio MATIĆin, a upisan je LUKIĆU"</td><td>Manage → Pool standings → Dan open pool 1 → <b>Edit result</b> za F-P1.2: MATIĆ K, 1–0</td><td>Pool 1: LONČAR, MATIĆ, LUKIĆ. Dan F-3 (Shiaijo 2) dobiva MATIĆ umjesto LUKIĆA. To treba napraviti prije nego Stol 2 dođe do F-3.</td><td class="ok"></td></tr>
+<tr class="mistake"><td>B · Shiaijo 2, nakon Kyu F-4</td><td>"Kyu F-2 je bio krivo: pobijedio je KOVAČEVIĆ M K"</td><td>Manage → KO brackets → Kyu F-2 → <b>Edit result</b>: KOVAČEVIĆ M K. Pojavi se sukob "F-4 fought with other fighters" → <b>Fight these again</b></td><td>F-4 (KOVAČEVIĆ – MARIĆ) je prva na Shiaiju 2, a stari rezultat je u logu Corrections. Finale F-5 čeka W04. Tek onda reci Stolu 1: "finale može".</td><td class="ok"></td></tr>
+<tr class="mistake"><td>C · Shiaijo 2, Team F-2</td><td>"Taisho krivo, K je bio VUKOVIĆev"</td><td>Na Scorekeeping manageru za Shiaijo 2 (kao manager): <b>Correct: reopen taisho</b></td><td>Stol ispravlja: ZAGREB 2:1</td><td class="ok"></td></tr>
+</table>
+
+<h2>Kyu open — očekivano</h2>
+<h3>Poolovi</h3>
+<table><tr><th>Pool</th><th>1.</th><th>2.</th><th>3.</th><th>Napomena</th></tr>
+<tr><td>1 (Shiaijo 1)</td><td>HORVAT Ivan 2W 3–0</td><td>NOVAK 0W 1L 1D 1–2</td><td>VUKOVIĆ 0W 1L 1D 1–3</td><td>NOVAK/VUKOVIĆ: jednako W, poeni, H2H (hikiwake), L → odlučuje <b>primljeno</b> (2 &lt; 3)</td></tr>
+<tr><td>2 (Shiaijo 2)</td><td>KOVAČEVIĆ 2W 4–0</td><td>BABIĆ (ipponshobu F-P2.D)</td><td>KNEŽEVIĆ</td><td>BABIĆ i KNEŽEVIĆ jednaki po svemu (0W 1L 1D 0–2) → <b>ipponshobu</b> odmah na Shiaiju 2</td></tr>
+<tr><td>3 (Shiaijo 1)</td><td>MARIĆ 1W 2–1</td><td>JURIĆ</td><td>—</td><td>ŠARIĆ povučena. OO usred borbe: MARIĆ O O, JURIĆ zadržava K</td></tr>
+</table>
+<h3>KO (K032)</h3>
+<table><tr><th>Borba</th><th>Shiaijo</th><th>Crveni (gore)</th><th>Bijeli</th><th>Pobjednik</th><th>Rezultat</th></tr>
+<tr><td>F-1</td><td>1</td><td>P3.2 JURIĆ</td><td>P2.2 BABIĆ</td><td>JURIĆ</td><td>Ht (encho + hantei)</td></tr>
+<tr class="mistake"><td>F-2</td><td>2</td><td>P2.1 KOVAČEVIĆ</td><td>P1.2 NOVAK</td><td>KOVAČEVIĆ</td><td>M K (prvo krivo NOVAK → ispravak B)</td></tr>
+<tr><td>F-3</td><td>1</td><td>P1.1 HORVAT</td><td>W01 JURIĆ</td><td>HORVAT</td><td>M (nakon Undo)</td></tr>
+<tr class="mistake"><td>F-4</td><td>2</td><td>W02 KOVAČEVIĆ</td><td>P3.1 MARIĆ</td><td>KOVAČEVIĆ</td><td>D D (prvo krivo NOVAK–MARIĆ, MARIĆ M)</td></tr>
+<tr><td>F-5 finale</td><td>1</td><td>W03 HORVAT</td><td>W04 KOVAČEVIĆ</td><td>HORVAT</td><td>M K : K (encho, prvi poen)</td></tr>
+</table>
+<p><b>Rezultati Kyu open:</b> 1. HORVAT Ivan · 2. KOVAČEVIĆ Marko · 3. JURIĆ Luka · 3. MARIĆ Petra · Fighting spirit: <b>dva prijedloga</b> (JURIĆ / BABIĆ) → Results traži da odabereš.</p>
+
+<h2>Dan open — očekivano</h2>
+<h3>Poolovi</h3>
+<table><tr><th>Pool</th><th>1.</th><th>2.</th><th>3.</th><th>Napomena</th></tr>
+<tr><td>1 (Shiaijo 1)</td><td>LONČAR 2W 3–0</td><td>MATIĆ 1W 1L 1–2</td><td>LUKIĆ 0W 2L</td><td>nakon ispravka A</td></tr>
+<tr><td>2 (Shiaijo 2)</td><td>BOŽIĆ 1W 1D 3–1</td><td>PAVLOVIĆ 1W 1D 2–1</td><td>HORVAT Hrvoje 0W 2L</td><td>BOŽIĆ ispred zbog više postignutih poena; sosai u F-P2.2</td></tr>
+<tr><td>3 (Shiaijo 1)</td><td>PERIĆ</td><td>TOMIĆ</td><td>—</td><td></td></tr>
+<tr><td>4 (Shiaijo 2)</td><td>GRGIĆ</td><td>RADIĆ</td><td>—</td><td>GRGIĆ je primljen preko zahtjeva</td></tr>
+</table>
+<h3>KO (K042)</h3>
+<table><tr><th>Borba</th><th>Shiaijo</th><th>Crveni (gore)</th><th>Bijeli</th><th>Pobjednik</th><th>Rezultat</th></tr>
+<tr><td>F-1</td><td>1</td><td>P1.1 LONČAR</td><td>P2.2 PAVLOVIĆ</td><td>PAVLOVIĆ</td><td>M M</td></tr>
+<tr><td>F-2</td><td>1</td><td>P3.1 PERIĆ</td><td>P4.2 RADIĆ</td><td>PERIĆ</td><td>O O (RADIĆ nije došao)</td></tr>
+<tr><td>F-3</td><td>2</td><td>P1.2 MATIĆ</td><td>P2.1 BOŽIĆ</td><td>BOŽIĆ</td><td>K</td></tr>
+<tr><td>F-4</td><td>2</td><td>P3.2 TOMIĆ</td><td>P4.1 GRGIĆ</td><td>TOMIĆ</td><td>M H</td></tr>
+<tr><td>F-5</td><td>1</td><td>W01 PAVLOVIĆ</td><td>W02 PERIĆ</td><td>PERIĆ</td><td>D</td></tr>
+<tr><td>F-6</td><td>2</td><td>W03 BOŽIĆ</td><td>W04 TOMIĆ</td><td>BOŽIĆ</td><td>M T</td></tr>
+<tr><td>F-7 finale</td><td>1</td><td>W05 PERIĆ</td><td>W06 BOŽIĆ</td><td>PERIĆ</td><td>M M</td></tr>
+</table>
+<p><b>Rezultati Dan open:</b> 1. PERIĆ Dario · 2. BOŽIĆ Dino · 3. PAVLOVIĆ Nikola · 3. TOMIĆ Josip · Fighting spirit: jedan prijedlog → <b>GRGIĆ Ante</b> (Stol 1 Skip).</p>
+
+<h2>Team open — očekivano (K041, direktni KO)</h2>
+<table><tr><th>Borba</th><th>Shiaijo</th><th>Crveni</th><th>Bijeli</th><th>Pobjednik</th><th>Kako</th></tr>
+<tr><td>F-1</td><td>1</td><td>KK NET</td><td>KK RIJEKA</td><td>KK NET</td><td>1:1, ipponi 1:1 → daihyosen MATIĆ K</td></tr>
+<tr class="mistake"><td>F-2</td><td>2</td><td>KK ZAGREB</td><td>KK SPLIT</td><td>KK ZAGREB</td><td>2:1 (3:2): chuken prazan = fusen; taisho ispravak C</td></tr>
+<tr><td>F-3 finale</td><td>1</td><td>KK NET</td><td>KK ZAGREB</td><td>KK ZAGREB</td><td>2:1 (3:1)</td></tr>
+</table>
+<p><b>Rezultati Team open:</b> 1. KK ZAGREB · 2. KK NET · 3. KK RIJEKA · 3. KK SPLIT · Fighting spirit: <b>MATIĆ Ivana</b>.</p>
+
+<h2>Na ekranima provjeri</h2>
+<ul>
+<li>Nakon Start tournament: "next category Kyu open" na oba Court screena; borbe se pojave tek nakon Start category (≈1 s).</li>
+<li>Pred kraj Kyu open na Shiaiju 1 zadnji red "Next" je <b>"Next category: Dan open"</b>.</li>
+<li>Shiaijo 2 nakon Kyu F-4: <b>"Kyu open — FINALS on Shiaijo 1"</b> s borbom F-5. Isto nakon Dan F-6: "Dan open — FINALS on Shiaijo 1".</li>
+<li>Team open: Stol 2 ga pokrene → na Shiaiju 1 se borbe vide odmah, bez gumba.</li>
+<li>Javna stranica Live: poolovi uživo, ipponshobu, bracket se puni; ispravci A i B se vide.</li>
+<li>Results: dva 3. mjesta u svakoj kategoriji; Fighting spirit; Print.</li>
+<li>Manage → Corrections log: A, B (fight again), C.</li>
+</ul>
+</body></html>
